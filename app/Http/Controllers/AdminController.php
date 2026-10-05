@@ -36,7 +36,7 @@ class AdminController extends Controller
                 'total_users' => User::count(),
                 'total_doctors' => User::where('role', 'doctor')->count(),
                 'total_patients' => Patient::count(),
-                'total_staff' => User::whereIn('role', ['receptionist', 'admin'])->count(),
+                'total_staff' => User::where('role', 'receptionist')->count(),
                 'appointments_today' => Appointment::whereDate('scheduled_date', today())->count(),
                 'completed_today' => Appointment::whereDate('scheduled_date', today())->where('status', 'Completed')->count(),
                 'pending_today' => Appointment::whereDate('scheduled_date', today())->whereIn('status', ['Scheduled', 'Pending'])->count(),
