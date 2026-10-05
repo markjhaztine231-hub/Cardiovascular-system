@@ -570,6 +570,39 @@
                                         {{ appt.status }}
                                     </span>
                                 </div>
+                                <div
+                                    v-if="
+                                        appt.status !== 'Completed' &&
+                                        appt.status !== 'No-Show' &&
+                                        appt.status !== 'Cancelled'
+                                    "
+                                    class="flex flex-wrap gap-1.5"
+                                >
+                                    <button
+                                        @click="openTransfer(appt)"
+                                        class="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-600 hover:text-white"
+                                    >
+                                        Transfer
+                                    </button>
+                                    <button
+                                        @click="openQueueReschedule(appt)"
+                                        class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
+                                    >
+                                        Reschedule
+                                    </button>
+                                    <button
+                                        @click="openScanModal(appt)"
+                                        class="rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-700 transition-colors hover:bg-teal-600 hover:text-white"
+                                    >
+                                        Upload Image
+                                    </button>
+                                    <button
+                                        @click="cancelAppointment(appt.id)"
+                                        class="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-600 hover:text-white"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <p
@@ -1154,8 +1187,8 @@
 <script setup lang="ts">
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import Toast from '@/components/Toast.vue';
 import ScanUploadModal from '@/components/ScanUploadModal.vue';
+import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
 
@@ -1617,6 +1650,16 @@ const markNoShow = (id: number) => {
         router.put(
             `/appointments/${id}/status`,
             { status: 'No-Show' },
+            { preserveScroll: true },
+        );
+    }
+};
+
+const cancelAppointment = (id: number) => {
+    if (confirm('Cancel this appointment?')) {
+        router.put(
+            `/appointments/${id}/status`,
+            { status: 'Cancelled' },
             { preserveScroll: true },
         );
     }
