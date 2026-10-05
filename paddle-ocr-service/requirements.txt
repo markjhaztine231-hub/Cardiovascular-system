@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+paddleocr==3.7.0
+# Pinned: 3.3.1 crashes on Windows with
+# "ConvertPirAttribute2RuntimeAttribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]"
+# in the oneDNN detector path. 3.2.2 is the last version that runs these PP-OCRv5 models on win_amd64.
+paddlepaddle==3.2.2
+paddlex==3.7.2
+numpy>=1.24,<3.0
+Pillow>=10.0.0
