@@ -45,6 +45,8 @@ class MonthlyReportAgeAnalyticsTest extends TestCase
 
     protected function tearDown(): void
     {
+        config(['services.openrouter.api_key' => null]);
+
         parent::tearDown();
     }
 

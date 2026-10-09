@@ -924,46 +924,113 @@ TOP SERVICES RENDERED: {$svcList}
 {$p9_instruction}
 PROMPT;
 
-        $apiKey = config('services.openrouter.api_key');
-        if (! $apiKey) {
-            Log::warning('MonthlyReportService: OPENROUTER_API_KEY is not set. Narrative skipped.');
+        $systemPrompt = 'You are a formal clinical administrator writing monthly reports for a cardiovascular care center. You write factual reports strictly from provided data. You never invent numbers, never make predictions, and never perform arithmetic — all change values are pre-calculated and supplied to you.';
 
-            return null;
-        }
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $prompt],
+        ];
 
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.$apiKey,
-                'Content-Type' => 'application/json',
-                'HTTP-Referer' => url('/'),
-                'X-Title' => 'CardioCare EMR',
-            ])
-                ->timeout(90)
-                ->post('https://openrouter.ai/api/v1/chat/completions', [
-                    'model' => 'nvidia/nemotron-3-super-120b-a12b:free',
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => 'You are a formal clinical administrator writing monthly reports for a cardiovascular care center. You write factual reports strictly from provided data. You never invent numbers, never make predictions, and never perform arithmetic — all change values are pre-calculated and supplied to you.',
-                        ],
-                        ['role' => 'user', 'content' => $prompt],
-                    ],
+        // --- 1. OPENROUTER (DeepSeek via OpenRouter, primary) ---
+        $orKey = config('services.openrouter.api_key');
+        if ($orKey) {
+            $text = self::chatAttempt(
+                'https://openrouter.ai/api/v1/chat/completions',
+                $orKey,
+                [
+                    'model' => config('services.openrouter.model'),
+                    'messages' => $messages,
                     'temperature' => 0.1,
                     'max_tokens' => $maxTokens,
-                ]);
+                ],
+                90,
+                [
+                    'HTTP-Referer' => url('/'),
+                    'X-Title' => 'CardioCare EMR',
+                ],
+            );
+
+            if ($text !== null) {
+                return $text;
+            }
+        }
+
+        // --- 2. DEEPSEEK DIRECT ---
+        $deepseekKey = config('services.deepseek.api_key');
+        if ($deepseekKey) {
+            $text = self::chatAttempt(
+                'https://api.deepseek.com/chat/completions',
+                $deepseekKey,
+                array_merge([
+                    'model' => config('services.deepseek.model'),
+                    'temperature' => 0.1,
+                    'max_tokens' => $maxTokens,
+                ], ['messages' => $messages]),
+                100,
+            );
+
+            if ($text !== null) {
+                return $text;
+            }
+        }
+
+        // --- 3. HUGGING FACE INFERENCE ---
+        $hfToken = config('services.hf.token');
+        if ($hfToken) {
+            $text = self::chatAttempt(
+                'https://api-inference.huggingface.co/models/'.config('services.hf.model').'/v1/chat/completions',
+                $hfToken,
+                [
+                    'model' => config('services.hf.model'),
+                    'messages' => $messages,
+                    'temperature' => 0.1,
+                    'max_tokens' => $maxTokens,
+                ],
+                120,
+            );
+
+            if ($text !== null) {
+                return $text;
+            }
+        }
+
+        if (! $orKey && ! $deepseekKey && ! $hfToken) {
+            Log::warning('MonthlyReportService: no AI key configured. Narrative skipped.');
+        } else {
+            Log::error('MonthlyReportService: all AI providers failed. Narrative skipped.');
+        }
+
+        return null;
+    }
+
+    /**
+     * Single OpenAI-compatible chat attempt, returning the trimmed text or null.
+     */
+    private static function chatAttempt(
+        string $url,
+        string $apiKey,
+        array $payload,
+        int $timeout,
+        array $extraHeaders = [],
+    ): ?string {
+        try {
+            $response = Http::withHeaders(array_merge([
+                'Authorization' => 'Bearer '.$apiKey,
+                'Content-Type' => 'application/json',
+            ], $extraHeaders))
+                ->timeout($timeout)
+                ->post($url, $payload);
 
             if ($response->successful()) {
                 return trim($response->json('choices.0.message.content') ?? '');
             }
 
             Log::error('MonthlyReportService narrative failed: '.$response->body());
-
-            return null;
         } catch (\Throwable $e) {
             Log::error('MonthlyReportService narrative exception: '.$e->getMessage());
-
-            return null;
         }
+
+        return null;
     }
 
     /** Returns a zeroed-out stats skeleton for months with no appointments. */

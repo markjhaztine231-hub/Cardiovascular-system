@@ -47,3 +47,6 @@ Readme.md
 
 # Upstream source clone (real package ships via composer → vendor/spatie/laravel-pdf).
 /laravel-pdf
+
+# Self-hosted OCR service removed from the deploy branch (cloud driver now).
+/paddle-ocr-service

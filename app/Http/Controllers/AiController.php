@@ -483,12 +483,12 @@ class AiController extends Controller
     // ==========================================
 
     /**
-     * Tries three providers in order: DeepSeek Direct → HuggingFace → OpenRouter.
+     * Tries providers in order: OpenRouter (DeepSeek) → DeepSeek Direct → HuggingFace.
      */
     private function callAiApi(string $prompt): string
     {
         $payload = [
-            'model' => 'deepseek-v4-flash',
+            'model' => config('services.deepseek.model'),
             'messages' => [
                 ['role' => 'system', 'content' => 'You are a highly skilled clinical cardiologist assistant.'],
                 ['role' => 'user', 'content' => $prompt],
@@ -497,7 +497,41 @@ class AiController extends Controller
             'max_tokens' => 8000,
         ];
 
-        // --- 1. DEEPSEEK DIRECT ---
+        // --- 1. OPENROUTER (primary) ---
+        $orKey = config('services.openrouter.api_key');
+        if ($orKey) {
+            try {
+                $orPayload = $payload;
+                $orPayload['model'] = config('services.openrouter.model');
+
+                $response = Http::retry(3, 2000, function ($exception, $request) {
+                    return $exception instanceof RequestException &&
+                        $exception->response->serverError();
+                })
+                    ->withHeaders([
+                        'Authorization' => 'Bearer '.$orKey,
+                        'Content-Type' => 'application/json',
+                        'HTTP-Referer' => url('/'),
+                        'X-Title' => 'CardioCare EMR',
+                    ])
+                    ->timeout(100)
+                    ->post('https://openrouter.ai/api/v1/chat/completions', $orPayload);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $text = $data['choices'][0]['message']['content'] ?? null;
+                    if ($text) {
+                        return $text;
+                    }
+                }
+
+                Log::warning('OpenRouter API error: '.$response->status().' '.$response->body());
+            } catch (\Exception $e) {
+                Log::warning('OpenRouter API exception: '.$e->getMessage());
+            }
+        }
+
+        // --- 2. DEEPSEEK DIRECT ---
         $apiKey = config('services.deepseek.api_key');
         if ($apiKey) {
             try {
@@ -522,12 +556,12 @@ class AiController extends Controller
             }
         }
 
-        // --- 2. HUGGING FACE INFERENCE ---
+        // --- 3. HUGGING FACE INFERENCE ---
         $hfToken = config('services.hf.token');
         if ($hfToken) {
             try {
                 $hfPayload = [
-                    'model' => 'deepseek-ai/DeepSeek-V4-Flash',
+                    'model' => config('services.hf.model'),
                     'messages' => $payload['messages'],
                     'temperature' => 0.2,
                     'max_tokens' => 8000,
@@ -542,7 +576,7 @@ class AiController extends Controller
                         'Content-Type' => 'application/json',
                     ])
                     ->timeout(120)
-                    ->post('https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V4-Flash/v1/chat/completions', $hfPayload);
+                    ->post('https://api-inference.huggingface.co/models/'.config('services.hf.model').'/v1/chat/completions', $hfPayload);
 
                 if ($response->successful()) {
                     $data = $response->json();
@@ -555,44 +589,6 @@ class AiController extends Controller
                 Log::warning('HuggingFace API error: '.$response->status().' '.$response->body());
             } catch (\Exception $e) {
                 Log::warning('HuggingFace API exception: '.$e->getMessage());
-            }
-        }
-
-        // --- 3. OPENROUTER (FALLBACK) ---
-        $orKey = config('services.openrouter.api_key');
-        if ($orKey) {
-            try {
-                $orPayload = $payload;
-                $orPayload['model'] = 'nvidia/nemotron-3-super-120b-a12b:free';
-
-                $response = Http::retry(3, 2000, function ($exception, $request) {
-                    return $exception instanceof RequestException &&
-                        $exception->response->serverError();
-                })
-                    ->withHeaders([
-                        'Authorization' => 'Bearer '.$orKey,
-                        'Content-Type' => 'application/json',
-                        'HTTP-Referer' => url('/'),
-                        'X-Title' => 'CardioCare EMR',
-                    ])
-                    ->timeout(100)
-                    ->post('https://openrouter.ai/api/v1/chat/completions', $orPayload);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $text = $data['choices'][0]['message']['content'] ?? null;
-                    if ($text) {
-                        return $text;
-                    }
-                }
-
-                Log::error('OpenRouter API Error: '.$response->body());
-
-                return 'An error occurred with OpenRouter. Status: '.$response->status();
-            } catch (\Exception $e) {
-                Log::error('OpenRouter Exception: '.$e->getMessage());
-
-                return 'An unexpected error occurred contacting OpenRouter: '.$e->getMessage();
             }
         }
 

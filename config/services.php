@@ -42,6 +42,7 @@ return [
 
     'deepseek' => [
         'api_key' => env('DEEPSEEK_API_KEY'),
+        'model' => env('DEEPSEEK_MODEL', 'deepseek-v4-flash'),
     ],
 
     'llama' => [
@@ -50,6 +51,7 @@ return [
 
     'hf' => [
         'token' => env('HF_TOKEN'),
+        'model' => env('HF_MODEL', 'deepseek-ai/DeepSeek-V4-Flash'),
     ],
 
     'paddle_ocr' => [
