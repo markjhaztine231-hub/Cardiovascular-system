@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Document;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\ConnectionException;
@@ -13,7 +14,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Throwable;
 
 class ProcessDocumentOcr implements ShouldQueue
@@ -55,10 +55,9 @@ class ProcessDocumentOcr implements ShouldQueue
         }
 
         try {
-            $response = Http::timeout(config('services.paddle_ocr.timeout'))
-                ->connectTimeout(10)
-                ->attach('file', $contents, $filename)
-                ->post(rtrim(config('services.paddle_ocr.url'), '/').'/ocr');
+            $payload = config('services.paddle_ocr.driver') === 'cloud'
+                ? $this->runCloudOcr($contents, $filename)
+                : $this->runLocalOcr($contents, $filename);
         } catch (ConnectionException $e) {
             // The OCR service being down is transient, so do NOT burn the
             // document: stay "processing" and let the queue retry with
@@ -80,12 +79,6 @@ class ProcessDocumentOcr implements ShouldQueue
             throw $e;
         }
 
-        if ($response->failed()) {
-            throw new \RuntimeException('OCR service responded with '.$response->status());
-        }
-
-        $payload = $response->json();
-
         $document->update([
             'ocr_text' => (string) ($payload['text'] ?? ''),
             'ocr_confidence' => isset($payload['confidence']) ? (float) $payload['confidence'] : null,
@@ -101,6 +94,143 @@ class ProcessDocumentOcr implements ShouldQueue
             'ocr_status' => 'completed',
             'ocr_error' => null,
         ]);
+    }
+
+    private function runLocalOcr(string $contents, string $filename): array
+    {
+        $response = Http::timeout(config('services.paddle_ocr.timeout'))
+            ->connectTimeout(10)
+            ->attach('file', $contents, $filename)
+            ->post(rtrim(config('services.paddle_ocr.url'), '/').'/ocr');
+
+        if ($response->failed()) {
+            throw new \RuntimeException('OCR service responded with '.$response->status());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Async OCR through the hosted PaddleOCR API (paddleocr.aistudio-app.com).
+     * Submits a job, polls until it finishes, then folds the resulting markdown
+     * pages into the same shape the rest of the app expects.
+     */
+    private function runCloudOcr(string $contents, string $filename): array
+    {
+        $cloud = config('services.paddle_ocr.cloud');
+        $baseUrl = rtrim((string) $cloud['url'], '/');
+        $headers = ['Authorization' => 'bearer '.$cloud['token']];
+
+        $optionalPayload = [
+            'useDocOrientationClassify' => false,
+            'useDocUnwarping' => false,
+            'useChartRecognition' => false,
+        ];
+
+        $started = microtime(true);
+
+        $jobResponse = Http::timeout(config('services.paddle_ocr.timeout'))
+            ->connectTimeout(10)
+            ->withHeaders($headers)
+            ->asMultipart()
+            ->attach('file', $contents, $filename)
+            ->post($baseUrl, [
+                'model' => $cloud['model'],
+                'optionalPayload' => json_encode($optionalPayload),
+            ]);
+
+        if ($jobResponse->failed()) {
+            throw new \RuntimeException('OCR cloud API rejected the job with '.$jobResponse->status());
+        }
+
+        $jobId = data_get($jobResponse->json(), 'data.jobId');
+
+        if (! is_string($jobId) || $jobId === '') {
+            throw new \RuntimeException('OCR cloud API returned no job id: '.Str::limit($jobResponse->body(), 500));
+        }
+
+        $deadline = time() + (int) ($cloud['max_wait'] ?? 120);
+        $jsonlUrl = null;
+
+        while (true) {
+            if (time() >= $deadline) {
+                throw new \RuntimeException('OCR cloud job '.$jobId.' exceeded the '.$cloud['max_wait'].'s wait.');
+            }
+
+            $stateResponse = Http::timeout(config('services.paddle_ocr.timeout'))
+                ->connectTimeout(10)
+                ->withHeaders($headers)
+                ->get($baseUrl.'/'.$jobId);
+
+            if ($stateResponse->failed()) {
+                throw new \RuntimeException('OCR cloud poll failed with '.$stateResponse->status());
+            }
+
+            $state = data_get($stateResponse->json(), 'data.state', 'pending');
+
+            if ($state === 'done') {
+                $jsonlUrl = data_get($stateResponse->json(), 'data.resultUrl.jsonUrl');
+
+                break;
+            }
+
+            if ($state === 'failed') {
+                throw new \RuntimeException(
+                    'OCR cloud job failed: '.data_get($stateResponse->json(), 'data.errorMsg', 'unknown error')
+                );
+            }
+
+            sleep(max(1, (int) ($cloud['poll_interval'] ?? 5)));
+        }
+
+        if (! is_string($jsonlUrl) || $jsonlUrl === '') {
+            throw new \RuntimeException('OCR cloud job completed without a result URL.');
+        }
+
+        return $this->collapseCloudMarkdown($jsonlUrl, $started);
+    }
+
+    private function collapseCloudMarkdown(string $jsonlUrl, float $started): array
+    {
+        $response = Http::timeout(config('services.paddle_ocr.timeout'))
+            ->connectTimeout(10)
+            ->get($jsonlUrl);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('OCR cloud result download failed with '.$response->status());
+        }
+
+        $pages = [];
+        $exploded = Str::of($response->body())->explode("\n")->filter(fn ($line) => trim($line) !== '');
+
+        foreach ($exploded as $line) {
+            $decoded = json_decode($line, true);
+            $results = data_get($decoded, 'result.layoutParsingResults', []);
+
+            foreach ($results as $result) {
+                $markdown = (string) data_get($result, 'markdown.text', '');
+
+                if (trim($markdown) !== '') {
+                    $pages[] = $markdown;
+                }
+            }
+        }
+
+        $text = implode("\n\n", $pages);
+
+        // The hosted API reports no per-line confidence, so mark it unknown and
+        // let requiresReview() flag the scan for a quick human check.
+        return [
+            'text' => $text,
+            'confidence' => null,
+            'lines' => [],
+            'layout' => [],
+            'visuals' => [],
+            'line_count' => count($pages),
+            'engine' => (string) (config('services.paddle_ocr.cloud.model') ?? 'PaddleOCR-VL-1.6'),
+            'language' => null,
+            'processing_time_ms' => round((microtime(true) - $started) * 1000, 2),
+        ];
     }
 
     public function failed(?Throwable $e): void

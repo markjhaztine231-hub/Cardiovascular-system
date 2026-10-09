@@ -79,7 +79,7 @@ class DocumentOcrJobTest extends TestCase
     {
         Http::fake([
             '*/ocr' => Http::response([
-                'text' => "Tab Amlodipine 5mg",
+                'text' => 'Tab Amlodipine 5mg',
                 'confidence' => 0.93,
                 'lines' => [['text' => 'Tab Amlodipine 5mg', 'confidence' => 0.93]],
                 'layout' => [
@@ -146,6 +146,63 @@ class DocumentOcrJobTest extends TestCase
                 'A 500 is retried by the queue, not failed on the first attempt.'
             );
         }
+    }
+
+    public function test_the_cloud_driver_folds_async_markdown_into_the_expected_shape(): void
+    {
+        config(['services.paddle_ocr.driver' => 'cloud']);
+        config(['services.paddle_ocr.cloud.model' => 'PaddleOCR-VL-1.6']);
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+
+            if (str_ends_with($url, '/api/v2/ocr/jobs') && $request->method() === 'POST') {
+                return Http::response(['data' => ['jobId' => 'job-123']]);
+            }
+
+            if (str_ends_with($url, '/api/v2/ocr/jobs/job-123')) {
+                return Http::response([
+                    'data' => [
+                        'state' => 'done',
+                        'resultUrl' => ['jsonUrl' => 'https://results.example/sample.jsonl'],
+                    ],
+                ]);
+            }
+
+            if (str_starts_with($url, 'https://results.example/')) {
+                return Http::response(implode("\n", [
+                    json_encode([
+                        'result' => [
+                            'layoutParsingResults' => [
+                                ['markdown' => ['text' => "Tab Amlodipine 5mg\nonce daily"]],
+                            ],
+                        ],
+                    ]),
+                    json_encode([
+                        'result' => [
+                            'layoutParsingResults' => [
+                                ['markdown' => ['text' => 'Patient: Jane Doe']],
+                            ],
+                        ],
+                    ]),
+                ]));
+            }
+
+            return Http::response('unexpected', 404);
+        });
+
+        (new ProcessDocumentOcr($this->document->id))->handle();
+
+        $document = $this->document->fresh();
+
+        $this->assertSame('completed', $document->ocr_status);
+        $this->assertStringContainsString('Tab Amlodipine 5mg', $document->ocr_text);
+        $this->assertStringContainsString('Patient: Jane Doe', $document->ocr_text);
+        $this->assertNull($document->ocr_confidence, 'Cloud OCR has no per-line confidence.');
+        $this->assertSame([], $document->ocr_raw['layout']);
+        $this->assertSame([], $document->ocr_raw['visuals']);
+        $this->assertSame(2, $document->ocr_raw['line_count']);
+        $this->assertSame('PaddleOCR-VL-1.6', $document->ocr_raw['engine']);
     }
 
     public function test_the_failed_callback_marks_the_scan_as_failed(): void

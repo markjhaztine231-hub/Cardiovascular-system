@@ -28,8 +28,7 @@ class PracticeReportTest extends TestCase
     {
         parent::setUp();
 
-        $_ENV['OPENROUTER_API_KEY'] = 'test-key';
-        $_SERVER['OPENROUTER_API_KEY'] = 'test-key';
+        config(['services.openrouter.api_key' => 'test-key']);
 
         Http::fake([
             'openrouter.ai/*' => Http::response([
@@ -40,8 +39,6 @@ class PracticeReportTest extends TestCase
 
     protected function tearDown(): void
     {
-        unset($_ENV['OPENROUTER_API_KEY'], $_SERVER['OPENROUTER_API_KEY']);
-
         parent::tearDown();
     }
 

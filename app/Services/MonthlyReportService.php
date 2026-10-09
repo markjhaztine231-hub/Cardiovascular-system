@@ -924,7 +924,7 @@ TOP SERVICES RENDERED: {$svcList}
 {$p9_instruction}
 PROMPT;
 
-        $apiKey = env('OPENROUTER_API_KEY');
+        $apiKey = config('services.openrouter.api_key');
         if (! $apiKey) {
             Log::warning('MonthlyReportService: OPENROUTER_API_KEY is not set. Narrative skipped.');
 

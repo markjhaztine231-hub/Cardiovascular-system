@@ -14,6 +14,7 @@
 .env
 .env.backup
 .env.production
+.env.testing
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
@@ -26,3 +27,23 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.claude
+
+# Local-only + legacy workspace junk (kept on disk, never committed).
+*.pdf
+*.html
+cookie.jar
+h.png
+Readme.md
+*_REVIEW.md
+*_SUMMARY.md
+*_GUIDE.md
+*_COMPLETED.md
+*_COMPLETE.md
+*_REPORT.md
+*_REFERENCE.md
+*_APPLIED.md
+*_FIXES.md
+
+# Upstream source clone (real package ships via composer → vendor/spatie/laravel-pdf).
+/laravel-pdf

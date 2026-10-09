@@ -215,7 +215,7 @@ class AiController extends Controller
 
         try {
             $file = $request->file('document');
-            $apiKey = env('LLAMA_CLOUD_API_KEY');
+            $apiKey = config('services.llama.api_key');
 
             if (! $apiKey) {
                 return back()->withErrors(['ai_error' => 'LlamaCloud API key is missing from .env']);
@@ -334,7 +334,7 @@ class AiController extends Controller
     private function downloadAndParsePhaGuidelines(): string
     {
         try {
-            $apiKey = env('LLAMA_CLOUD_API_KEY');
+            $apiKey = config('services.llama.api_key');
             if (! $apiKey) {
                 return 'Guidelines unavailable: Missing LlamaCloud API Key.';
             }
@@ -498,7 +498,7 @@ class AiController extends Controller
         ];
 
         // --- 1. DEEPSEEK DIRECT ---
-        $apiKey = env('DEEPSEEK_API_KEY');
+        $apiKey = config('services.deepseek.api_key');
         if ($apiKey) {
             try {
                 $response = Http::retry(2, 1000)
@@ -523,7 +523,7 @@ class AiController extends Controller
         }
 
         // --- 2. HUGGING FACE INFERENCE ---
-        $hfToken = env('HF_TOKEN');
+        $hfToken = config('services.hf.token');
         if ($hfToken) {
             try {
                 $hfPayload = [
@@ -559,7 +559,7 @@ class AiController extends Controller
         }
 
         // --- 3. OPENROUTER (FALLBACK) ---
-        $orKey = env('OPENROUTER_API_KEY');
+        $orKey = config('services.openrouter.api_key');
         if ($orKey) {
             try {
                 $orPayload = $payload;

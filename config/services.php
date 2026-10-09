@@ -35,13 +35,35 @@ return [
         ],
     ],
 
+    'openrouter' => [
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'model' => env('OPENROUTER_MODEL', 'deepseek/deepseek-v4-flash-0731'),
+    ],
+
+    'deepseek' => [
+        'api_key' => env('DEEPSEEK_API_KEY'),
+    ],
+
+    'llama' => [
+        'api_key' => env('LLAMA_CLOUD_API_KEY'),
+    ],
+
     'hf' => [
         'token' => env('HF_TOKEN'),
     ],
 
     'paddle_ocr' => [
-        'url' => env('PADDLE_OCR_SERVICE_URL', 'http://127.0.0.1:8000'),
+        // 'local' (self-hosted FastAPI, sync) or 'cloud' (paddleocr.aistudio-app.com, async).
+        'driver' => env('PADDLE_OCR_DRIVER', 'local'),
+        'url' => env('PADDLE_OCR_SERVICE_URL', 'http://127.0.0.1:8010'),
         'timeout' => env('PADDLE_OCR_TIMEOUT', 120),
+        'cloud' => [
+            'url' => env('PADDLE_OCR_CLOUD_URL', 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs'),
+            'token' => env('PADDLE_OCR_CLOUD_TOKEN'),
+            'model' => env('PADDLE_OCR_CLOUD_MODEL', 'PaddleOCR-VL-1.6'),
+            'poll_interval' => (int) env('PADDLE_OCR_CLOUD_POLL_INTERVAL', 5),
+            'max_wait' => (int) env('PADDLE_OCR_CLOUD_MAX_WAIT', 120),
+        ],
     ],
 
 ];

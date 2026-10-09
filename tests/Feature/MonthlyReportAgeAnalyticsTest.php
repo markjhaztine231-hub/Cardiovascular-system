@@ -28,10 +28,10 @@ class MonthlyReportAgeAnalyticsTest extends TestCase
     {
         parent::setUp();
 
-        // generateNarrative() reads this through env(); without it the service
-        // short-circuits and never builds the prompt we want to assert on.
-        $_ENV['OPENROUTER_API_KEY'] = 'test-key';
-        $_SERVER['OPENROUTER_API_KEY'] = 'test-key';
+        // generateNarrative() reads this through config('services.openrouter.api_key');
+        // without it the service short-circuits and never builds the prompt we
+        // want to assert on.
+        config(['services.openrouter.api_key' => 'test-key']);
 
         Http::fake([
             'openrouter.ai/*' => Http::response([
@@ -45,8 +45,6 @@ class MonthlyReportAgeAnalyticsTest extends TestCase
 
     protected function tearDown(): void
     {
-        unset($_ENV['OPENROUTER_API_KEY'], $_SERVER['OPENROUTER_API_KEY']);
-
         parent::tearDown();
     }
 
