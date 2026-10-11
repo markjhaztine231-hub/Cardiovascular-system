@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Document;
+use App\Support\OcrTextNormalizer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -80,7 +81,7 @@ class ProcessDocumentOcr implements ShouldQueue
         }
 
         $document->update([
-            'ocr_text' => (string) ($payload['text'] ?? ''),
+            'ocr_text' => OcrTextNormalizer::toReadableText((string) ($payload['text'] ?? '')),
             'ocr_confidence' => isset($payload['confidence']) ? (float) $payload['confidence'] : null,
             'ocr_raw' => [
                 'lines' => $payload['lines'] ?? [],
