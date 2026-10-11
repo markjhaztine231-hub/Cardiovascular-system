@@ -50,3 +50,9 @@ Readme.md
 
 # Self-hosted OCR service removed from the deploy branch (cloud driver now).
 /paddle-ocr-service
+
+# SSL cert artifacts + local DB exports (never commit secrets / PHI).
+/cardiovascularcare_site
+/cardiovascularcare_site.zip
+*.csv
+pgcardiovasculardb_dump.sql
