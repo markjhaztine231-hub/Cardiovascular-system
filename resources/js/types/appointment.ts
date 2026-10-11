@@ -26,6 +26,7 @@ export interface Appointment {
         echo_data?: Record<string, any>;
         tmt_data?: Record<string, any>;
         doppler_data?: Record<string, any>;
+        manual_draft_data?: Record<string, any>;
     }>;
 }
 
@@ -170,6 +171,26 @@ export interface DopplerData {
     conclusion: string;
 }
 
+/**
+ * One image dropped into the Manual Draft form. Dragged scans are the OCR
+ * documents from the Scans panel, so `id` refers to the document row they came
+ * from (kept so the backend could re-resolve the bytes when exporting), and
+ * `url` is the public storage URL shown by the doctor.
+ */
+export interface ManualDraftImage {
+    id?: string | number;
+    url: string;
+    name: string;
+}
+
+export interface ManualDraftData {
+    requesting_physician: string;
+    title: string;
+    draft: string;
+    conclusion: string;
+    images: ManualDraftImage[];
+}
+
 export interface ConsultForm {
     symptoms: string;
     vitals: string;
@@ -181,4 +202,5 @@ export interface ConsultForm {
     echo_data: EchoData;
     tmt_data: TMTData;
     doppler_data: DopplerData;
+    manual_draft_data: ManualDraftData;
 }

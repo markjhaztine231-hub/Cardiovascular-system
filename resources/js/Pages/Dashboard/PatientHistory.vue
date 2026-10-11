@@ -632,6 +632,13 @@
                                                         class="rounded-full bg-teal-100 px-2 py-0.5 text-[9px] font-bold text-teal-600"
                                                         >DOPPLER</span
                                                     >
+                                                    <span
+                                                        v-if="
+                                                            record.manual_draft_data
+                                                        "
+                                                        class="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700"
+                                                        >MANUAL DRAFT</span
+                                                    >
                                                 </div>
                                                 <p
                                                     class="mt-0.5 text-xs font-bold text-gray-500"
@@ -681,6 +688,7 @@
                                                         record.echo_data ||
                                                         record.doppler_data ||
                                                         record.tmt_data ||
+                                                        record.manual_draft_data ||
                                                         parsedPrescriptions(record).length > 0
                                                     "
                                                     class="flex flex-wrap justify-end gap-1.5"
@@ -785,6 +793,42 @@
                                                                 )
                                                             "
                                                             class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1 text-[10px] font-bold text-purple-700 transition-colors hover:bg-purple-600 hover:text-white"
+                                                        >
+                                                            PDF
+                                                        </button>
+                                                    </template>
+
+                                                    <!-- Manual Draft export group -->
+                                                    <template
+                                                        v-if="
+                                                            record.manual_draft_data
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="self-center text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                                            >Draft:</span
+                                                        >
+                                                        <button
+                                                            @click.stop="
+                                                                doExport(
+                                                                    'manual_draft',
+                                                                    'docx',
+                                                                    record,
+                                                                )
+                                                            "
+                                                            class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
+                                                        >
+                                                            DOCX
+                                                        </button>
+                                                        <button
+                                                            @click.stop="
+                                                                doExport(
+                                                                    'manual_draft',
+                                                                    'pdf',
+                                                                    record,
+                                                                )
+                                                            "
+                                                            class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
                                                         >
                                                             PDF
                                                         </button>
@@ -982,6 +1026,28 @@
                             Doppler PDF
                         </button>
                         <button
+                            v-if="selectedRecord.manual_draft_data"
+                            @click="
+                                downloadServerPdf('manual_draft', selectedRecord)
+                            "
+                            class="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-700"
+                        >
+                            <svg
+                                class="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                />
+                            </svg>
+                            Draft PDF
+                        </button>
+                        <button
                             v-if="
                                 parsedPrescriptions(selectedRecord).length > 0
                             "
@@ -1054,10 +1120,16 @@
                                 >Type 3 — Color Doppler</span
                             >
                             <span
+                                v-if="selectedRecord.manual_draft_data"
+                                class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700"
+                                >Type 4 — Manual Draft</span
+                            >
+                            <span
                                 v-if="
                                     !selectedRecord.echo_data &&
                                     !selectedRecord.tmt_data &&
-                                    !selectedRecord.doppler_data
+                                    !selectedRecord.doppler_data &&
+                                    !selectedRecord.manual_draft_data
                                 "
                                 class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600"
                                 >Standard Consultation</span
@@ -1667,6 +1739,154 @@
                                 </p>
                             </div>
                         </div>
+
+                        <!-- MANUAL DRAFT DATA (Type 4) -->
+                        <div
+                            v-if="selectedRecord.manual_draft_data"
+                            class="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm"
+                        >
+                            <div class="mb-5 flex items-center justify-between">
+                                <h3
+                                    class="flex items-center text-sm font-extrabold tracking-widest text-amber-700 uppercase"
+                                >
+                                    <span
+                                        class="mr-2 rounded bg-amber-100 px-2 py-0.5 text-amber-700"
+                                        >Type 4</span
+                                    >
+                                    Manual Draft
+                                </h3>
+                                <button
+                                    @click="
+                                        downloadServerPdf(
+                                            'manual_draft',
+                                            selectedRecord,
+                                        )
+                                    "
+                                    class="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+                                >
+                                    <svg
+                                        class="h-3.5 w-3.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                        />
+                                    </svg>
+                                    Download PDF
+                                </button>
+                            </div>
+
+                            <div
+                                class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
+                            >
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Requesting Physician
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.manual_draft_data
+                                                .requesting_physician || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Title
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.manual_draft_data
+                                                .title || '—'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="
+                                    selectedRecord.manual_draft_data.images
+                                        ?.length
+                                "
+                                class="mb-4"
+                            >
+                                <p
+                                    class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Attached Scans
+                                </p>
+                                <div
+                                    class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+                                >
+                                    <a
+                                        v-for="(
+                                            img, idx
+                                        ) in selectedRecord.manual_draft_data
+                                            .images"
+                                        :key="idx"
+                                        :href="img.url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="overflow-hidden rounded-lg border border-gray-200 bg-white"
+                                    >
+                                        <img
+                                            :src="img.url"
+                                            :alt="img.name"
+                                            class="h-28 w-full bg-gray-50 object-contain"
+                                            loading="lazy"
+                                        />
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="selectedRecord.manual_draft_data.draft"
+                                class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Draft
+                                </p>
+                                <p
+                                    class="text-sm font-medium whitespace-pre-wrap text-gray-700"
+                                >
+                                    {{ selectedRecord.manual_draft_data.draft }}
+                                </p>
+                            </div>
+
+                            <div
+                                v-if="
+                                    selectedRecord.manual_draft_data.conclusion
+                                "
+                                class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Conclusion
+                                </p>
+                                <p class="text-sm font-bold text-gray-800">
+                                    {{
+                                        selectedRecord.manual_draft_data
+                                            .conclusion
+                                    }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1680,10 +1900,17 @@ import { computed, ref, onMounted } from 'vue';
 import AnalyticsPanel from '@/components/AnalyticsPanel.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
-import type { Appointment, EchoData, DopplerData, TMTData } from '@/types/appointment';
+import type {
+    Appointment,
+    EchoData,
+    DopplerData,
+    TMTData,
+    ManualDraftData,
+} from '@/types/appointment';
 import {
     buildEchoHTML,
     buildDopplerDocument,
+    buildManualDraftDocument,
     buildTmtDocument,
     exportAsDocx,
 } from '@/utils/docExport';
@@ -1725,9 +1952,10 @@ interface ConsultationRecord extends Appointment {
     echo_data?: Record<string, any>;
     doppler_data?: Record<string, any>;
     tmt_data?: Record<string, any>;
+    manual_draft_data?: Record<string, any>;
 }
 
-type ExportType = 'echo' | 'doppler' | 'tmt' | 'prescription';
+type ExportType = 'echo' | 'doppler' | 'tmt' | 'manual_draft' | 'prescription';
 type ExportFormat = 'docx' | 'pdf';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -2260,6 +2488,21 @@ function doExport(
                     date,
                 );
                 filename = `TMT_${slug}_${date}`;
+                break;
+            case 'manual_draft':
+                if (!record.manual_draft_data) {
+                    showError('No Manual Draft data for this record.');
+
+                    return;
+                }
+
+                bodyHtml = buildManualDraftDocument(
+                    record.manual_draft_data as unknown as ManualDraftData,
+                    name,
+                    date,
+                    doctor,
+                );
+                filename = `Manual_Draft_${slug}_${date}`;
                 break;
             default:
                 showError('Invalid export type');

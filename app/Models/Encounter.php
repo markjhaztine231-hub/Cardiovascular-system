@@ -75,6 +75,11 @@ class Encounter extends Model
         return $this->hasOne(DopplerStudy::class);
     }
 
+    public function manualDraft(): HasOne
+    {
+        return $this->hasOne(ManualDraft::class);
+    }
+
     public function scopeForPatient($query, int $patientId)
     {
         return $query->where('patient_id', $patientId);

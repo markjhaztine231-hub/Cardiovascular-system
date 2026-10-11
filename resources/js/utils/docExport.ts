@@ -1,4 +1,9 @@
-import type { EchoData, DopplerData, TMTData } from '@/types/appointment';
+import type {
+    EchoData,
+    DopplerData,
+    TMTData,
+    ManualDraftData,
+} from '@/types/appointment';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helper
@@ -546,4 +551,66 @@ export const buildDopplerDocument = (
         `<div class="page-break"></div>` + buildEchoHTML(ec, patientName, date);
 
     return page1 + page2;
+};
+
+/**
+ * Builds the **Manual Draft** Word export body HTML.
+ * Page 1: draft header + title, the attached scans (embedded via their public
+ * storage URL), the drafted text and conclusion.
+ */
+export const buildManualDraftDocument = (
+    draft: ManualDraftData,
+    patientName: string,
+    date: string,
+    doctorName?: string,
+): string => {
+    const imagesHtml = (draft.images ?? [])
+        .map(
+            (img) => `
+        <tr>
+            <td style="text-align:center;padding:4px;">
+                <img src="${v(img.url)}" alt="${v(
+                    img.name,
+                )}" style="max-width:5in;max-height:3in;">
+                <br><span style="font-size:7pt;color:#555;">${v(img.name)}</span>
+            </td>
+        </tr>`,
+        )
+        .join('');
+
+    return `
+<h2>Manual Draft</h2>
+<table class="no-border">
+  <tr>
+    <td style="border:none;"><b>Patient Name:</b> ${patientName}</td>
+    <td style="border:none;"><b>Date:</b> ${date}</td>
+  </tr>
+  <tr>
+    <td style="border:none;" colspan="2"><b>Requesting Physician:</b> ${v(
+        draft.requesting_physician,
+    )}</td>
+  </tr>
+  ${
+      v(draft.title)
+          ? `<tr><td style="border:none;" colspan="2"><b>Title:</b> ${v(
+                draft.title,
+            )}</td></tr>`
+          : ''
+  }
+</table>
+${
+    (draft.images ?? []).length > 0
+        ? `<h3>Attached Scans</h3>
+<table style="width:100%;border:none;">${imagesHtml}</table>`
+        : ''
+}
+<h3>Draft</h3>
+<p style="white-space:pre-wrap;min-height:60px;">${v(draft.draft)}</p>
+${
+    v(draft.conclusion)
+        ? `<h3>Conclusion</h3>
+<p style="white-space:pre-wrap;">${v(draft.conclusion)}</p>`
+        : ''
+}
+${signatureBlock(doctorName)}`;
 };

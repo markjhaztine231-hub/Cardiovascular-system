@@ -306,6 +306,7 @@ class DoctorController extends Controller
                 'echocardiogram',
                 'treadmillTest',
                 'dopplerStudy',
+                'manualDraft',
             ])
             ->where('status', 'completed')
             ->orderByDesc('started_at')
@@ -351,6 +352,7 @@ class DoctorController extends Controller
                         'echo' => 'Type 1 - Echocardiographic',
                         'tmt' => 'Type 2 - Treadmill (TMT)',
                         'doppler' => 'Type 3 - Color Doppler',
+                        'manual_draft' => 'Type 4 - Manual Draft',
                         default => 'Consultation',
                     },
                     // Study panels are gated on the relation existing rather
@@ -365,6 +367,13 @@ class DoctorController extends Controller
                     'doppler_data' => ClinicalRecordMapper::forPayload(
                         null, null, $encounter->dopplerStudy, $patientRecord
                     ),
+                    'manual_draft_data' => $encounter->manualDraft ? [
+                        'requesting_physician' => $encounter->manualDraft->requesting_physician,
+                        'title' => $encounter->manualDraft->title,
+                        'draft' => $encounter->manualDraft->draft,
+                        'conclusion' => $encounter->manualDraft->conclusion,
+                        'images' => $encounter->manualDraft->attachments ?? [],
+                    ] : null,
                     'vital_sign' => [
                         'bp' => $vs ? $vs->blood_pressure_systolic.'/'.$vs->blood_pressure_diastolic : null,
                         'hr' => $vs?->heart_rate_bpm,

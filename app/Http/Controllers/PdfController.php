@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\MonthlyReport;
 use App\Models\Patient;
@@ -11,6 +12,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PdfController extends Controller
 {
@@ -19,7 +22,7 @@ class PdfController extends Controller
      * PDF blade views still expect the legacy blob keys, so the structured
      * studies are mapped back to that shape at export time.
      *
-     * @param  string  $type  echo | tmt | doppler | prescription
+     * @param  string  $type  echo | tmt | doppler | manual_draft | prescription
      */
     public function download(Appointment $appointment, string $type)
     {
@@ -61,6 +64,7 @@ class PdfController extends Controller
             'echo' => ! $encounter->echocardiogram,
             'tmt' => ! $encounter->treadmillTest,
             'doppler' => ! $encounter->dopplerStudy,
+            'manual_draft' => ! $encounter->manualDraft,
             default => true,
         }) {
             abort(404, "This consultation has no {$type} record to export.");
@@ -106,8 +110,55 @@ class PdfController extends Controller
                 ->setPaper('a5')
                 ->download("Prescription_{$slug}_{$date}.pdf"),
 
+            'manual_draft' => Pdf::loadView('pdfs.manual-draft', [
+                'draft' => $encounter->manualDraft,
+                'attachments' => $this->resolveDraftAttachments($encounter->manualDraft->attachments),
+                'patient' => $patientName,
+                'date' => $date,
+                'doctor' => $doctorName,
+            ])
+                ->setPaper('letter')
+                ->download("Manual_Draft_{$slug}_{$date}.pdf"),
+
             default => abort(404, 'Unknown PDF type'),
         };
+    }
+
+    /**
+     * Turn a stored Manual Draft attachment list into dompdf-embeddable local
+     * file paths. Attachments referenced by document id (dragged scans) are
+     * re-resolved from the public disk; locally-dropped blob URLs are skipped
+     * because they have no server-side file.
+     */
+    private function resolveDraftAttachments(?array $attachments): array
+    {
+        $resolved = [];
+
+        foreach ($attachments ?? [] as $image) {
+            $storagePath = null;
+
+            if (! empty($image['id'])) {
+                $document = Document::find($image['id']);
+                if ($document && $document->image_path) {
+                    $storagePath = $document->image_path;
+                }
+            }
+
+            if (! $storagePath && ! empty($image['url']) && str_starts_with($image['url'], '/storage/')) {
+                $storagePath = Str::after($image['url'], '/storage/');
+            }
+
+            if (! $storagePath || ! Storage::disk('public')->exists($storagePath)) {
+                continue;
+            }
+
+            $resolved[] = [
+                'path' => Storage::disk('public')->path($storagePath),
+                'name' => $image['name'] ?? basename($storagePath),
+            ];
+        }
+
+        return $resolved;
     }
 
     /**

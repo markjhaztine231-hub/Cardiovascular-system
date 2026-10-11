@@ -607,6 +607,13 @@
                                                     class="rounded-sm bg-teal-100 px-1 py-0.5 text-[8px] font-bold text-teal-600"
                                                     >DOP</span
                                                 >
+                                                <span
+                                                    v-if="
+                                                        record.manual_draft_data
+                                                    "
+                                                    class="rounded-sm bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700"
+                                                    >DRAFT</span
+                                                >
                                             </div>
                                             <p
                                                 v-if="record.diagnosis"
@@ -644,6 +651,17 @@
                                                 @click.stop
                                                 class="rounded bg-teal-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-teal-700"
                                                 title="Download Doppler PDF"
+                                                >PDF</a
+                                            >
+                                            <a
+                                                v-if="
+                                                    record.manual_draft_data
+                                                "
+                                                :href="`/doctor/pdf/${record.id}/manual_draft`"
+                                                target="_blank"
+                                                @click.stop
+                                                class="rounded bg-amber-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-amber-700"
+                                                title="Download Manual Draft PDF"
                                                 >PDF</a
                                             >
                                         </div>
@@ -855,6 +873,26 @@
                                                 />
                                                 Type 3 — Color Doppler
                                             </label>
+                                            <label
+                                                class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors"
+                                                :class="
+                                                    consultForm.consultation_type.includes(
+                                                        'Type 4',
+                                                    )
+                                                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-amber-500/50'
+                                                "
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    value="Type 4"
+                                                    v-model="
+                                                        consultForm.consultation_type
+                                                    "
+                                                    class="accent-amber-500"
+                                                />
+                                                Type 4 — Manual Draft
+                                            </label>
                                         </div>
                                     </div>
 
@@ -893,6 +931,20 @@
                                         "
                                         :doppler-data="consultForm.doppler_data"
                                         :echo-data="consultForm.echo_data"
+                                        :patient-name="activeAppt?.name ?? ''"
+                                    />
+
+                                    <!-- ============================================== -->
+                                    <!-- TYPE 4: MANUAL DRAFT (free-form with OCR image) -->
+                                    <ManualDraftForm
+                                        v-if="
+                                            consultForm.consultation_type.includes(
+                                                'Type 4',
+                                            )
+                                        "
+                                        :manual-draft-data="
+                                            consultForm.manual_draft_data
+                                        "
                                         :patient-name="activeAppt?.name ?? ''"
                                     />
 
@@ -1110,7 +1162,12 @@
                             <ul
                                 class="max-h-40 shrink-0 divide-y divide-gray-100 overflow-y-auto border-b border-gray-200 bg-white"
                             >
-                                <li v-for="scan in scans" :key="scan.id">
+                                <li
+                                    v-for="scan in scans"
+                                    :key="scan.id"
+                                    draggable="true"
+                                    @dragstart="onScanDragStart($event, scan)"
+                                >
                                     <button
                                         type="button"
                                         class="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left transition-colors"
@@ -1154,9 +1211,9 @@
                                             {{
                                                 scan.ocr_status ===
                                                 'completed'
-                                                    ? `${confidencePercent(
+                                                    ? confidenceLabel(
                                                           scan.ocr_confidence,
-                                                      )}%`
+                                                      )
                                                     : scan.ocr_status
                                             }}
                                         </span>
@@ -1249,6 +1306,13 @@
                                             "
                                             class="max-h-56 w-full bg-gray-50 object-contain"
                                             loading="lazy"
+                                            draggable="true"
+                                            @dragstart="
+                                                onScanDragStart(
+                                                    $event,
+                                                    selectedScan,
+                                                )
+                                            "
                                         />
                                     </a>
 
@@ -1262,10 +1326,10 @@
                                             "
                                         >
                                             {{
-                                                confidencePercent(
+                                                confidenceLabel(
                                                     selectedScan.ocr_confidence,
                                                 )
-                                            }}% confidence
+                                            }} confidence
                                         </span>
                                         <span
                                             v-if="selectedScan.engine"
@@ -1292,8 +1356,12 @@
                                         "
                                         class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800"
                                     >
-                                        Low confidence — verify against the
-                                        image before prescribing.
+                                        {{
+                                            selectedScan.ocr_confidence ===
+                                            null
+                                                ? 'The hosted OCR service reports no confidence score — verify against the image before prescribing.'
+                                                : 'Low confidence — verify against the image before prescribing.'
+                                        }}
                                     </div>
 
                                     <!-- Recognised medications -->
@@ -1626,6 +1694,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import DopplerForm from '@/components/Clinical/DopplerForm.vue';
 import EchoForm from '@/components/Clinical/EchoForm.vue';
+import ManualDraftForm from '@/components/Clinical/ManualDraftForm.vue';
 import TmtForm from '@/components/Clinical/TmtForm.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
@@ -2021,6 +2090,13 @@ const consultForm = useForm<ConsultForm>({
         qp_qs: '',
         conclusion: '',
     },
+    manual_draft_data: {
+        requesting_physician: '',
+        title: '',
+        draft: '',
+        conclusion: '',
+        images: [],
+    },
 });
 
 const vitalsForm = reactive({
@@ -2227,15 +2303,29 @@ function scheduleScanPoll(delay = 2500): void {
     }, delay);
 }
 
-function confidencePercent(value: number | null): number {
-    return Math.round((value ?? 0) * 100);
+/**
+ * Confidence as a whole percentage, or null when the OCR engine did not report
+ * one. The hosted PaddleOCR cloud API returns no per-line score, so null means
+ * "unknown" and must not be rendered as 0%.
+ */
+function confidencePercent(value: number | null): number | null {
+    return value === null ? null : Math.round(value * 100);
+}
+
+/** "42%", "N/A", ... for the scan badges. */
+function confidenceLabel(value: number | null): string {
+    const pct = confidencePercent(value);
+
+    return pct === null ? 'N/A' : `${pct}%`;
 }
 
 function confidenceClass(value: number | null): string {
-    const pct = value ?? 0;
+    if (value === null) {
+        return 'border-gray-200 bg-gray-50 text-gray-500';
+    }
 
-    if (pct >= 0.9) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (pct >= 0.7) return 'border-amber-200 bg-amber-50 text-amber-700';
+    if (value >= 0.9) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (value >= 0.7) return 'border-amber-200 bg-amber-50 text-amber-700';
 
     return 'border-red-200 bg-red-50 text-red-700';
 }
@@ -2249,6 +2339,26 @@ function scanTypeLabel(value: string): string {
             other: 'Other',
         }[value] ?? value
     );
+}
+
+/**
+ * Hands the dragged scan to any drop target (the Manual Draft form). The
+ * payload carries the document id, public URL and filename so the receiving
+ * form can show a thumbnail and the backend can re-resolve the stored image.
+ */
+function onScanDragStart(event: DragEvent, scan: any): void {
+    const payload = JSON.stringify({
+        id: scan.id,
+        url: scan.url,
+        name: scan.original_filename ?? `Scan ${scan.id}`,
+    });
+
+    event.dataTransfer?.setData('application/x-clinic-scan', payload);
+    event.dataTransfer?.setData('text/plain', payload);
+
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'copy';
+    }
 }
 
 /**
@@ -2474,6 +2584,18 @@ const saveConsultation = async () => {
         emptyTypes.push('Doppler (Type 3)');
     }
 
+    if (
+        selectedTypes.includes('Type 4') &&
+        !hasClinicalData(
+            consultForm.manual_draft_data as unknown as Record<
+                string,
+                unknown
+            >,
+        )
+    ) {
+        emptyTypes.push('Manual Draft (Type 4)');
+    }
+
     if (emptyTypes.length > 0) {
         showError(
             `No clinical data was entered for: ${emptyTypes.join(', ')}. Please fill in the form(s) or uncheck those service types before saving.`,
@@ -2526,6 +2648,9 @@ const saveConsultation = async () => {
                     doppler_data: data.consultation_type.includes('Type 3')
                         ? data.doppler_data
                         : null,
+                    manual_draft_data: data.consultation_type.includes('Type 4')
+                        ? data.manual_draft_data
+                        : null,
                 }))
                 .post(`/appointments/${appt.id}/complete`, {
                     preserveScroll: true,
@@ -2535,6 +2660,7 @@ const saveConsultation = async () => {
                             'Type 1': 'Echo',
                             'Type 2': 'TMT',
                             'Type 3': 'Doppler',
+                            'Type 4': 'Manual Draft',
                         };
                         const savedLabels = selectedTypes
                             .filter(
@@ -2556,6 +2682,13 @@ const saveConsultation = async () => {
                                     (t === 'Type 3' &&
                                         hasClinicalData(
                                             consultForm.doppler_data as unknown as Record<
+                                                string,
+                                                unknown
+                                            >,
+                                        )) ||
+                                    (t === 'Type 4' &&
+                                        hasClinicalData(
+                                            consultForm.manual_draft_data as unknown as Record<
                                                 string,
                                                 unknown
                                             >,

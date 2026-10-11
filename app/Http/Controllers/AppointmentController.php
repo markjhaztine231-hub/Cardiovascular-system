@@ -14,6 +14,7 @@ use App\Models\DoctorSchedule;
 use App\Models\DopplerStudy;
 use App\Models\Echocardiogram;
 use App\Models\Encounter;
+use App\Models\ManualDraft;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Provider;
@@ -443,7 +444,7 @@ class AppointmentController extends Controller
             'diagnosis' => 'required|string|max:500',
             'plan' => 'nullable|string|max:5000',
             'consultation_type' => 'nullable|array',
-            'consultation_type.*' => 'string|in:Type 1,Type 2,Type 3',
+            'consultation_type.*' => 'string|in:Type 1,Type 2,Type 3,Type 4',
             'prescriptions' => 'nullable|array',
             'prescriptions.*.medicine' => 'nullable|string|max:255',
             'prescriptions.*.dosage' => 'nullable|string|max:100',
@@ -453,6 +454,15 @@ class AppointmentController extends Controller
             'echo_data' => 'nullable|array',
             'tmt_data' => 'nullable|array',
             'doppler_data' => 'nullable|array',
+            'manual_draft_data' => 'nullable|array',
+            'manual_draft_data.requesting_physician' => 'nullable|string|max:255',
+            'manual_draft_data.title' => 'nullable|string|max:255',
+            'manual_draft_data.draft' => 'nullable|string|max:5000',
+            'manual_draft_data.conclusion' => 'nullable|string|max:5000',
+            'manual_draft_data.images' => 'nullable|array',
+            'manual_draft_data.images.*.id' => 'nullable',
+            'manual_draft_data.images.*.url' => 'nullable|string|max:2048',
+            'manual_draft_data.images.*.name' => 'nullable|string|max:255',
         ]);
 
         // Sanitize text fields to prevent XSS
@@ -489,6 +499,10 @@ class AppointmentController extends Controller
 
         if (! in_array('Type 3', $selectedTypes)) {
             $validated['doppler_data'] = null;
+        }
+
+        if (! in_array('Type 4', $selectedTypes)) {
+            $validated['manual_draft_data'] = null;
         }
 
         $encounter = Encounter::updateOrCreate(
@@ -587,6 +601,14 @@ class AppointmentController extends Controller
             ));
         }
 
+        $encounter->manualDraft()?->delete();
+        if (! empty($validated['manual_draft_data'])) {
+            ManualDraft::create(array_merge(
+                $this->mapManualDraftData($validated['manual_draft_data']),
+                ['encounter_id' => $encounter->id, 'performed_at' => now()]
+            ));
+        }
+
         $appointment->update(['status' => 'Completed']);
 
         // Mark event as completed in Google Calendar
@@ -663,6 +685,7 @@ class AppointmentController extends Controller
             in_array('Type 1', $types) => 'echo',
             in_array('Type 2', $types) => 'tmt',
             in_array('Type 3', $types) => 'doppler',
+            in_array('Type 4', $types) => 'manual_draft',
             default => 'consultation',
         };
     }
@@ -780,10 +803,44 @@ class AppointmentController extends Controller
         $row['pericardial_effusion'] = $peri !== '' && $peri !== null;
 
         $row['notes'] = $this->sanitizeText(trim(
-            ($d['notes'] ?? '').$this->leftoverNotes($d, $used)
+            ($d['conclusion'] ?? '').$this->leftoverNotes($d, $used)
         ), 2000);
 
         return $row;
+    }
+
+    /**
+     * Normalize the free-form Manual Draft blob into manual_drafts columns.
+     * Attachments keep only the fields the UI needs (id, url, name).
+     */
+    private function mapManualDraftData(array $d): array
+    {
+        $images = [];
+        foreach ($d['images'] ?? [] as $image) {
+            $url = trim((string) ($image['url'] ?? ''));
+            if ($url === '' || str_starts_with($url, 'blob:') || str_starts_with($url, 'data:')) {
+                continue;
+            }
+
+            $entry = [
+                'url' => $url,
+                'name' => $this->sanitizeText((string) ($image['name'] ?? ''), 255),
+            ];
+
+            if (! empty($image['id'])) {
+                $entry['id'] = $image['id'];
+            }
+
+            $images[] = $entry;
+        }
+
+        return [
+            'requesting_physician' => $this->sanitizeText($d['requesting_physician'] ?? '', 255),
+            'title' => $this->sanitizeText($d['title'] ?? '', 255),
+            'draft' => $this->sanitizeText($d['draft'] ?? '', 5000),
+            'conclusion' => $this->sanitizeText($d['conclusion'] ?? '', 5000),
+            'attachments' => $images ?: null,
+        ];
     }
 
     /**
