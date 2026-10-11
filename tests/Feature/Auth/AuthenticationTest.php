@@ -84,9 +84,10 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        // The login route uses the `throttle:5,1` middleware: five attempts
-        // per minute are allowed, the sixth is rejected with 429.
-        for ($i = 0; $i < 5; $i++) {
+        // The login route uses the `throttle:30,1` middleware: thirty attempts
+        // per minute are allowed (raised for a clinic sharing one public IP),
+        // the thirty-first is rejected with 429.
+        for ($i = 0; $i < 30; $i++) {
             $this->post(route('login.store'), [
                 'email' => $user->email,
                 'password' => 'wrong-password',

@@ -33,8 +33,9 @@ Route::get('/terms', [AuthController::class, 'showTerms'])->name('terms');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
-    //  Rate limiting on login (5 attempts per 1 minute per IP)
-    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:5,1')->name('login.store');
+    //  Rate limiting on login (5 attempts per 1 minute per IP) — clinic shares
+    //  one public WiFi IP, so allow a burst for ~16 staff at shift start.
+    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:30,1')->name('login.store');
     Route::get('/register', [AuthController::class, 'showRegistrationForm'])->name('register');
     //  Rate limiting on registration (3 attempts per 1 hour per IP)
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,10');
@@ -132,11 +133,11 @@ Route::middleware('auth')->group(function () {
     // Views the Monthly Report
     Route::get('/doctor/reports/monthly', [AiController::class, 'showMonthlyReport'])->middleware('role:doctor')->name('doctor.reports.monthly');
 
-    // Generates the Monthly Report (Gemini) — throttle: 3 per minute
-    Route::post('/doctor/reports/monthly', [AiController::class, 'generateMonthlyReport'])->middleware(['role:doctor', 'throttle:3,1']);
+    // Generates the Monthly Report (Gemini) — per-user: 20 per minute
+    Route::post('/doctor/reports/monthly', [AiController::class, 'generateMonthlyReport'])->middleware(['role:doctor', 'throttle:doctor-ai']);
 
-    // Saves a doctor-edited narrative — throttle: 10 per minute
-    Route::put('/doctor/reports/monthly/narrative', [AiController::class, 'updateNarrative'])->middleware(['role:doctor', 'throttle:10,1'])->name('doctor.reports.monthly.narrative');
+    // Saves a doctor-edited narrative — per-user: 40 per minute
+    Route::put('/doctor/reports/monthly/narrative', [AiController::class, 'updateNarrative'])->middleware(['role:doctor', 'throttle:doctor-narrative'])->name('doctor.reports.monthly.narrative');
     // --- SYSTEM ADMIN DASHBOARD ---
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->middleware('role:admin')->name('admin.dashboard');
     Route::get('/admin/users-directory', [AdminController::class, 'usersDirectory'])->middleware('role:admin')->name('admin.users.directory');
@@ -206,7 +207,7 @@ Route::middleware('auth')->group(function () {
     })->middleware('role:patient');
 
     // --- PDF EXPORTS (server-side via barryvdh/laravel-dompdf) ---
-    Route::get('/doctor/reports/monthly/pdf', [PdfController::class, 'downloadMonthlyReport'])->middleware(['role:doctor', 'throttle:6,1'])->name('pdf.monthly-report');
+    Route::get('/doctor/reports/monthly/pdf', [PdfController::class, 'downloadMonthlyReport'])->middleware(['role:doctor', 'throttle:doctor-pdf'])->name('pdf.monthly-report');
     Route::get('/doctor/pdf/{appointment}/{type}', [PdfController::class, 'download'])
         ->where('type', 'echo|tmt|doppler|prescription')
         ->middleware('role:doctor,patient')
