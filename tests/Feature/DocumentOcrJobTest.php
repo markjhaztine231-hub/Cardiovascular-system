@@ -72,7 +72,7 @@ class DocumentOcrJobTest extends TestCase
             'A dead OCR service must not permanently fail the document.'
         );
         $this->assertStringContainsString('retrying', $document->ocr_error);
-        $this->assertStringContainsString('attempt 1 of 3', $document->ocr_error);
+        $this->assertStringContainsString('attempt 1 of 4', $document->ocr_error);
     }
 
     public function test_a_successful_response_stores_layout_and_visuals(): void

@@ -24,15 +24,19 @@ class ProcessDocumentOcr implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 4;
 
     public int $timeout = 180;
 
     public function __construct(public int $documentId) {}
 
+    /**
+     * The hosted OCR API throttles after a burst of jobs, so space the retries
+     * out: a rejection is usually transient and clears within a few minutes.
+     */
     public function backoff(): array
     {
-        return [10, 45, 120];
+        return [30, 120, 300];
     }
 
     public function handle(): void
@@ -141,7 +145,11 @@ class ProcessDocumentOcr implements ShouldQueue
             ]);
 
         if ($jobResponse->failed()) {
-            throw new \RuntimeException('OCR cloud API rejected the job with '.$jobResponse->status());
+            throw new \RuntimeException(sprintf(
+                'OCR cloud API rejected the job with %d: %s',
+                $jobResponse->status(),
+                Str::limit($jobResponse->body(), 500),
+            ));
         }
 
         $jobId = data_get($jobResponse->json(), 'data.jobId');
@@ -164,7 +172,11 @@ class ProcessDocumentOcr implements ShouldQueue
                 ->get($baseUrl.'/'.$jobId);
 
             if ($stateResponse->failed()) {
-                throw new \RuntimeException('OCR cloud poll failed with '.$stateResponse->status());
+                throw new \RuntimeException(sprintf(
+                    'OCR cloud poll failed with %d: %s',
+                    $stateResponse->status(),
+                    Str::limit($stateResponse->body(), 500),
+                ));
             }
 
             $state = data_get($stateResponse->json(), 'data.state', 'pending');
@@ -198,7 +210,11 @@ class ProcessDocumentOcr implements ShouldQueue
             ->get($jsonlUrl);
 
         if ($response->failed()) {
-            throw new \RuntimeException('OCR cloud result download failed with '.$response->status());
+            throw new \RuntimeException(sprintf(
+                'OCR cloud result download failed with %d: %s',
+                $response->status(),
+                Str::limit($response->body(), 500),
+            ));
         }
 
         $pages = [];
