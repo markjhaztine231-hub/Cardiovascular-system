@@ -26,7 +26,7 @@ class ProcessDocumentOcr implements ShouldQueue
 
     public int $tries = 4;
 
-    public int $timeout = 180;
+    public int $timeout = 240;
 
     public function __construct(public int $documentId) {}
 
@@ -127,8 +127,8 @@ class ProcessDocumentOcr implements ShouldQueue
         $headers = ['Authorization' => 'bearer '.$cloud['token']];
 
         $optionalPayload = [
-            'useDocOrientationClassify' => false,
-            'useDocUnwarping' => false,
+            'useDocOrientationClassify' => true,
+            'useDocUnwarping' => true,
             'useChartRecognition' => false,
         ];
 

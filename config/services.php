@@ -64,7 +64,7 @@ return [
             'token' => env('PADDLE_OCR_CLOUD_TOKEN'),
             'model' => env('PADDLE_OCR_CLOUD_MODEL', 'PaddleOCR-VL-1.6'),
             'poll_interval' => (int) env('PADDLE_OCR_CLOUD_POLL_INTERVAL', 5),
-            'max_wait' => (int) env('PADDLE_OCR_CLOUD_MAX_WAIT', 120),
+            'max_wait' => (int) env('PADDLE_OCR_CLOUD_MAX_WAIT', 180),
         ],
     ],
 
