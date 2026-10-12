@@ -23,6 +23,7 @@ use App\Models\TreadmillTest;
 use App\Models\User;
 use App\Models\VitalSign;
 use App\Services\GoogleCalendarService;
+use App\Support\ClinicalRecordMapper;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -627,6 +628,152 @@ class AppointmentController extends Controller
         event(new ConsultationCompleted($appointment));
 
         return back()->with('success', 'Consultation record saved successfully! Patient history updated.');
+    }
+
+    /**
+     * Return the study data currently recorded for an appointment — the
+     * receptionist's draft or the doctor's completed record. The doctor's
+     * consultation form pre-fills from this so the reception does not have to
+     * re-key anything the bench already measured.
+     */
+    public function showStudyData(Request $request, Appointment $appointment)
+    {
+        $encounter = $appointment->encounter()->with([
+            'echocardiogram', 'treadmillTest', 'dopplerStudy',
+        ])->first();
+
+        if (! $encounter) {
+            return response()->json([
+                'saved' => false,
+                'status' => null,
+                'echo_data' => null,
+                'tmt_data' => null,
+                'doppler_data' => null,
+            ]);
+        }
+
+        return response()->json([
+            'saved' => true,
+            'status' => $encounter->status,
+            'echo_data' => $encounter->echocardiogram
+                ? ClinicalRecordMapper::forPayload($encounter->echocardiogram)
+                : null,
+            'tmt_data' => $encounter->treadmillTest
+                ? ClinicalRecordMapper::forPayload(null, $encounter->treadmillTest)
+                : null,
+            'doppler_data' => $encounter->dopplerStudy
+                ? ClinicalRecordMapper::forPayload(null, null, $encounter->dopplerStudy)
+                : null,
+        ]);
+    }
+
+    /**
+     * Save the receptionist's Echo / TMT / Doppler measurements as a draft
+     * encounter on the appointment. The doctor then sees these values
+     * pre-filled in their consultation form and confirms them on completion.
+     * Once an appointment is closed its records are final and cannot be edited.
+     */
+    public function storeStudyData(Request $request, Appointment $appointment)
+    {
+        abort_if(
+            in_array($appointment->status, ['Completed', 'Cancelled', 'No-Show'], true),
+            422,
+            'This appointment is already closed and its records are final.'
+        );
+
+        $validated = $request->validate([
+            'echo_data' => 'nullable|array',
+            'tmt_data' => 'nullable|array',
+            'doppler_data' => 'nullable|array',
+        ]);
+
+        // A study form that was left entirely blank is treated as "not part of
+        // this visit" — same rule the doctor's save dialog uses.
+        $types = [];
+        if ($this->hasClinicalData($validated['echo_data'] ?? [])) {
+            $types[] = 'echo';
+        }
+        if ($this->hasClinicalData($validated['tmt_data'] ?? [])) {
+            $types[] = 'tmt';
+        }
+        if ($this->hasClinicalData($validated['doppler_data'] ?? [])) {
+            $types[] = 'doppler';
+        }
+
+        if (empty($types)) {
+            throw ValidationException::withMessages([
+                'echo_data' => 'Fill in at least one study field before saving.',
+            ]);
+        }
+
+        $encounter = Encounter::updateOrCreate(
+            ['appointment_id' => $appointment->id],
+            [
+                'patient_id' => $appointment->patient_id,
+                'provider_id' => $appointment->provider_id,
+                'encounter_type' => in_array('echo', $types, true)
+                    ? 'echo'
+                    : (in_array('tmt', $types, true) ? 'tmt' : 'doppler'),
+                // A draft the doctor owns the moment they complete the visit.
+                'status' => 'in_progress',
+                'started_at' => Carbon::parse($appointment->scheduled_date->format('Y-m-d').' '.($appointment->scheduled_time ?? '08:00:00')),
+            ]
+        );
+
+        // The form is the source of truth: re-key each provided study, drop any
+        // study the receptionist cleared this time.
+        $encounter->echocardiogram()?->delete();
+        if (in_array('echo', $types, true)) {
+            Echocardiogram::create(array_merge(
+                $this->mapEchoData($validated['echo_data']),
+                ['encounter_id' => $encounter->id, 'performed_at' => now()]
+            ));
+        }
+
+        $encounter->treadmillTest()?->delete();
+        if (in_array('tmt', $types, true)) {
+            TreadmillTest::create(array_merge(
+                $this->mapTmtData($validated['tmt_data']),
+                ['encounter_id' => $encounter->id, 'performed_at' => now()]
+            ));
+        }
+
+        $encounter->dopplerStudy()?->delete();
+        if (in_array('doppler', $types, true)) {
+            DopplerStudy::create(array_merge(
+                $this->mapDopplerData($validated['doppler_data']),
+                ['encounter_id' => $encounter->id, 'performed_at' => now()]
+            ));
+        }
+
+        Cache::forget('receptionist_stats');
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'patient_id' => $appointment->patient_id,
+            'action' => 'Pre-filled study data for Appointment #'.$appointment->id.' ('.implode(', ', $types).')',
+        ]);
+
+        return back()->with('success', 'Study data saved — the doctor will see it pre-filled in the consultation.');
+    }
+
+    /**
+     * True when the posted study array holds at least one meaningful value, so
+     * a blank form does not create empty study rows.
+     */
+    private function hasClinicalData(array $data): bool
+    {
+        foreach ($data as $value) {
+            if (is_array($value)) {
+                if (count(array_filter($value, fn ($v) => $v !== '' && $v !== null)) > 0) {
+                    return true;
+                }
+            } elseif ($value !== '' && $value !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

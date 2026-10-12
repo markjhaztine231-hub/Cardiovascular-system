@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\Document;
+use App\Models\Encounter;
 use App\Models\Patient;
 use App\Services\PrescriptionTextParser;
 use App\Services\StudyAutoFillService;
+use App\Support\ClinicalRecordMapper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +27,9 @@ class DoctorConsultationController extends Controller
             'patient.user:id,name,email',
             'provider:id,user_id,credentials,specialty',
             'documents' => fn ($query) => $query->with('uploader:id,name')->latest(),
+            'encounter.echocardiogram',
+            'encounter.treadmillTest',
+            'encounter.dopplerStudy',
         ]);
 
         $patient = $appointment->patient;
@@ -42,6 +47,10 @@ class DoctorConsultationController extends Controller
             'patient' => $patient,
             'documents' => $appointment->documents->map(fn (Document $d) => $this->summarise($d)),
             'history' => $this->history($patient),
+            // Study measurements the receptionist already recorded on a draft
+            // encounter (or a completed record on a revisit) so the doctor's
+            // forms can be pre-filled instead of re-keyed.
+            'prefill' => $this->prefill($appointment->encounter),
         ]);
     }
 
@@ -106,6 +115,33 @@ class DoctorConsultationController extends Controller
             'provider' => $result['provider'],
             'cached' => $cached,
         ]);
+    }
+
+    /**
+     * Study-form prefill for the consultation: whatever study rows exist on the
+     * appointment's encounter, mapped back to the form key shape the front-end
+     * binds to. `source` tells the doctor whether reception already measured
+     * the study (draft) or whether it is a prior completed record.
+     */
+    private function prefill(?Encounter $encounter): ?array
+    {
+        if (! $encounter) {
+            return null;
+        }
+
+        return [
+            'status' => $encounter->status,
+            'source' => $encounter->status === 'completed' ? 'doctor' : 'receptionist',
+            'echo_data' => $encounter->echocardiogram
+                ? ClinicalRecordMapper::forPayload($encounter->echocardiogram)
+                : null,
+            'tmt_data' => $encounter->treadmillTest
+                ? ClinicalRecordMapper::forPayload(null, $encounter->treadmillTest)
+                : null,
+            'doppler_data' => $encounter->dopplerStudy
+                ? ClinicalRecordMapper::forPayload(null, null, $encounter->dopplerStudy)
+                : null,
+        ];
     }
 
     private function history(Patient $patient)

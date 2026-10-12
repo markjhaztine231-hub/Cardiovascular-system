@@ -530,7 +530,160 @@
                     </div>
 
                     <!-- RIGHT: CHRONOLOGICAL CLINICAL TIMELINE -->
-                    <div class="w-full lg:w-2/3">
+                    <div class="w-full space-y-8 lg:w-2/3">
+                        <!-- OCR SCAN HISTORY -->
+                        <div
+                            class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
+                        >
+                            <h3
+                                class="mb-6 flex items-center border-b border-gray-100 pb-4 text-lg font-black tracking-tight text-gray-800"
+                            >
+                                <svg
+                                    class="mr-2 h-5 w-5 text-[#146b8a]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M7 16a4 4 0 01-.88-7.9A5 5 0 0115.9 6M15 13l4 4m0-4l-4 4"
+                                    />
+                                </svg>
+                                OCR Scan History
+                                <span
+                                    class="ml-2 rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-bold text-teal-700"
+                                >
+                                    {{ ocrHistory.length }}
+                                </span>
+                            </h3>
+
+                            <p
+                                v-if="ocrHistory.length === 0"
+                                class="text-sm text-gray-400"
+                            >
+                                No scans have been uploaded for this patient yet.
+                            </p>
+
+                            <div v-else class="space-y-3">
+                                <div
+                                    v-for="doc in ocrHistory"
+                                    :key="doc.id"
+                                    class="rounded-xl border border-gray-100 bg-gray-50/70 p-4"
+                                >
+                                    <div
+                                        class="flex flex-wrap items-start justify-between gap-3"
+                                    >
+                                        <div class="flex min-w-0 items-center gap-2">
+                                            <span
+                                                class="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase"
+                                                :class="ocrTypeBadgeClass(doc.type)"
+                                            >
+                                                {{ ocrTypeLabel(doc.type) }}
+                                            </span>
+                                            <a
+                                                v-if="doc.url"
+                                                :href="doc.url"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="truncate text-sm font-bold text-gray-800 hover:text-[#146b8a]"
+                                            >
+                                                {{
+                                                    doc.original_filename ||
+                                                    `Scan #${doc.id}`
+                                                }}
+                                            </a>
+                                            <span
+                                                v-else
+                                                class="truncate text-sm font-bold text-gray-800"
+                                            >
+                                                {{
+                                                    doc.original_filename ||
+                                                    `Scan #${doc.id}`
+                                                }}
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="shrink-0 text-[11px] font-semibold text-gray-500"
+                                        >
+                                            <span v-if="doc.appointment?.scheduled_date">
+                                                {{ doc.appointment.scheduled_date }}
+                                            </span>
+                                            <span v-if="ocrCreatedAt(doc.created_at)"
+                                                >· {{ ocrCreatedAt(doc.created_at) }}</span
+                                            >
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-bold"
+                                    >
+                                        <span
+                                            class="rounded-md px-2 py-0.5"
+                                            :class="ocrStatusBadgeClass(doc.ocr_status)"
+                                        >
+                                            {{ ocrStatusLabel(doc.ocr_status) }}
+                                        </span>
+                                        <span
+                                            class="rounded-md px-2 py-0.5"
+                                            :class="
+                                                doc.requires_review
+                                                    ? 'bg-amber-100 text-amber-700'
+                                                    : 'bg-emerald-100 text-emerald-700'
+                                            "
+                                        >
+                                            {{
+                                                doc.requires_review
+                                                    ? 'Needs review'
+                                                    : 'Read for review'
+                                            }}
+                                        </span>
+                                        <span
+                                            class="rounded-md bg-gray-200 px-2 py-0.5 text-gray-600"
+                                        >
+                                            Confidence
+                                            {{ ocrConfidenceLabel(doc.ocr_confidence) }}
+                                        </span>
+                                        <span
+                                            v-if="doc.uploaded_by"
+                                            class="text-gray-500"
+                                        >
+                                            Uploaded by {{ doc.uploaded_by }}
+                                        </span>
+                                    </div>
+
+                                    <p
+                                        v-if="doc.ocr_error"
+                                        class="mt-2 text-xs font-semibold text-red-600"
+                                    >
+                                        {{ doc.ocr_error }}
+                                    </p>
+
+                                    <div
+                                        v-if="doc.ocr_text"
+                                        class="mt-3 border-t border-gray-100 pt-2"
+                                    >
+                                        <button
+                                            type="button"
+                                            @click="toggleOcrDoc(doc.id)"
+                                            class="text-xs font-bold text-[#146b8a] hover:underline"
+                                        >
+                                            {{
+                                                openOcrDocs.has(doc.id)
+                                                    ? 'Hide recognised text'
+                                                    : 'Show recognised text'
+                                            }}
+                                        </button>
+                                        <pre
+                                            v-if="openOcrDocs.has(doc.id)"
+                                            class="mt-2 max-h-48 overflow-auto rounded-lg bg-white p-3 text-xs whitespace-pre-wrap break-words text-gray-700"
+                                        >{{ doc.ocr_text }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div
                             class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
                         >
@@ -1959,6 +2112,26 @@ interface ConsultationRecord extends Appointment {
 type ExportType = 'echo' | 'doppler' | 'tmt' | 'manual_draft' | 'prescription';
 type ExportFormat = 'docx' | 'pdf';
 
+interface OcrDocument {
+    id: number;
+    type: string;
+    original_filename: string | null;
+    url: string;
+    ocr_status: string;
+    ocr_confidence: number | null;
+    ocr_error: string | null;
+    engine: string | null;
+    requires_review: boolean;
+    uploaded_by?: string;
+    appointment?: {
+        id: number;
+        scheduled_date: string | null;
+        status: string;
+    } | null;
+    ocr_text?: string | null;
+    created_at?: string | null;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Props & composables
 // ─────────────────────────────────────────────────────────────────────
@@ -1967,7 +2140,10 @@ const props = defineProps<{
     user: Patient;
     patient: Patient;
     history: ConsultationRecord[];
+    ocrHistory?: OcrDocument[];
 }>();
+
+const ocrHistory = computed<OcrDocument[]>(() => props.ocrHistory ?? []);
 
 const { success: showSuccess, error: showError } = useToast();
 
@@ -1976,6 +2152,107 @@ const flashSuccess = computed(() => {
 
     return flash?.success ?? '';
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// OCR history display helpers
+// ─────────────────────────────────────────────────────────────────────
+
+const openOcrDocs = ref<Set<number>>(new Set());
+
+function toggleOcrDoc(id: number): void {
+    const next = new Set(openOcrDocs.value);
+
+    if (next.has(id)) {
+        next.delete(id);
+    } else {
+        next.add(id);
+    }
+
+    openOcrDocs.value = next;
+}
+
+const ocrTypeLabels: Record<string, string> = {
+    prescription: 'Prescription',
+    echo: 'Echo',
+    tmt: 'TMT',
+    doppler: 'Doppler',
+    lab_result: 'Lab Result',
+    referral: 'Referral',
+    other: 'Other',
+};
+
+function ocrTypeLabel(type: string): string {
+    return ocrTypeLabels[type] ?? type;
+}
+
+function ocrTypeBadgeClass(type: string): string {
+    switch (type) {
+        case 'echo':
+            return 'bg-indigo-100 text-indigo-700';
+        case 'tmt':
+            return 'bg-fuchsia-100 text-fuchsia-700';
+        case 'doppler':
+            return 'bg-cyan-100 text-cyan-700';
+        case 'prescription':
+            return 'bg-emerald-100 text-emerald-700';
+        case 'lab_result':
+            return 'bg-amber-100 text-amber-700';
+        case 'referral':
+            return 'bg-blue-100 text-blue-700';
+        default:
+            return 'bg-gray-100 text-gray-600';
+    }
+}
+
+function ocrStatusLabel(status: string): string {
+    switch (status) {
+        case 'completed':
+            return 'Recognised';
+        case 'processing':
+        case 'pending':
+            return 'Processing';
+        case 'failed':
+            return 'Failed';
+        default:
+            return status || 'Unknown';
+    }
+}
+
+function ocrStatusBadgeClass(status: string): string {
+    switch (status) {
+        case 'completed':
+            return 'bg-emerald-100 text-emerald-700';
+        case 'processing':
+        case 'pending':
+            return 'bg-blue-100 text-blue-700';
+        case 'failed':
+            return 'bg-red-100 text-red-700';
+        default:
+            return 'bg-gray-200 text-gray-600';
+    }
+}
+
+function ocrConfidenceLabel(value: number | null): string {
+    return value === null || value === undefined ? 'N/A' : `${Math.round(value * 100)}%`;
+}
+
+function ocrCreatedAt(iso?: string | null): string {
+    if (!iso) {
+        return '';
+    }
+
+    const d = new Date(iso);
+
+    if (Number.isNaN(d.getTime())) {
+        return '';
+    }
+
+    return d.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // State

@@ -715,6 +715,20 @@
                                 >
                             </div>
 
+                            <div
+                                v-if="prefilledByReception"
+                                class="mb-6 flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3"
+                            >
+                                <svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-sm font-semibold text-teal-800">
+                                    Study measurements recorded by the receptionist have been
+                                    pre-filled into the Echo / TMT / Doppler forms. Review them
+                                    and confirm before saving the consultation.
+                                </p>
+                            </div>
+
                             <div class="space-y-6">
                                 <!-- Subjective & Objective -->
                                 <div
@@ -1883,6 +1897,8 @@ const formattedDate = computed(() => {
 const isModalOpen = ref(false);
 const activeAppt = ref<Appointment | null>(null);
 const isSaving = ref(false);
+// Receptionist-recorded study data was pre-filled into the forms for this visit.
+const prefilledByReception = ref(false);
 
 /**
  * History URL for the appointment currently in the consultation modal.
@@ -2345,6 +2361,11 @@ async function loadScans(): Promise<void> {
 
         scans.value = data?.documents ?? [];
 
+        // Reception may already have recorded the Echo/TMT/Doppler measurements
+        // for this visit. Pre-fill those into the forms so the doctor confirms
+        // rather than re-types them.
+        applyServerPrefill(data?.prefill ?? null);
+
         if (selectedScanId.value === null && scans.value.length) {
             selectedScanId.value = scans.value[0].id;
         }
@@ -2385,6 +2406,56 @@ function scheduleScanPoll(delay = 2500): void {
         scheduleScanPoll(delay);
     }, delay);
 }
+
+/**
+ * Pre-fills the Echo/TMT/Doppler forms with study data that already exists for
+ * this appointment (typically recorded by the receptionist on a draft
+ * encounter). Only fields still at their empty/default state are touched, so a
+ * value the doctor already typed — or restored from the local draft restore —
+ * is never overwritten.
+ */
+function applyServerPrefill(prefill: any): void {
+    if (!prefill) return;
+
+    const targets: Record<string, keyof ConsultForm> = {
+        echo_data: 'echo_data',
+        tmt_data: 'tmt_data',
+        doppler_data: 'doppler_data',
+    };
+
+    let applied = 0;
+
+    for (const [key, target] of Object.entries(targets)) {
+        const source = prefill[key];
+        if (!source || typeof source !== 'object') continue;
+
+        const form = consultForm[target] as Record<string, unknown>;
+
+        for (const [field, value] of Object.entries(source as Record<string, unknown>)) {
+            if (!(field in form)) continue;
+
+            const current = form[field];
+            const isBlank =
+                current === '' || current === null || current === undefined;
+
+            if (
+                isBlank &&
+                (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+                value !== ''
+            ) {
+                form[field] = value;
+                applied++;
+            }
+        }
+    }
+
+    if (applied > 0 && prefill.source === 'receptionist') {
+        prefilledByReception.value = true;
+    }
+}
+
+/**
+ * Confidence as a whole percentage, or null when the OCR engine did not report
 
 /**
  * Confidence as a whole percentage, or null when the OCR engine did not report
@@ -2623,6 +2694,7 @@ const closeConsultModal = () => {
     selectedScanId.value = null;
     scansLoading.value = false;
     scannedToPrescription.value = {};
+    prefilledByReception.value = false;
 };
 
 const addMedication = () => {

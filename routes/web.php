@@ -207,6 +207,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document}/retry-ocr', [ReceptionistDocumentController::class, 'retryOcr'])
         ->middleware('role:receptionist,admin')->name('documents.retryOcr');
 
+    // --- RECEPTIONIST STUDY DATA -> PRE-FILLED INTO THE DOCTOR'S CONSULTATION ---
+    // The receptionist records the Echo/TMT/Doppler measurements on a draft
+    // encounter; the doctor's consultation form then pre-fills from it.
+    Route::get('/appointments/{appointment}/study-data', [AppointmentController::class, 'showStudyData'])
+        ->middleware('role:receptionist,doctor,admin')->name('study-data.show');
+    Route::put('/appointments/{appointment}/study-data', [AppointmentController::class, 'storeStudyData'])
+        ->middleware('role:receptionist,admin')->name('study-data.update');
+
     // --- DOCTOR CONSULTATION: patient + documents + history ---
     Route::get('/doctor/appointments/{appointment}/consultation', [DoctorConsultationController::class, 'show'])
         ->middleware('role:doctor')->name('consultation.show');

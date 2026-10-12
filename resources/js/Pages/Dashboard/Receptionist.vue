@@ -338,6 +338,25 @@
                                             Calendar
                                         </a>
                                         <button
+                                            @click="openStudyForm(appt)"
+                                            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700 transition-all hover:bg-indigo-600 hover:text-white"
+                                        >
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                />
+                                            </svg>
+                                            Study Form
+                                        </button>
+                                        <button
                                             @click="openScanModal(appt)"
                                             class="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-[11px] font-bold text-teal-700 transition-all hover:bg-teal-600 hover:text-white"
                                         >
@@ -1173,6 +1192,131 @@
             </div>
         </div>
 
+        <!-- RECEPTIONIST STUDY PRE-FILL MODAL (Echo / TMT / Doppler) -->
+        <div
+            v-if="studyFormOpen"
+            class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+        >
+            <div
+                class="my-6 w-full max-w-5xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
+            >
+                <div
+                    class="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl bg-indigo-700 px-6 py-4 text-white"
+                >
+                    <div>
+                        <h3 class="text-lg font-bold">
+                            Pre-fill Echo / TMT / Doppler
+                        </h3>
+                        <p class="text-xs text-indigo-200">
+                            Recording measurements for
+                            <b class="text-white">{{
+                                studyAppt?.patient?.name
+                            }}</b>
+                            — the doctor will see them pre-filled in the
+                            consultation.
+                        </p>
+                    </div>
+                    <button
+                        @click="closeStudyForm"
+                        class="text-indigo-200 hover:text-white"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div v-if="studyLoading" class="p-10 text-center">
+                    <p class="text-sm font-bold text-gray-500">
+                        Loading saved study data…
+                    </p>
+                </div>
+
+                <div v-else class="p-6">
+                    <div
+                        v-if="studyLocked"
+                        class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+                    >
+                        This appointment has already been completed by the
+                        doctor, so its study records are final and can no longer
+                        be edited.
+                    </div>
+
+                    <div
+                        class="mb-6 flex gap-2 border-b border-gray-100 pb-4"
+                    >
+                        <button
+                            v-for="tab in studyTabs"
+                            :key="tab.value"
+                            type="button"
+                            @click="activeStudyTab = tab.value"
+                            class="rounded-lg px-4 py-2 text-sm font-bold transition-colors"
+                            :class="
+                                activeStudyTab === tab.value
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            "
+                        >
+                            {{ tab.label }}
+                        </button>
+                    </div>
+
+                    <div class="max-h-[62vh] overflow-y-auto pr-2">
+                        <EchoForm
+                            v-if="activeStudyTab === 'echo'"
+                            v-model:echo-data="studyForm.echo_data"
+                            :patient-name="studyAppt?.patient?.name ?? ''"
+                        />
+                        <TmtForm
+                            v-if="activeStudyTab === 'tmt'"
+                            v-model:tmt-data="studyForm.tmt_data"
+                            :echo-sex="studyForm.echo_data.sex"
+                            :patient-name="studyAppt?.patient?.name ?? ''"
+                        />
+                        <DopplerForm
+                            v-if="activeStudyTab === 'doppler'"
+                            v-model:doppler-data="studyForm.doppler_data"
+                            :echo-data="studyForm.echo_data"
+                            :patient-name="studyAppt?.patient?.name ?? ''"
+                        />
+                    </div>
+
+                    <div
+                        class="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4"
+                    >
+                        <p
+                            v-if="studySavedAt"
+                            class="mr-auto text-xs font-semibold text-emerald-600"
+                        >
+                            Saved study data will appear in the doctor's
+                            consultation form.
+                        </p>
+                        <button
+                            type="button"
+                            @click="closeStudyForm"
+                            class="px-5 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            @click="submitStudyForm"
+                            :disabled="
+                                studyForm.processing ||
+                                studyBusy ||
+                                studyLocked
+                            "
+                            class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {{
+                                studyForm.processing
+                                    ? 'Saving…'
+                                    : 'Save Study Data'
+                            }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- OCR scan upload -->
         <ScanUploadModal
             :open="scanModalOpen"
@@ -1190,9 +1334,13 @@ import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import LogoutButton from '@/components/LogoutButton.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import ScanUploadModal from '@/components/ScanUploadModal.vue';
+import EchoForm from '@/components/Clinical/EchoForm.vue';
+import TmtForm from '@/components/Clinical/TmtForm.vue';
+import DopplerForm from '@/components/Clinical/DopplerForm.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
+import { blankStudyForms } from '@/utils/studyForms';
 
 const { error: showError, success: showSuccess } = useToast();
 
@@ -1251,6 +1399,116 @@ function closeScanModal(): void {
 /** Keep the queue's scan badges honest once OCR finishes. */
 function onScansChanged(): void {
     router.reload({ only: ['masterQueue'] });
+}
+
+// ── Receptionist study pre-fill (Echo / TMT / Doppler) ─────────────
+const studyFormOpen = ref(false);
+const studyAppt = ref<any>(null);
+const studyLoading = ref(false);
+const studyBusy = ref(false);
+const studyLocked = ref(false);
+const studySavedAt = ref(false);
+const activeStudyTab = ref<'echo' | 'tmt' | 'doppler'>('echo');
+
+const studyTabs = [
+    { value: 'echo', label: 'Echo' },
+    { value: 'tmt', label: 'TMT' },
+    { value: 'doppler', label: 'Doppler' },
+] as const;
+
+const studyForm = useForm(blankStudyForms());
+
+/** Merge saved values into the blank form, keeping only non-empty keys so an
+ * older record never leaves stray empty strings in the form. */
+function mergeStudyValues(target: Record<string, any>, source: Record<string, any> | null): void {
+    if (!source || typeof source !== 'object') return;
+
+    for (const [key, value] of Object.entries(source)) {
+        if (!(key in target)) continue;
+        if (value === '' || value === null || value === undefined) continue;
+
+        if (Array.isArray(value)) {
+            if (Array.isArray(target[key])) {
+                (value as any[]).forEach((item, i) => {
+                    if (i < target[key].length && typeof item === 'object' && item !== null) {
+                        mergeStudyValues(target[key][i], item);
+                    }
+                });
+            }
+            continue;
+        }
+
+        target[key] = value;
+    }
+}
+
+async function openStudyForm(appt: any): Promise<void> {
+    if (!appt) return;
+
+    studyAppt.value = appt;
+    studyForm.clearErrors();
+    studyForm.reset();
+    studyFormOpen.value = true;
+    activeStudyTab.value = 'echo';
+    studyLocked.value = false;
+    studySavedAt.value = false;
+    studyLoading.value = true;
+    studyBusy.value = true;
+
+    try {
+        const res = await fetch(`/appointments/${appt.id}/study-data`, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        if (!res.ok) {
+            throw new Error('Could not load saved study data.');
+        }
+
+        const data = await res.json();
+
+        studyLocked.value = data.status === 'completed';
+        studySavedAt.value = data.saved === true;
+
+        const blank = studyForm.data();
+
+        if (data.saved) {
+            mergeStudyValues(blank.echo_data, data.echo_data);
+            mergeStudyValues(blank.tmt_data, data.tmt_data);
+            mergeStudyValues(blank.doppler_data, data.doppler_data);
+        }
+
+        studyForm.setData(blank);
+    } catch (err: any) {
+        showError(err?.message ?? 'Could not load saved study data.');
+    } finally {
+        studyLoading.value = false;
+        studyBusy.value = false;
+    }
+}
+
+function closeStudyForm(): void {
+    studyFormOpen.value = false;
+    studyAppt.value = null;
+    studyLocked.value = false;
+    studySavedAt.value = false;
+    studyForm.reset();
+    studyForm.clearErrors();
+}
+
+function submitStudyForm(): void {
+    if (!studyAppt.value) return;
+
+    studyForm.put(`/appointments/${studyAppt.value.id}/study-data`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            studySavedAt.value = true;
+            studyLocked.value = false;
+        },
+        onError: (errors) => {
+            showError(Object.values(errors).join('\n'));
+        },
+    });
 }
 
 function pad2(n: number): string {

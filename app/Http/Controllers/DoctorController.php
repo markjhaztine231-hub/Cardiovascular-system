@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\Patient;
 use App\Models\User;
@@ -394,6 +395,42 @@ class DoctorController extends Controller
                 'joined' => $patient->created_at?->format('M Y'),
             ],
             'history' => $history,
+            'ocrHistory' => $this->ocrHistory($patientRecord),
         ]);
+    }
+
+    /**
+     * The patient's uploaded scans with their OCR lifecycle, so the doctor can
+     * review what has been recognised (and whether it still needs a look) from
+     * the same EMR screen as the rest of the record.
+     */
+    private function ocrHistory(Patient $patientRecord): array
+    {
+        return Document::where('patient_id', $patientRecord->id)
+            ->with('uploader:id,name', 'appointment:id,scheduled_date,status')
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->map(fn (Document $d) => [
+                'id' => $d->id,
+                'type' => $d->type,
+                'original_filename' => $d->original_filename,
+                'url' => $d->url(),
+                'ocr_status' => $d->ocr_status,
+                'ocr_confidence' => $d->ocr_confidence,
+                'ocr_error' => $d->ocr_error,
+                'engine' => $d->engine(),
+                'requires_review' => $d->requiresReview(),
+                'uploaded_by' => $d->uploader?->name,
+                'appointment' => $d->appointment ? [
+                    'id' => $d->appointment->id,
+                    'scheduled_date' => $d->appointment->scheduled_date?->toDateString(),
+                    'status' => $d->appointment->status,
+                ] : null,
+                'ocr_text' => $d->ocr_text,
+                'created_at' => $d->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 }
