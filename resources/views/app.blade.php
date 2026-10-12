@@ -6,6 +6,9 @@
 
         <title inertia>{{ config('app.name', 'Cardiovascular Care Center') }}</title>
 
+        <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <!-- Scripts -->
         @vite(['resources/js/app.ts', "resources/js/Pages/{$page['component']}.vue"])
