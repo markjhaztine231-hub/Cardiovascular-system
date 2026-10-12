@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\AuditLog;
-use App\Models\MonthlyReport;
 use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\User;
-use App\Services\MonthlyReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -345,86 +343,5 @@ class AdminController extends Controller
             'logs' => $logs,
             'filters' => $request->only(['search', 'date']),
         ]);
-    }
-
-    /**
-     * Practice-wide monthly report: every doctor combined, plus a per-doctor
-     * breakdown. Admin-only because the breakdown exposes colleagues'
-     * individual activity.
-     *
-     * The route already carries role:admin; the explicit re-check guards
-     * against the middleware ever being dropped from the route group.
-     */
-    public function practiceReport(Request $request)
-    {
-        if (Auth::user()->role !== 'admin') {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'month' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
-        ]);
-
-        $month = $validated['month'] ?? now()->format('Y-m');
-
-        // Viewing must never mutate data, so this reads the latest stored
-        // practice row and only generates when the admin asks for it.
-        $report = MonthlyReport::query()
-            ->whereNull('provider_id')
-            ->where('scope', MonthlyReport::SCOPE_PRACTICE)
-            ->where('month', $month)
-            ->latest()
-            ->first();
-
-        if (! $report) {
-            return back()->with('error', "No practice report exists for {$month}. Generate one first.");
-        }
-
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => "Viewed practice-wide monthly report for {$month} from IP: ".$request->ip(),
-        ]);
-
-        $stats = $report->stats ?? [];
-
-        return inertia('Admin/PracticeReport', [
-            'user' => Auth::user(),
-            'month' => $month,
-            'stats' => $stats,
-            'reportText' => $report->report_text,
-            'generatedAt' => $report->created_at?->toDateTimeString(),
-            // Recomputed on read so a doctor added after the report was written
-            // still appears, without regenerating the narrative.
-            'byProvider' => $stats['by_provider'] ?? MonthlyReportService::practiceBreakdown($month),
-            'availableMonths' => MonthlyReport::query()
-                ->whereNull('provider_id')
-                ->where('scope', MonthlyReport::SCOPE_PRACTICE)
-                ->distinct()
-                ->orderByDesc('month')
-                ->pluck('month'),
-        ]);
-    }
-
-    /** Admin-triggered generation of the practice-wide narrative. */
-    public function generatePracticeReport(Request $request)
-    {
-        if (Auth::user()->role !== 'admin') {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'month' => ['required', 'regex:/^\d{4}-\d{2}$/'],
-        ]);
-
-        $month = $validated['month'];
-
-        MonthlyReportService::generatePracticeReport($month);
-
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => "Generated practice-wide monthly report for {$month} from IP: ".$request->ip(),
-        ]);
-
-        return back()->with('success', "Practice-wide report generated for {$month}.");
     }
 }

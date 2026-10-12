@@ -14,7 +14,7 @@ class PatientAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_available_slots_are_generated_from_doctor_schedules_on_30_minute_grid()
+    public function test_available_slots_are_generated_from_doctor_schedules_on_5_minute_grid()
     {
         $target = Carbon::parse(now()->addDays(2)->format('Y-m-d'));
         $provider = Provider::factory()->create();
@@ -33,8 +33,10 @@ class PatientAvailabilityTest extends TestCase
         );
 
         $response->assertOk();
-        $response->assertJsonCount(3, 'slots');
+        // 08:00 -> 09:25 inclusive, every 5 minutes = 18 slots.
+        $response->assertJsonCount(18, 'slots');
         $response->assertJsonFragment(['value' => '08:00:00', 'label' => '8:00 AM']);
+        $response->assertJsonFragment(['value' => '08:05:00', 'label' => '8:05 AM']);
         $response->assertJsonFragment(['value' => '08:30:00', 'label' => '8:30 AM']);
         $response->assertJsonFragment(['value' => '09:00:00', 'label' => '9:00 AM']);
     }
@@ -95,7 +97,8 @@ class PatientAvailabilityTest extends TestCase
 
         $response->assertOk();
         $values = collect($response->json('slots'))->pluck('value')->all();
-        $this->assertNotContains('10:00:00', $values, 'Exactly 30 minutes away must be excluded');
+        $this->assertNotContains('10:00:00', $values, 'The current slot must be excluded');
+        $this->assertContains('10:05:00', $values);
         $this->assertContains('10:30:00', $values);
         $this->assertContains('11:00:00', $values);
 

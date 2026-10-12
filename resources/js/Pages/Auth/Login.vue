@@ -2,25 +2,40 @@
     <div
         class="flex min-h-screen flex-col justify-center bg-gray-50 py-12 transition-colors duration-300 sm:px-6 lg:px-8 dark:bg-gray-900"
     >
+        <!-- Return to homepage -->
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <Link
+                href="/"
+                class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-[#005bb5] dark:text-gray-400 dark:hover:text-blue-400"
+            >
+                <svg
+                    class="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10"
+                    />
+                </svg>
+                Return to Homepage
+            </Link>
+        </div>
+
         <div class="sm:mx-auto sm:w-full sm:max-w-md">
             <!-- Clinic Logo Icon -->
             <div class="flex justify-center">
                 <div
-                    class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-500/30"
+                    class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-lg ring-1 ring-black/5"
                 >
-                    <svg
-                        class="h-8 w-8 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                    </svg>
+                    <img
+                        src="/logo.png"
+                        alt="Cardiovascular Care Center logo"
+                        class="h-9 w-9 object-contain"
+                    />
                 </div>
             </div>
             <h2
@@ -79,14 +94,41 @@
                             Password
                         </label>
                         <div class="mt-1">
-                            <input
-                                id="password"
-                                v-model="form.password"
-                                type="password"
-                                autocomplete="current-password"
-                                required
-                                class="block w-full appearance-none rounded-xl border border-gray-300 px-3 py-2.5 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                            />
+                            <div class="relative">
+                                <input
+                                    id="password"
+                                    v-model="form.password"
+                                    :type="showPassword ? 'text' : 'password'"
+                                    autocomplete="current-password"
+                                    required
+                                    class="block w-full appearance-none rounded-xl border border-gray-300 px-3 py-2.5 pr-10 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                    :class="{
+                                        'border-red-300':
+                                            form.errors.password,
+                                    }"
+                                />
+                                <button
+                                    type="button"
+                                    @click="showPassword = !showPassword"
+                                    class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+                                    :aria-label="
+                                        showPassword
+                                            ? 'Hide password'
+                                            : 'Show password'
+                                    "
+                                    :title="
+                                        showPassword
+                                            ? 'Hide password'
+                                            : 'Show password'
+                                    "
+                                >
+                                    <EyeOff
+                                        v-if="showPassword"
+                                        class="h-5 w-5"
+                                    />
+                                    <Eye v-else class="h-5 w-5" />
+                                </button>
+                            </div>
                         </div>
                         <p
                             v-if="form.errors.password"
@@ -175,7 +217,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import { Eye, EyeOff } from 'lucide-vue-next';
+
+const showPassword = ref(false);
 
 // Initialize the Inertia form with 'role'
 const form = useForm({

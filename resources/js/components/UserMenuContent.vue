@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import { LogOut, Settings } from 'lucide-vue-next';
 import {
     DropdownMenuGroup,
@@ -7,17 +7,13 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import LogoutButton from '@/components/LogoutButton.vue';
 import UserInfo from '@/components/UserInfo.vue';
-import { logout } from '@/routes';
 import { edit as showProfile } from '@/routes/profile';
 import type { User } from '@/types';
 
 type Props = {
     user: User;
-};
-
-const handleLogout = () => {
-    router.flushAll();
 };
 
 defineProps<Props>();
@@ -39,16 +35,14 @@ defineProps<Props>();
         </DropdownMenuItem>
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
-    <DropdownMenuItem :as-child="true">
-        <Link
-            class="block w-full cursor-pointer"
-            :href="logout()"
-            @click="handleLogout"
-            as="button"
+    <LogoutButton>
+        <button
+            type="button"
+            class="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
             data-test="logout-button"
         >
             <LogOut class="mr-2 h-4 w-4" />
             Log out
-        </Link>
-    </DropdownMenuItem>
+        </button>
+    </LogoutButton>
 </template>

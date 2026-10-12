@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import LogoutButton from '@/components/LogoutButton.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import { logout } from '@/routes';
 import { send } from '@/routes/verification';
 
 defineProps<{
@@ -37,13 +37,11 @@ defineProps<{
                 Resend verification email
             </Button>
 
-            <TextLink
-                :href="logout()"
-                as="button"
-                class="mx-auto block text-sm"
-            >
-                Log out
-            </TextLink>
+            <LogoutButton>
+                <TextLink as="button" class="mx-auto block text-sm">
+                    Log out
+                </TextLink>
+            </LogoutButton>
         </Form>
     </AuthLayout>
 </template>

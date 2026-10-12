@@ -113,10 +113,29 @@ Route::middleware('auth')->group(function () {
             ->orderBy('scheduled_date', 'desc')
             ->get();
 
+        // The patient dashboard expects a flattened shape (date/time/doctor),
+        // not the raw model with scheduled_* columns and the provider relation.
+        $shape = function (Appointment $appointment): array {
+            return [
+                'id' => $appointment->id,
+                'patient_id' => $appointment->patient_id,
+                'date' => $appointment->scheduled_date?->toDateString(),
+                'time' => $appointment->scheduled_time,
+                'status' => $appointment->status,
+                'service_type' => $appointment->service_type,
+                'prescriptions' => [],
+                'doctor' => $appointment->provider?->user ? [
+                    'id' => $appointment->provider->user->id,
+                    'name' => $appointment->provider->user->name,
+                    'specialty' => $appointment->provider->specialty,
+                ] : null,
+            ];
+        };
+
         return Inertia::render('Dashboard/Patient', [
             'user' => Auth::user(),
-            'nextAppointment' => $nextAppt,
-            'history' => $history,
+            'nextAppointment' => $nextAppt ? $shape($nextAppt) : null,
+            'history' => $history->map($shape)->values(),
         ]);
     })->name('patient.dashboard');
 
@@ -146,8 +165,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/users', [AdminController::class, 'storeUser'])->middleware('role:admin')->name('admin.users.store');
     Route::put('/admin/users/{user}', [AdminController::class, 'updateUser'])->middleware('role:admin')->name('admin.users.update');
     Route::delete('/admin/users/{user}', [AdminController::class, 'deleteUser'])->middleware('role:admin')->name('admin.users.delete');
-    Route::get('/admin/reports/practice', [AdminController::class, 'practiceReport'])->middleware('role:admin')->name('admin.reports.practice');
-    Route::post('/admin/reports/practice', [AdminController::class, 'generatePracticeReport'])->middleware('role:admin')->name('admin.reports.practice.generate');
 
     // --- USER PROFILE (all roles, legacy page) ---
     Route::get('/profile', [ProfileController::class, 'show'])->name('user.profile.show');

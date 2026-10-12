@@ -49,8 +49,8 @@ class AppointmentController extends Controller
         // and the server never disagree.
         if ($request->date === now()->toDateString()) {
             $slotAt = Carbon::parse($request->date.' '.$request->time);
-            // Slots arrive on a 30-min grid, so the first bookable one at
-            // e.g. 7:32 PM is already 8:00 PM - no extra lead window.
+            // Slots arrive on a 5-min grid, so the first bookable one at
+            // e.g. 7:32 PM is 7:35 PM - no extra lead window.
             if ($slotAt->lte(Carbon::now())) {
                 throw ValidationException::withMessages([
                     'time' => 'That time slot has already passed. Please select a future time.',
@@ -125,7 +125,7 @@ class AppointmentController extends Controller
 
         $date = $validated['date'];
         $dayInt = Carbon::parse($date)->dayOfWeekIso; // 1 = Monday .. 7 = Sunday
-        $step = 30; // minutes between bookable slots
+        $step = 5; // minutes between bookable slots
 
         $schedules = DoctorSchedule::whereJsonContains('day_of_week', $dayInt)->get();
 
@@ -153,8 +153,8 @@ class AppointmentController extends Controller
             ->filter(function (string $time) use ($date, $isToday) {
                 if ($isToday) {
                     $slotAt = Carbon::parse($date.' '.$time);
-                    // Next boundary on the 30-min grid after now (at 7:32 PM
-                    // that's 8:00 PM) - no extra lead offset.
+                    // Next boundary on the 5-min grid after now (at 7:32 PM
+                    // that's 7:35 PM) - no extra lead offset.
                     if ($slotAt->lte(Carbon::now())) {
                         return false;
                     }

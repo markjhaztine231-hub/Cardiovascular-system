@@ -116,13 +116,14 @@
                         class="inline-flex items-center rounded-xl bg-[#0f8c8e] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#0c7072]"
                         >New Walk-In</Link
                     >
-                    <Link
-                        href="/logout"
-                        method="post"
-                        as="button"
-                        class="inline-flex items-center rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition-all hover:bg-red-100"
-                        >Sign out</Link
-                    >
+                    <LogoutButton>
+                        <button
+                            type="button"
+                            class="inline-flex items-center rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition-all hover:bg-red-100"
+                        >
+                            Sign out
+                        </button>
+                    </LogoutButton>
                 </div>
             </header>
 
@@ -1186,6 +1187,7 @@
 
 <script setup lang="ts">
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
+import LogoutButton from '@/components/LogoutButton.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import ScanUploadModal from '@/components/ScanUploadModal.vue';
 import Toast from '@/components/Toast.vue';
