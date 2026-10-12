@@ -1350,6 +1350,88 @@
                                         </span>
                                     </div>
 
+                                    <!-- Auto-fill for study-type scans -->
+                                    <div
+                                        v-if="
+                                            selectedScan.ocr_status ===
+                                                'completed' &&
+                                            ['echo', 'tmt', 'doppler'].includes(
+                                                selectedScan.type,
+                                            )
+                                        "
+                                        class="rounded-lg border border-teal-200 bg-teal-50 p-3"
+                                    >
+                                        <div
+                                            class="flex flex-wrap items-center justify-between gap-2"
+                                        >
+                                            <div>
+                                                <p
+                                                    class="text-[11px] font-bold text-teal-800"
+                                                >
+                                                    Auto-fill the
+                                                    {{
+                                                        scanTypeLabel(
+                                                            selectedScan.type,
+                                                        )
+                                                    }}
+                                                    form
+                                                </p>
+                                                <p
+                                                    class="text-[10px] text-teal-700"
+                                                >
+                                                    AI reads the converted text
+                                                    and pre-fills the form. Review
+                                                    before saving.
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                :disabled="
+                                                    autoFillBusyId ===
+                                                    selectedScan.id
+                                                "
+                                                @click="
+                                                    autoFillStudy(selectedScan)
+                                                "
+                                                class="inline-flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                <svg
+                                                    v-if="
+                                                        autoFillBusyId ===
+                                                        selectedScan.id
+                                                    "
+                                                    class="h-3.5 w-3.5 animate-spin"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <circle
+                                                        class="opacity-25"
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        stroke="currentColor"
+                                                        stroke-width="4"
+                                                    ></circle>
+                                                    <path
+                                                        class="opacity-75"
+                                                        fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                                    ></path>
+                                                </svg>
+                                                {{
+                                                    autoFillBusyId ===
+                                                    selectedScan.id
+                                                        ? 'Extracting…'
+                                                        : scanAutoFilled[
+                                                              selectedScan.id
+                                                          ]
+                                                          ? 'Re-run auto-fill'
+                                                          : 'Auto-fill form'
+                                                }}
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <div
                                         v-if="
                                             selectedScan.requires_review
@@ -2335,6 +2417,9 @@ function scanTypeLabel(value: string): string {
     return (
         {
             prescription: 'Prescription',
+            echo: 'Echo',
+            tmt: 'TMT',
+            doppler: 'Doppler',
             lab_result: 'Lab Result',
             referral: 'Referral',
             other: 'Other',
@@ -2378,6 +2463,60 @@ function applyMedication(doc: any, med: any): void {
 
     scannedToPrescription.value[doc.id] = true;
     showSuccess(`Added ${med.medication_name} to the prescription draft.`);
+}
+
+// ── Study auto-fill (Echo / TMT / Doppler) ─────────────────────────
+const AUTO_FILL_TARGETS: Record<string, keyof Pick<ConsultForm, 'echo_data' | 'tmt_data' | 'doppler_data'>> = {
+    echo: 'echo_data',
+    tmt: 'tmt_data',
+    doppler: 'doppler_data',
+};
+
+const autoFillBusyId = ref<number | null>(null);
+const scanAutoFilled = ref<Record<number, boolean>>({});
+
+/**
+ * Sends the scan's OCR text to the AI provider chain and pre-fills the matching
+ * study form. Only non-empty extracted values are applied, so a partial result
+ * never wipes what the doctor already typed. The output is a draft — the doctor
+ * reviews and confirms before the consultation is saved.
+ */
+async function autoFillStudy(scan: any): Promise<void> {
+    if (!scan?.type || !activeAppt.value?.id) return;
+
+    const target = AUTO_FILL_TARGETS[scan.type];
+    if (!target) return;
+
+    autoFillBusyId.value = scan.id;
+
+    try {
+        const { data } = await axios.post(
+            `/doctor/appointments/${activeAppt.value.id}/consultation/scan/${scan.id}/autofill`,
+        );
+
+        const fields: Record<string, string> = data?.fields ?? {};
+        const form = consultForm[target] as Record<string, string>;
+
+        let applied = 0;
+        for (const [key, value] of Object.entries(fields)) {
+            if (typeof value === 'string' && value !== '' && key in form) {
+                form[key] = value;
+                applied++;
+            }
+        }
+
+        scanAutoFilled.value[scan.id] = true;
+        showSuccess(
+            `Auto-filled ${applied} field(s) on the ${scanTypeLabel(scan.type)} form. Verify before saving.`,
+        );
+    } catch (e: any) {
+        const message =
+            e?.response?.data?.message ??
+            'Auto-fill failed: the AI providers are unavailable or the scan text is not ready.';
+        showError(message);
+    } finally {
+        autoFillBusyId.value = null;
+    }
 }
 
 function resetVitalsForm() {

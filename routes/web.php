@@ -213,6 +213,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/doctor/appointments/{appointment}/consultation/start', [DoctorConsultationController::class, 'start'])
         ->middleware('role:doctor')->name('consultation.start');
 
+    Route::post('/doctor/appointments/{appointment}/consultation/scan/{document}/autofill', [DoctorConsultationController::class, 'autoFillScan'])
+        ->middleware('role:doctor')->name('consultation.autofill');
+
     // --- HIPAA AUDIT LOG (medication viewed) ---
     Route::post('/audit/medication-viewed', function (Request $request) {
         AuditLog::create([

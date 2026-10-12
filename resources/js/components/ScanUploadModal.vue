@@ -35,6 +35,9 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 const DOC_TYPES = [
     { value: 'prescription', label: 'Prescription', hint: 'Medication list' },
+    { value: 'echo', label: 'Echo', hint: 'Echocardiogram report' },
+    { value: 'tmt', label: 'TMT', hint: 'Stress test report' },
+    { value: 'doppler', label: 'Doppler', hint: 'Doppler study report' },
     { value: 'lab_result', label: 'Lab Result', hint: 'Bloodwork / reports' },
     { value: 'referral', label: 'Referral', hint: 'Referral letter' },
     { value: 'other', label: 'Other', hint: 'Any clinical image' },

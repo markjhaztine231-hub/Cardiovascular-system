@@ -16,7 +16,7 @@ class ReceptionistDocumentController extends Controller
     {
         $validated = $request->validate([
             'document' => 'required|file|mimes:jpg,jpeg,png,tiff,bmp,webp|max:10240',
-            'type' => 'required|in:prescription,lab_result,referral,other',
+            'type' => 'required|in:prescription,lab_result,referral,other,echo,tmt,doppler',
         ]);
 
         $file = $validated['document'];
