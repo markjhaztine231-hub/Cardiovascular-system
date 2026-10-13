@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\Patient;
+use App\Models\VitalSign;
 use App\Services\PrescriptionTextParser;
 use App\Support\ClinicalRecordMapper;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class DoctorConsultationController extends Controller
             'encounter.dopplerStudy',
             'encounter.stressEcho',
             'encounter.abpm',
+            'encounter.vitalSigns',
         ]);
 
         $patient = $appointment->patient;
@@ -99,6 +101,27 @@ class DoctorConsultationController extends Controller
                 : null,
             'stress_echo_data' => $encounter->stressEcho?->payload,
             'abpm_data' => $encounter->abpm?->payload,
+            'vitals_data' => $this->vitalsToForm($encounter->vitalSigns->first()),
+        ];
+    }
+
+    /**
+     * Map a stored vitals row back to the vitals form key shape the doctor's
+     * Objective (Vitals) block binds to.
+     */
+    private function vitalsToForm(?VitalSign $vitals): ?array
+    {
+        if (! $vitals) {
+            return null;
+        }
+
+        return [
+            'bp_sys' => $vitals->blood_pressure_systolic,
+            'bp_dia' => $vitals->blood_pressure_diastolic,
+            'hr' => $vitals->heart_rate_bpm,
+            'rr' => $vitals->respiratory_rate,
+            'temp' => $vitals->temperature_celsius,
+            'spo2' => $vitals->oxygen_saturation_percent,
         ];
     }
 

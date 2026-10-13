@@ -737,7 +737,7 @@ class AppointmentController extends Controller
     public function showStudyData(Request $request, Appointment $appointment)
     {
         $encounter = $appointment->encounter()->with([
-            'echocardiogram', 'treadmillTest', 'dopplerStudy', 'stressEcho', 'abpm',
+            'echocardiogram', 'treadmillTest', 'dopplerStudy', 'stressEcho', 'abpm', 'vitalSigns',
         ])->first();
 
         $appointment->load('documents.uploader:id,name');
@@ -756,6 +756,7 @@ class AppointmentController extends Controller
                 : null,
             'stress_echo_data' => $encounter?->stressEcho?->payload,
             'abpm_data' => $encounter?->abpm?->payload,
+            'vitals_data' => $this->mapVitalsToForm($encounter?->vitalSigns->first()),
         ];
 
         if (! $encounter) {
@@ -799,6 +800,13 @@ class AppointmentController extends Controller
             'doppler_data' => 'nullable|array',
             'stress_echo_data' => 'nullable|array',
             'abpm_data' => 'nullable|array',
+            'vitals_data' => 'nullable|array',
+            'vitals_data.bp_sys' => 'nullable|numeric|min:40|max:300',
+            'vitals_data.bp_dia' => 'nullable|numeric|min:20|max:200',
+            'vitals_data.hr' => 'nullable|numeric|min:20|max:300',
+            'vitals_data.rr' => 'nullable|numeric|min:4|max:80',
+            'vitals_data.temp' => 'nullable|numeric|min:30|max:45',
+            'vitals_data.spo2' => 'nullable|numeric|min:40|max:100',
         ]);
 
         // A study form that was left entirely blank is treated as "not part of
@@ -820,9 +828,11 @@ class AppointmentController extends Controller
             $types[] = 'abpm';
         }
 
-        if (empty($types)) {
+        $hasVitals = $this->hasClinicalData($validated['vitals_data'] ?? []);
+
+        if (empty($types) && ! $hasVitals) {
             throw ValidationException::withMessages([
-                'echo_data' => 'Fill in at least one study field before saving.',
+                'echo_data' => 'Fill in at least one study or vitals field before saving.',
             ]);
         }
 
@@ -832,6 +842,11 @@ class AppointmentController extends Controller
                 $encounterType = $candidate;
                 break;
             }
+        }
+
+        // Vitals-only entry: the doctor classifies the visit when completing it.
+        if (empty($types)) {
+            $encounterType = 'consultation';
         }
 
         $encounter = Encounter::updateOrCreate(
@@ -890,15 +905,60 @@ class AppointmentController extends Controller
             ]);
         }
 
+        // Vitals (objective) taken at the bench. Keyed by encounter so the
+        // doctor's completeConsultation updates this same row instead of
+        // creating a second set.
+        if ($hasVitals) {
+            VitalSign::updateOrCreate(
+                ['encounter_id' => $encounter->id],
+                [
+                    'blood_pressure_systolic' => $validated['vitals_data']['bp_sys'] ?? null,
+                    'blood_pressure_diastolic' => $validated['vitals_data']['bp_dia'] ?? null,
+                    'heart_rate_bpm' => $validated['vitals_data']['hr'] ?? null,
+                    'respiratory_rate' => $validated['vitals_data']['rr'] ?? null,
+                    'temperature_celsius' => $validated['vitals_data']['temp'] ?? null,
+                    'oxygen_saturation_percent' => $validated['vitals_data']['spo2'] ?? null,
+                    'recorded_at' => now(),
+                ]
+            );
+        } else {
+            $encounter->vitalSigns()->delete();
+        }
+
         Cache::forget('receptionist_stats');
+
+        $loggedTypes = $types;
+        if ($hasVitals) {
+            $loggedTypes[] = 'vitals';
+        }
 
         AuditLog::create([
             'user_id' => Auth::id(),
             'patient_id' => $appointment->patient_id,
-            'action' => 'Pre-filled study data for Appointment #'.$appointment->id.' ('.implode(', ', $types).')',
+            'action' => 'Pre-filled study data for Appointment #'.$appointment->id.' ('.implode(', ', $loggedTypes).')',
         ]);
 
         return back()->with('success', 'Study data saved — the doctor will see it pre-filled in the consultation.');
+    }
+
+    /**
+     * Map a stored vitals row back to the vitals form key shape shared by the
+     * receptionist study form and the doctor's Objective (Vitals) block.
+     */
+    private function mapVitalsToForm(?VitalSign $vitals): ?array
+    {
+        if (! $vitals) {
+            return null;
+        }
+
+        return [
+            'bp_sys' => $vitals->blood_pressure_systolic,
+            'bp_dia' => $vitals->blood_pressure_diastolic,
+            'hr' => $vitals->heart_rate_bpm,
+            'rr' => $vitals->respiratory_rate,
+            'temp' => $vitals->temperature_celsius,
+            'spo2' => $vitals->oxygen_saturation_percent,
+        ];
     }
 
     /**

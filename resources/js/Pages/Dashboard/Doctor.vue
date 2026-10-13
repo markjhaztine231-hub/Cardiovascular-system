@@ -2547,6 +2547,31 @@ function applyServerPrefill(prefill: any): void {
         }
     }
 
+    // Objective (Vitals) recorded by the receptionist at the bench. Coerce to
+    // numbers because decimals arrive from the API as strings.
+    if (prefill.vitals_data && typeof prefill.vitals_data === 'object') {
+        const vitals = vitalsForm as Record<string, any>;
+
+        for (const [field, value] of Object.entries(
+            prefill.vitals_data as Record<string, unknown>,
+        )) {
+            if (!(field in vitals)) continue;
+
+            const current = vitals[field];
+            const isBlank =
+                current === '' || current === null || current === undefined;
+
+            if (!isBlank) continue;
+            if (value === '' || value === null || value === undefined) continue;
+
+            const numeric = typeof value === 'number' ? value : Number(value);
+            if (Number.isNaN(numeric)) continue;
+
+            vitals[field] = numeric;
+            applied++;
+        }
+    }
+
     if (applied > 0 && prefill.source === 'receptionist') {
         prefilledByReception.value = true;
     }

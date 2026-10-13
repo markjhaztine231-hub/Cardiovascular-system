@@ -1,6 +1,7 @@
 <template>
     <div
         class="min-h-screen bg-gray-50/50 py-8 font-sans selection:bg-[#0f8c8e] selection:text-white"
+        @keydown.enter="onEnterAdvance"
     >
         <!-- Toast Notifications -->
         <Toast />
@@ -1457,6 +1458,128 @@
                             </div>
 
                             <div class="max-h-[62vh] overflow-y-auto pr-2">
+                                <!-- Objective (Vitals) -->
+                                <div
+                                    v-if="activeStudyTab === 'vitals'"
+                                    class="rounded-xl border border-gray-200 bg-white p-5"
+                                >
+                                    <h4
+                                        class="mb-1 text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
+                                    >
+                                        Objective (Vitals)
+                                    </h4>
+                                    <p class="mb-4 text-[11px] text-gray-400">
+                                        Taken at the bench — pre-fills the
+                                        doctor's consultation. Press
+                                        <kbd
+                                            class="rounded border border-gray-300 bg-gray-50 px-1 font-sans"
+                                            >Enter</kbd
+                                        >
+                                        to jump to the next field.
+                                    </p>
+                                    <div
+                                        class="grid grid-cols-2 gap-4 sm:grid-cols-3"
+                                    >
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-semibold text-gray-500"
+                                                >BP Sys (mmHg)</label
+                                            >
+                                            <input
+                                                type="number"
+                                                v-model.number="
+                                                    studyForm.vitals_data.bp_sys
+                                                "
+                                                placeholder="120"
+                                                min="40"
+                                                max="300"
+                                                class="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-semibold text-gray-500"
+                                                >BP Dia (mmHg)</label
+                                            >
+                                            <input
+                                                type="number"
+                                                v-model.number="
+                                                    studyForm.vitals_data.bp_dia
+                                                "
+                                                placeholder="80"
+                                                min="20"
+                                                max="200"
+                                                class="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-semibold text-gray-500"
+                                                >Heart Rate (bpm)</label
+                                            >
+                                            <input
+                                                type="number"
+                                                v-model.number="
+                                                    studyForm.vitals_data.hr
+                                                "
+                                                placeholder="72"
+                                                min="20"
+                                                max="300"
+                                                class="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-semibold text-gray-500"
+                                                >Resp. Rate</label
+                                            >
+                                            <input
+                                                type="number"
+                                                v-model.number="
+                                                    studyForm.vitals_data.rr
+                                                "
+                                                placeholder="18"
+                                                min="4"
+                                                max="80"
+                                                class="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-semibold text-gray-500"
+                                                >Temp (°C)</label
+                                            >
+                                            <input
+                                                type="number"
+                                                v-model.number="
+                                                    studyForm.vitals_data.temp
+                                                "
+                                                placeholder="36.5"
+                                                min="30"
+                                                max="45"
+                                                step="0.1"
+                                                class="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-semibold text-gray-500"
+                                                >SpO₂ (%)</label
+                                            >
+                                            <input
+                                                type="number"
+                                                v-model.number="
+                                                    studyForm.vitals_data.spo2
+                                                "
+                                                placeholder="97"
+                                                min="40"
+                                                max="100"
+                                                class="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <EchoForm
                                     v-if="activeStudyTab === 'echo'"
                                     v-model:echo-data="studyForm.echo_data"
@@ -1778,10 +1901,11 @@ const studyBusy = ref(false);
 const studyLocked = ref(false);
 const studySavedAt = ref(false);
 const activeStudyTab = ref<
-    'echo' | 'tmt' | 'doppler' | 'stress_echo' | 'abpm'
->('echo');
+    'vitals' | 'echo' | 'tmt' | 'doppler' | 'stress_echo' | 'abpm'
+>('vitals');
 
 const studyTabs = [
+    { value: 'vitals', label: 'Vitals' },
     { value: 'echo', label: 'Echo' },
     { value: 'tmt', label: 'TMT' },
     { value: 'doppler', label: 'Doppler' },
@@ -1905,7 +2029,7 @@ async function openStudyForm(appt: any): Promise<void> {
     studyForm.clearErrors();
     studyForm.reset();
     studyFormOpen.value = true;
-    activeStudyTab.value = 'echo';
+    activeStudyTab.value = 'vitals';
     studyLocked.value = false;
     studySavedAt.value = false;
     studyLoading.value = true;
@@ -1934,6 +2058,7 @@ async function openStudyForm(appt: any): Promise<void> {
             mergeStudyValues(blank.doppler_data, data.doppler_data);
             mergeStudyValues(blank.stress_echo_data, data.stress_echo_data);
             mergeStudyValues(blank.abpm_data, data.abpm_data);
+            mergeStudyValues(blank.vitals_data, data.vitals_data);
         }
 
         studyForm.echo_data = blank.echo_data;
@@ -1941,6 +2066,7 @@ async function openStudyForm(appt: any): Promise<void> {
         studyForm.doppler_data = blank.doppler_data;
         studyForm.stress_echo_data = blank.stress_echo_data;
         studyForm.abpm_data = blank.abpm_data;
+        studyForm.vitals_data = blank.vitals_data;
 
         studyScans.value = Array.isArray(data.documents) ? data.documents : [];
     } catch (err: any) {
@@ -1985,6 +2111,46 @@ function dateKey(d: Date): string {
 }
 function isToday(key: string): boolean {
     return key === dateKey(new Date());
+}
+
+/**
+ * Quality-of-life: pressing Enter in a text/number/select field jumps to the
+ * next visible field instead of submitting or doing nothing. Textareas keep
+ * Enter for new lines, and buttons/links keep their native Enter behaviour.
+ */
+function onEnterAdvance(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    const tag = target.tagName;
+    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') return;
+    if (tag !== 'INPUT' && tag !== 'SELECT') return;
+
+    // Never let Enter implicitly submit a surrounding form.
+    event.preventDefault();
+
+    const container = event.currentTarget as HTMLElement;
+    const fields = Array.from(
+        container.querySelectorAll<HTMLElement>(
+            'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+        ),
+    ).filter((el) => el.offsetParent !== null);
+
+    const index = fields.indexOf(target);
+    if (index === -1) return;
+
+    const next = fields[index + 1];
+    if (!next) return;
+
+    next.focus();
+    if (
+        next instanceof HTMLInputElement &&
+        next.type !== 'checkbox' &&
+        next.type !== 'radio' &&
+        next.type !== 'file'
+    ) {
+        next.select();
+    }
 }
 
 const apptsByDay = computed<Record<string, any[]>>(() => {

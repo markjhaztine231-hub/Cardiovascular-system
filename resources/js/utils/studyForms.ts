@@ -4,6 +4,7 @@ import type {
     DopplerData,
     StressEchoData,
     AbpmData,
+    VitalsData,
 } from '@/types/appointment';
 
 /**
@@ -186,6 +187,15 @@ export const DEFAULT_STRESS_ECHO_DATA: StressEchoData = {
     conclusion: '',
 };
 
+export const DEFAULT_VITALS_DATA: VitalsData = {
+    bp_sys: null,
+    bp_dia: null,
+    hr: null,
+    rr: null,
+    temp: null,
+    spo2: null,
+};
+
 export const DEFAULT_ABPM_DATA: AbpmData = {
     requesting_physician: '',
     file_no: '',
@@ -231,6 +241,7 @@ export function blankStudyForms(): {
     doppler_data: DopplerData;
     stress_echo_data: StressEchoData;
     abpm_data: AbpmData;
+    vitals_data: VitalsData;
 } {
     return {
         echo_data: { ...DEFAULT_ECHO_DATA },
@@ -244,5 +255,6 @@ export function blankStudyForms(): {
             stages: [],
         },
         abpm_data: { ...DEFAULT_ABPM_DATA },
+        vitals_data: { ...DEFAULT_VITALS_DATA },
     };
 }

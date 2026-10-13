@@ -301,4 +301,150 @@ class StudyDataReceptionTest extends TestCase
                 ->where('ocrHistory', [])
             );
     }
+
+    private function vitalsPayload(): array
+    {
+        return [
+            'vitals_data' => [
+                'bp_sys' => '120',
+                'bp_dia' => '80',
+                'hr' => '72',
+                'rr' => '18',
+                'temp' => '36.5',
+                'spo2' => '98',
+            ],
+        ];
+    }
+
+    public function test_receptionist_saves_vitals_only_as_a_draft_encounter(): void
+    {
+        $response = $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", $this->vitalsPayload());
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $encounter = Encounter::where('appointment_id', $this->appointment->id)->first();
+
+        $this->assertNotNull($encounter);
+        $this->assertSame('in_progress', $encounter->status);
+        // No study type was chosen, so the visit stays classified for the doctor.
+        $this->assertSame('consultation', $encounter->encounter_type);
+
+        $this->assertDatabaseHas('vital_signs', [
+            'encounter_id' => $encounter->id,
+            'blood_pressure_systolic' => 120,
+            'blood_pressure_diastolic' => 80,
+            'heart_rate_bpm' => 72,
+            'respiratory_rate' => 18,
+            'temperature_celsius' => 36.5,
+            'oxygen_saturation_percent' => 98,
+        ]);
+
+        // Round-trips back into the receptionist modal's Vitals tab.
+        $this->actingAs($this->receptionist)
+            ->getJson("/appointments/{$this->appointment->id}/study-data")
+            ->assertOk()
+            ->assertJsonPath('saved', true)
+            ->assertJsonPath('vitals_data.bp_sys', 120)
+            ->assertJsonPath('vitals_data.bp_dia', 80)
+            ->assertJsonPath('vitals_data.hr', 72)
+            ->assertJsonPath('vitals_data.rr', 18)
+            ->assertJsonPath('vitals_data.temp', '36.5')
+            ->assertJsonPath('vitals_data.spo2', 98);
+    }
+
+    public function test_vitals_saved_alongside_a_study_are_updated_in_place(): void
+    {
+        $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", $this->studyPayload() + $this->vitalsPayload());
+
+        $encounter = Encounter::where('appointment_id', $this->appointment->id)->first();
+
+        $this->assertNotNull($encounter);
+        $this->assertSame('echo', $encounter->encounter_type);
+        $this->assertDatabaseCount('vital_signs', 1);
+
+        // The receptionist corrects a reading on the same draft.
+        $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", [
+                'echo_data' => ['lv_ef' => '55'],
+                'vitals_data' => [
+                    'bp_sys' => '130',
+                    'bp_dia' => '85',
+                    'hr' => '75',
+                    'rr' => '20',
+                    'temp' => '37.0',
+                    'spo2' => '99',
+                ],
+            ]);
+
+        $this->assertDatabaseCount('vital_signs', 1);
+        $this->assertDatabaseHas('vital_signs', [
+            'encounter_id' => $encounter->id,
+            'blood_pressure_systolic' => 130,
+            'blood_pressure_diastolic' => 85,
+            'heart_rate_bpm' => 75,
+        ]);
+    }
+
+    public function test_doctor_prefill_includes_receptionist_vitals(): void
+    {
+        $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", $this->vitalsPayload());
+
+        $this->actingAs($this->doctorUser)
+            ->getJson("/doctor/appointments/{$this->appointment->id}/consultation")
+            ->assertOk()
+            ->assertJsonPath('prefill.source', 'receptionist')
+            ->assertJsonPath('prefill.vitals_data.bp_sys', 120)
+            ->assertJsonPath('prefill.vitals_data.bp_dia', 80)
+            ->assertJsonPath('prefill.vitals_data.hr', 72)
+            ->assertJsonPath('prefill.vitals_data.rr', 18)
+            ->assertJsonPath('prefill.vitals_data.temp', '36.5')
+            ->assertJsonPath('prefill.vitals_data.spo2', 98);
+    }
+
+    public function test_vitals_are_range_validated(): void
+    {
+        $this->actingAs($this->receptionist)
+            ->putJson("/appointments/{$this->appointment->id}/study-data", [
+                'vitals_data' => [
+                    'bp_sys' => '301',
+                    'bp_dia' => '5',
+                    'hr' => '18',
+                    'temp' => '60',
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors([
+                'vitals_data.bp_sys',
+                'vitals_data.bp_dia',
+                'vitals_data.hr',
+                'vitals_data.temp',
+            ]);
+
+        $this->assertDatabaseCount('encounters', 0);
+        $this->assertDatabaseCount('vital_signs', 0);
+    }
+
+    public function test_blank_vitals_form_still_requires_a_value(): void
+    {
+        $this->actingAs($this->receptionist)
+            ->putJson("/appointments/{$this->appointment->id}/study-data", [
+                'vitals_data' => [
+                    'bp_sys' => null,
+                    'bp_dia' => null,
+                    'hr' => null,
+                    'rr' => null,
+                    'temp' => null,
+                    'spo2' => null,
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('echo_data');
+
+        $this->assertDatabaseCount('encounters', 0);
+        $this->assertDatabaseCount('vital_signs', 0);
+    }
 }

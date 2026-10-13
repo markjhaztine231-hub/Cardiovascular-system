@@ -5,6 +5,15 @@ export interface Prescription {
     duration: string | number;
 }
 
+export interface VitalsData {
+    bp_sys: number | null;
+    bp_dia: number | null;
+    hr: number | null;
+    rr: number | null;
+    temp: number | null;
+    spo2: number | null;
+}
+
 export interface Appointment {
     id: string | number;
     name: string;
