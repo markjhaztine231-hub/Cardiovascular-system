@@ -167,6 +167,55 @@
                 </div>
             </div>
 
+            <!-- Completed Today by Service -->
+            <div class="mb-8">
+                <h2
+                    class="mb-3 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                >
+                    Completed Today by Service
+                </h2>
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <div
+                        class="rounded-2xl border border-l-4 border-gray-200 border-l-indigo-500 bg-white p-5 shadow-sm"
+                    >
+                        <p
+                            class="text-xs font-bold tracking-widest text-gray-500 uppercase"
+                        >
+                            Consultation
+                        </p>
+                        <p class="mt-1 text-3xl font-black text-indigo-600">
+                            {{ stats?.completedConsultationToday || 0 }}
+                        </p>
+                    </div>
+                    <div
+                        class="rounded-2xl border border-l-4 border-gray-200 border-l-fuchsia-500 bg-white p-5 shadow-sm"
+                    >
+                        <p
+                            class="text-xs font-bold tracking-widest text-gray-500 uppercase"
+                        >
+                            Procedure
+                        </p>
+                        <p class="mt-1 text-3xl font-black text-fuchsia-600">
+                            {{ stats?.completedProcedureToday || 0 }}
+                        </p>
+                    </div>
+                    <div
+                        class="rounded-2xl border border-l-4 border-gray-200 border-l-cyan-500 bg-white p-5 shadow-sm"
+                    >
+                        <p
+                            class="text-xs font-bold tracking-widest text-gray-500 uppercase"
+                        >
+                            Consultation &amp; Procedure
+                        </p>
+                        <p class="mt-1 text-3xl font-black text-cyan-600">
+                            {{
+                                stats?.completedConsultationProcedureToday || 0
+                            }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- THE MASTER QUEUE -->
             <div
                 class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
@@ -504,7 +553,20 @@
                                         : '',
                                 ]"
                             >
-                                <div class="mb-1 flex justify-end">
+                                <div
+                                    class="mb-1 flex items-center justify-between gap-1"
+                                >
+                                    <span
+                                        v-if="cell.activity"
+                                        class="rounded px-1 py-0.5 text-[9px] font-extrabold"
+                                        :class="activityBadgeClass(cell.activity)"
+                                        :title="activityTooltip(cell.activity)"
+                                    >
+                                        {{ cell.activity.completed }}/{{
+                                            cell.activity.total
+                                        }}
+                                    </span>
+                                    <span v-else class="w-0"></span>
                                     <span
                                         class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
                                         :class="
@@ -549,6 +611,44 @@
                         >
                             {{ selectedDayLabel }}
                         </h4>
+                        <div
+                            v-if="selectedDayActivity"
+                            class="mt-2 flex flex-wrap items-center gap-2 text-xs"
+                        >
+                            <span class="font-bold text-gray-700">
+                                {{ selectedDayActivity.total }} appointment(s)
+                            </span>
+                            <span
+                                class="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700"
+                            >
+                                {{ selectedDayActivity.completed }} completed
+                            </span>
+                            <span
+                                v-if="selectedDayActivity.completed_consultation"
+                                class="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700"
+                            >
+                                Consultation
+                                {{ selectedDayActivity.completed_consultation }}
+                            </span>
+                            <span
+                                v-if="selectedDayActivity.completed_procedure"
+                                class="rounded-md border border-fuchsia-200 bg-fuchsia-50 px-2 py-0.5 font-bold text-fuchsia-700"
+                            >
+                                Procedure
+                                {{ selectedDayActivity.completed_procedure }}
+                            </span>
+                            <span
+                                v-if="
+                                    selectedDayActivity.completed_consultation_procedure
+                                "
+                                class="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-0.5 font-bold text-cyan-700"
+                            >
+                                Consult &amp; Proc
+                                {{
+                                    selectedDayActivity.completed_consultation_procedure
+                                }}
+                            </span>
+                        </div>
                         <div
                             v-if="selectedAppts.length > 0"
                             class="mt-2 divide-y divide-gray-100"
@@ -632,6 +732,98 @@
                             No appointments scheduled for this day.
                         </p>
                     </div>
+                </div>
+            </div>
+
+            <!-- DAILY ACTIVITY HISTORY -->
+            <div
+                class="mb-8 rounded-2xl border border-gray-200 bg-white shadow-sm"
+            >
+                <div class="border-b border-gray-200 px-6 py-4">
+                    <h3 class="font-bold text-gray-800">
+                        Daily Activity History
+                    </h3>
+                    <p class="mt-0.5 text-xs text-gray-500">
+                        Appointments and completed visits per calendar day (most
+                        recent 14)
+                    </p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead
+                            class="bg-gray-50 text-[11px] font-bold tracking-wider text-gray-500 uppercase"
+                        >
+                            <tr>
+                                <th class="px-6 py-3">Date</th>
+                                <th class="px-6 py-3 text-center">Total</th>
+                                <th class="px-6 py-3 text-center">Completed</th>
+                                <th class="px-6 py-3 text-center">
+                                    Consultation
+                                </th>
+                                <th class="px-6 py-3 text-center">Procedure</th>
+                                <th class="px-6 py-3 text-center">
+                                    Consult &amp; Proc
+                                </th>
+                                <th class="px-6 py-3 text-center">Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr
+                                v-for="row in recentActivity"
+                                :key="row.key"
+                                class="hover:bg-gray-50"
+                            >
+                                <td class="px-6 py-3 font-semibold text-gray-700">
+                                    {{ row.label }}
+                                </td>
+                                <td class="px-6 py-3 text-center text-gray-600">
+                                    {{ row.total }}
+                                </td>
+                                <td
+                                    class="px-6 py-3 text-center font-bold text-emerald-600"
+                                >
+                                    {{ row.completed }}
+                                </td>
+                                <td class="px-6 py-3 text-center text-indigo-600">
+                                    {{ row.completed_consultation }}
+                                </td>
+                                <td class="px-6 py-3 text-center text-fuchsia-600">
+                                    {{ row.completed_procedure }}
+                                </td>
+                                <td class="px-6 py-3 text-center text-cyan-600">
+                                    {{ row.completed_consultation_procedure }}
+                                </td>
+                                <td class="px-6 py-3 text-center">
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold"
+                                        :class="
+                                            row.completed >= row.total
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : 'bg-gray-100 text-gray-600'
+                                        "
+                                    >
+                                        {{
+                                            row.total > 0
+                                                ? Math.round(
+                                                      (row.completed /
+                                                          row.total) *
+                                                          100,
+                                                  )
+                                                : 0
+                                        }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr v-if="recentActivity.length === 0">
+                                <td
+                                    colspan="7"
+                                    class="px-6 py-8 text-center text-sm text-gray-500"
+                                >
+                                    No appointment history yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -1779,6 +1971,60 @@ const apptsByDay = computed<Record<string, any[]>>(() => {
     return map;
 });
 
+type DayActivity = {
+    total: number;
+    completed: number;
+    completed_consultation: number;
+    completed_procedure: number;
+    completed_consultation_procedure: number;
+};
+
+const dailyActivity = computed<Record<string, DayActivity>>(
+    () => (props.stats?.dailyActivity ?? {}) as Record<string, DayActivity>,
+);
+
+function activityFor(key: string): DayActivity | null {
+    return dailyActivity.value[key] ?? null;
+}
+
+function activityBadgeClass(a: DayActivity): string {
+    if (a.total > 0 && a.completed >= a.total) {
+        return 'bg-emerald-100 text-emerald-700';
+    }
+
+    if (a.completed > 0) {
+        return 'bg-teal-100 text-teal-700';
+    }
+
+    return 'bg-gray-100 text-gray-500';
+}
+
+function activityTooltip(a: DayActivity): string {
+    return `${a.completed} of ${a.total} completed — Consultation ${a.completed_consultation}, Procedure ${a.completed_procedure}, Consult & Procedure ${a.completed_consultation_procedure}`;
+}
+
+const selectedDayActivity = computed<DayActivity | null>(() =>
+    activityFor(selectedDateKey.value),
+);
+
+const recentActivity = computed(() => {
+    const todayKey = dateKey(new Date());
+
+    return Object.entries(dailyActivity.value)
+        .filter(([key, a]) => a.total > 0 && key <= todayKey)
+        .sort(([a], [b]) => (a < b ? 1 : -1))
+        .slice(0, 14)
+        .map(([key, a]) => ({
+            key,
+            label: new Date(`${key}T00:00:00`).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+            }),
+            ...a,
+        }));
+});
+
 const calendarLabel = computed(() =>
     calendarCursor.value.toLocaleDateString('en-US', {
         month: 'long',
@@ -1803,6 +2049,7 @@ const calendarWeeks = computed(() => {
             day: date.getDate(),
             inMonth: date.getMonth() === m,
             appts: apptsByDay.value[key] || [],
+            activity: activityFor(key),
         };
 
         if (i % 7 === 0) {

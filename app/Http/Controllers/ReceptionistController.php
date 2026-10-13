@@ -23,10 +23,26 @@ class ReceptionistController extends Controller
         }
 
         $stats = Cache::remember('receptionist_stats', 60, function () {
+            $dailyActivity = $this->dailyActivity();
+            $today = today()->toDateString();
+            $todayActivity = $dailyActivity[$today] ?? [
+                'total' => 0,
+                'completed' => 0,
+                'completed_consultation' => 0,
+                'completed_procedure' => 0,
+                'completed_consultation_procedure' => 0,
+            ];
+
             return [
                 'totalPatients' => Patient::count(),
                 'appointmentsToday' => Appointment::whereDate('scheduled_date', today())->count(),
-                'completedToday' => Appointment::whereDate('scheduled_date', today())->where('status', 'Completed')->count(),
+                'completedToday' => $todayActivity['completed'],
+                'completedConsultationToday' => $todayActivity['completed_consultation'],
+                'completedProcedureToday' => $todayActivity['completed_procedure'],
+                'completedConsultationProcedureToday' => $todayActivity['completed_consultation_procedure'],
+                // Per-calendar-day totals + completed-by-service, keyed by
+                // Y-m-d, so the dashboard can render history in the calendar.
+                'dailyActivity' => $dailyActivity,
             ];
         });
 
@@ -203,5 +219,36 @@ class ReceptionistController extends Controller
             'auditLogs' => $auditLogs,
             'rescheduleRequests' => $rescheduleRequests,
         ]);
+    }
+
+    /**
+     * Aggregate appointment counts per calendar day, broken down by service
+     * type for completed visits. Keyed by Y-m-d so the receptionist calendar
+     * can render each day's totals without an extra round-trip.
+     *
+     * @return array<string, array<string, int>>
+     */
+    private function dailyActivity(): array
+    {
+        return Appointment::query()
+            ->selectRaw('DATE(scheduled_date) as activity_date')
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed")
+            ->selectRaw("SUM(CASE WHEN status = 'Completed' AND service_type = 'Consultation' THEN 1 ELSE 0 END) as completed_consultation")
+            ->selectRaw("SUM(CASE WHEN status = 'Completed' AND service_type = 'Procedure' THEN 1 ELSE 0 END) as completed_procedure")
+            ->selectRaw("SUM(CASE WHEN status = 'Completed' AND service_type = 'Consultation and Procedure' THEN 1 ELSE 0 END) as completed_consultation_procedure")
+            ->groupByRaw('DATE(scheduled_date)')
+            ->orderByRaw('DATE(scheduled_date)')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                Carbon::parse($row->activity_date)->format('Y-m-d') => [
+                    'total' => (int) $row->total,
+                    'completed' => (int) $row->completed,
+                    'completed_consultation' => (int) $row->completed_consultation,
+                    'completed_procedure' => (int) $row->completed_procedure,
+                    'completed_consultation_procedure' => (int) $row->completed_consultation_procedure,
+                ],
+            ])
+            ->all();
     }
 }
