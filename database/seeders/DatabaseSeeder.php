@@ -113,7 +113,7 @@ class DatabaseSeeder extends Seeder
             'provider_id'      => $doctor1->id,
             'scheduled_date'   => now()->toDateString(),
             'scheduled_time'   => '10:00:00',
-            'service_type'     => 'ECG & Heart Checkup',
+            'service_type'     => 'Procedure',
             'status'           => 'Scheduled',
             'reason_for_visit' => 'Routine cardiovascular checkup',
         ]);
@@ -123,7 +123,7 @@ class DatabaseSeeder extends Seeder
             'provider_id'      => $doctor2->id,
             'scheduled_date'   => now()->toDateString(),
             'scheduled_time'   => '14:30:00',
-            'service_type'     => 'Echocardiogram',
+            'service_type'     => 'Procedure',
             'status'           => 'Scheduled',
             'reason_for_visit' => 'Follow-up echocardiogram review',
         ]);

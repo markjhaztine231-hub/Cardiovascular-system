@@ -201,9 +201,9 @@
                         >
                             <option value="" disabled>Select service...</option>
                             <option value="Consultation">Consultation</option>
-                            <option value="Lab Exam">Lab Exam</option>
-                            <option value="Consultation with Lab Exam">
-                                Consultation with Lab Exam
+                            <option value="Procedure">Procedure</option>
+                            <option value="Consultation and Procedure">
+                                Consultation and Procedure
                             </option>
                         </select>
                         <p

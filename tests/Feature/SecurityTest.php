@@ -94,7 +94,7 @@ class SecurityTest extends TestCase
             'provider_id' => $provider->id,
             'scheduled_date' => now()->toDateString(),
             'scheduled_time' => '09:00:00',
-            'service_type' => 'ECG & Heart Checkup',
+            'service_type' => 'Procedure',
             'status' => 'Completed',
         ]);
 

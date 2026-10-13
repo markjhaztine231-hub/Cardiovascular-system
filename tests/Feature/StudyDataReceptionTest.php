@@ -183,6 +183,30 @@ class StudyDataReceptionTest extends TestCase
             ->assertJsonPath('prefill', null);
     }
 
+    public function test_receptionist_study_modal_includes_scans_with_converted_text(): void
+    {
+        Document::create([
+            'patient_id' => $this->patient->id,
+            'appointment_id' => $this->appointment->id,
+            'uploaded_by' => $this->receptionist->id,
+            'type' => 'echo',
+            'original_filename' => 'scan.echo.png',
+            'image_path' => 'documents/scan.echo.png',
+            'ocr_status' => 'completed',
+            'ocr_confidence' => 0.92,
+            'ocr_text' => "Ejection Fraction\n55%",
+        ]);
+
+        $response = $this->actingAs($this->receptionist)
+            ->getJson("/appointments/{$this->appointment->id}/study-data");
+
+        $response->assertOk()
+            ->assertJsonPath('documents.0.type', 'echo')
+            ->assertJsonPath('documents.0.original_filename', 'scan.echo.png')
+            ->assertJsonPath('documents.0.ocr_status', 'completed')
+            ->assertJsonPath('documents.0.ocr_text', "Ejection Fraction\n55%");
+    }
+
     public function test_doctor_patient_history_includes_ocr_documents(): void
     {
         Document::create([

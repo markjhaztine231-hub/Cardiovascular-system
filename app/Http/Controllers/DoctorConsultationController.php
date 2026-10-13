@@ -8,11 +8,9 @@ use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\Patient;
 use App\Services\PrescriptionTextParser;
-use App\Services\StudyAutoFillService;
 use App\Support\ClinicalRecordMapper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 
 class DoctorConsultationController extends Controller
 {
@@ -71,50 +69,6 @@ class DoctorConsultationController extends Controller
         }
 
         return $this->show($appointment->fresh());
-    }
-
-    /**
-     * Ask the AI provider chain to turn an OCR'd echo / TMT / Doppler scan into
-     * a structured field set that pre-fills the study forms. Results are cached
-     * per document for 24h and are always just a draft for the doctor to review.
-     */
-    public function autoFillScan(Request $request, Appointment $appointment, Document $document)
-    {
-        $this->authorizeDoctor($appointment);
-
-        abort_unless(
-            $appointment->documents()->whereKey($document->id)->exists(),
-            404,
-            'This scan does not belong to the appointment.'
-        );
-
-        abort_unless(
-            in_array($document->type, ['echo', 'tmt', 'doppler'], true),
-            422,
-            'Auto-fill only supports Echo, TMT and Doppler scans.'
-        );
-
-        abort_unless($document->ocr_status === 'completed', 422, 'The scan text is not ready yet; wait for OCR to finish.');
-
-        $key = "scan-autofill:{$document->id}";
-        $cached = $request->boolean('refresh') ? false : Cache::has($key);
-
-        if ($request->boolean('refresh')) {
-            Cache::forget($key);
-        }
-
-        try {
-            $result = Cache::remember($key, now()->addHours(24), fn () => app(StudyAutoFillService::class)->extract($document->type, (string) $document->ocr_text));
-        } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 502);
-        }
-
-        return response()->json([
-            'type' => $result['type'],
-            'fields' => $result['fields'],
-            'provider' => $result['provider'],
-            'cached' => $cached,
-        ]);
     }
 
     /**

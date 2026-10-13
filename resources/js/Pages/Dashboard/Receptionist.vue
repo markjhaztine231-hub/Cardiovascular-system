@@ -1260,6 +1260,139 @@
                     </div>
 
                     <div class="max-h-[62vh] overflow-y-auto pr-2">
+                        <section
+                            v-if="studyScans.length > 0"
+                            class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                        >
+                            <h4
+                                class="mb-3 flex items-center justify-between text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                            >
+                                Scans & converted text
+                                <span
+                                    class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-600"
+                                >
+                                    {{ studyScans.length }}
+                                </span>
+                            </h4>
+                            <div class="space-y-3">
+                                <div
+                                    v-for="doc in studyScans"
+                                    :key="doc.id"
+                                    class="rounded-lg border border-gray-200 bg-white p-3"
+                                >
+                                    <div
+                                        class="flex flex-wrap items-center justify-between gap-2"
+                                    >
+                                        <div
+                                            class="flex min-w-0 items-center gap-2"
+                                        >
+                                            <span
+                                                class="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase"
+                                                :class="
+                                                    studyScanTypeBadge(
+                                                        doc.type,
+                                                    )
+                                                "
+                                            >
+                                                {{ studyScanTypeLabel(doc.type) }}
+                                            </span>
+                                            <a
+                                                v-if="doc.url"
+                                                :href="doc.url"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="truncate text-[13px] font-bold text-gray-800 hover:text-[#146b8a]"
+                                            >
+                                                {{
+                                                    doc.original_filename ||
+                                                    `Scan #${doc.id}`
+                                                }}
+                                            </a>
+                                            <span
+                                                v-else
+                                                class="truncate text-[13px] font-bold text-gray-800"
+                                            >
+                                                {{
+                                                    doc.original_filename ||
+                                                    `Scan #${doc.id}`
+                                                }}
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="flex shrink-0 items-center gap-2"
+                                        >
+                                            <span
+                                                class="rounded-md px-2 py-0.5 text-[10px] font-bold"
+                                                :class="
+                                                    studyScanStatusBadge(
+                                                        doc.ocr_status,
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    studyScanStatusLabel(
+                                                        doc.ocr_status,
+                                                    )
+                                                }}
+                                            </span>
+                                            <span
+                                                v-if="
+                                                    doc.ocr_confidence !== null
+                                                "
+                                                class="rounded-md bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-600"
+                                            >
+                                                {{
+                                                    studyScanConfidence(
+                                                        doc.ocr_confidence,
+                                                    )
+                                                }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <p
+                                        v-if="doc.ocr_error"
+                                        class="mt-2 text-xs font-semibold text-red-600"
+                                    >
+                                        {{ doc.ocr_error }}
+                                    </p>
+
+                                    <div class="mt-2 border-t border-gray-100 pt-2">
+                                        <button
+                                            v-if="doc.ocr_text"
+                                            type="button"
+                                            @click="
+                                                toggleStudyScanText(doc.id)
+                                            "
+                                            class="text-xs font-bold text-[#146b8a] hover:underline"
+                                        >
+                                            {{
+                                                openStudyScanText.has(doc.id)
+                                                    ? 'Hide converted text'
+                                                    : 'Show converted text'
+                                            }}
+                                        </button>
+                                        <pre
+                                            v-if="
+                                                openStudyScanText.has(doc.id)
+                                            "
+                                            class="mt-2 max-h-48 overflow-auto rounded-lg bg-gray-50 p-3 text-xs whitespace-pre-wrap break-words text-gray-700"
+                                        >{{ doc.ocr_text }}</pre>
+                                        <p
+                                            v-if="
+                                                !doc.ocr_text &&
+                                                doc.ocr_status !== 'processing' &&
+                                                doc.ocr_status !== 'pending'
+                                            "
+                                            class="text-xs text-gray-400"
+                                        >
+                                            No converted text for this scan.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
                         <EchoForm
                             v-if="activeStudyTab === 'echo'"
                             v-model:echo-data="studyForm.echo_data"
@@ -1418,6 +1551,80 @@ const studyTabs = [
 
 const studyForm = useForm(blankStudyForms());
 
+const studyScans = ref<any[]>([]);
+const openStudyScanText = ref<Set<number>>(new Set());
+
+function toggleStudyScanText(id: number): void {
+    const next = new Set(openStudyScanText.value);
+
+    if (next.has(id)) {
+        next.delete(id);
+    } else {
+        next.add(id);
+    }
+
+    openStudyScanText.value = next;
+}
+
+const studyScanTypeLabels: Record<string, string> = {
+    echo: 'Echo',
+    tmt: 'TMT',
+    doppler: 'Doppler',
+    prescription: 'Prescription',
+    lab_result: 'Lab Result',
+    referral: 'Referral',
+    other: 'Other',
+};
+
+function studyScanTypeLabel(type: string): string {
+    return studyScanTypeLabels[type] ?? 'Scan';
+}
+
+const studyScanTypeBadges: Record<string, string> = {
+    echo: 'bg-indigo-100 text-indigo-700',
+    tmt: 'bg-fuchsia-100 text-fuchsia-700',
+    doppler: 'bg-cyan-100 text-cyan-700',
+    prescription: 'bg-emerald-100 text-emerald-700',
+    lab_result: 'bg-amber-100 text-amber-700',
+    referral: 'bg-blue-100 text-blue-700',
+};
+
+function studyScanTypeBadge(type: string): string {
+    return studyScanTypeBadges[type] ?? 'bg-gray-100 text-gray-600';
+}
+
+function studyScanStatusLabel(status: string): string {
+    switch (status) {
+        case 'completed':
+            return 'Recognised';
+        case 'processing':
+        case 'pending':
+            return 'Processing';
+        case 'failed':
+            return 'Failed';
+        default:
+            return status || 'Queued';
+    }
+}
+
+function studyScanStatusBadge(status: string): string {
+    switch (status) {
+        case 'completed':
+            return 'bg-emerald-100 text-emerald-700';
+        case 'processing':
+        case 'pending':
+            return 'bg-blue-100 text-blue-700';
+        case 'failed':
+            return 'bg-red-100 text-red-700';
+        default:
+            return 'bg-gray-200 text-gray-600';
+    }
+}
+
+function studyScanConfidence(value: number | null): string {
+    return value === null || value === undefined ? 'N/A' : `${Math.round(value * 100)}%`;
+}
+
 /** Merge saved values into the blank form, keeping only non-empty keys so an
  * older record never leaves stray empty strings in the form. */
 function mergeStudyValues(target: Record<string, any>, source: Record<string, any> | null): void {
@@ -1479,6 +1686,8 @@ async function openStudyForm(appt: any): Promise<void> {
         }
 
         studyForm.setData(blank);
+
+        studyScans.value = Array.isArray(data.documents) ? data.documents : [];
     } catch (err: any) {
         showError(err?.message ?? 'Could not load saved study data.');
     } finally {
@@ -1492,6 +1701,8 @@ function closeStudyForm(): void {
     studyAppt.value = null;
     studyLocked.value = false;
     studySavedAt.value = false;
+    studyScans.value = [];
+    openStudyScanText.value = new Set();
     studyForm.reset();
     studyForm.clearErrors();
 }

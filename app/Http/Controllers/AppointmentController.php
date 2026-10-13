@@ -11,6 +11,7 @@ use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\Diagnosis;
 use App\Models\DoctorSchedule;
+use App\Models\Document;
 use App\Models\DopplerStudy;
 use App\Models\Echocardiogram;
 use App\Models\Encounter;
@@ -42,7 +43,7 @@ class AppointmentController extends Controller
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required',
-            'service' => 'required|string|in:Consultation,Lab Exam,Consultation with Lab Exam',
+            'service' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
         ]);
 
         // Reject past/too-near slots when booking for today — mirrors the
@@ -255,7 +256,7 @@ class AppointmentController extends Controller
             'gender' => 'required|string|in:Male,Female',
             'phone' => 'required|string|max:20',
             'doctor_id' => 'required|exists:providers,id',
-            'service_type' => 'required|string|in:Consultation,Lab Exam,Consultation with Lab Exam',
+            'service_type' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
             'date' => 'required|date',
             'time' => 'required',
         ]);
@@ -372,7 +373,7 @@ class AppointmentController extends Controller
         $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'doctor_id' => 'required|exists:providers,id',
-            'service_type' => 'required|string|in:Consultation,Lab Exam,Consultation with Lab Exam',
+            'service_type' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
             'date' => 'required|date',
             'time' => 'required',
         ]);
@@ -642,29 +643,41 @@ class AppointmentController extends Controller
             'echocardiogram', 'treadmillTest', 'dopplerStudy',
         ])->first();
 
-        if (! $encounter) {
-            return response()->json([
-                'saved' => false,
-                'status' => null,
-                'echo_data' => null,
-                'tmt_data' => null,
-                'doppler_data' => null,
-            ]);
-        }
+        $appointment->load('documents.uploader:id,name');
 
-        return response()->json([
-            'saved' => true,
-            'status' => $encounter->status,
-            'echo_data' => $encounter->echocardiogram
+        $payload = [
+            'saved' => $encounter !== null,
+            'status' => $encounter?->status,
+            'echo_data' => $encounter?->echocardiogram
                 ? ClinicalRecordMapper::forPayload($encounter->echocardiogram)
                 : null,
-            'tmt_data' => $encounter->treadmillTest
+            'tmt_data' => $encounter?->treadmillTest
                 ? ClinicalRecordMapper::forPayload(null, $encounter->treadmillTest)
                 : null,
-            'doppler_data' => $encounter->dopplerStudy
+            'doppler_data' => $encounter?->dopplerStudy
                 ? ClinicalRecordMapper::forPayload(null, null, $encounter->dopplerStudy)
                 : null,
-        ]);
+        ];
+
+        if (! $encounter) {
+            $payload['status'] = null;
+        }
+
+        return response()->json(array_merge($payload, [
+            'documents' => $appointment->documents->map(fn (Document $d) => [
+                'id' => $d->id,
+                'type' => $d->type,
+                'original_filename' => $d->original_filename,
+                'url' => $d->url(),
+                'ocr_status' => $d->ocr_status,
+                'ocr_confidence' => $d->ocr_confidence,
+                'ocr_error' => $d->ocr_error,
+                'requires_review' => $d->requiresReview(),
+                'uploaded_by' => $d->uploader?->name,
+                'ocr_text' => $d->ocr_text,
+                'created_at' => $d->created_at?->toIso8601String(),
+            ])->values()->all(),
+        ]));
     }
 
     /**
@@ -1447,7 +1460,7 @@ class AppointmentController extends Controller
             'scheduled_date' => $request->date,
             'scheduled_time' => $request->time,
             'duration_minutes' => 30,
-            'service_type' => 'Follow-up Consultation',
+            'service_type' => 'Consultation',
             'status' => 'Scheduled',
             'notes' => 'Follow-up from consultation on '.
                                   Carbon::parse($appointment->scheduled_date)->format('M d, Y'),

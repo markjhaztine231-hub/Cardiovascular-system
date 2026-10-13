@@ -69,7 +69,7 @@ class MonthlyReportAgeAnalyticsTest extends TestCase
             'provider_id' => $this->provider->id,
             'scheduled_date' => Carbon::parse('2026-09-10'),
             'scheduled_time' => '09:00',
-            'service_type' => 'General Cardiology',
+            'service_type' => 'Consultation',
             'status' => 'Completed',
         ]);
     }

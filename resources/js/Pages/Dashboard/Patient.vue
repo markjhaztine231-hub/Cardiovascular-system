@@ -685,16 +685,16 @@
                                                     Consultation
                                                 </option>
                                                 <option
-                                                    value="Lab Exam"
+                                                    value="Procedure"
                                                     class="text-gray-900"
                                                 >
-                                                    Lab Exam
+                                                    Procedure
                                                 </option>
                                                 <option
-                                                    value="Consultation with Lab Exam"
+                                                    value="Consultation and Procedure"
                                                     class="text-gray-900"
                                                 >
-                                                    Consultation with Lab Exam
+                                                    Consultation and Procedure
                                                 </option>
                                             </select>
                                         </div>
