@@ -1936,7 +1936,11 @@ async function openStudyForm(appt: any): Promise<void> {
             mergeStudyValues(blank.abpm_data, data.abpm_data);
         }
 
-        studyForm.setData(blank);
+        studyForm.echo_data = blank.echo_data;
+        studyForm.tmt_data = blank.tmt_data;
+        studyForm.doppler_data = blank.doppler_data;
+        studyForm.stress_echo_data = blank.stress_echo_data;
+        studyForm.abpm_data = blank.abpm_data;
 
         studyScans.value = Array.isArray(data.documents) ? data.documents : [];
     } catch (err: any) {
