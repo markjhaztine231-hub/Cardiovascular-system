@@ -1,169 +1,182 @@
+@php
+    $d = $data ?? [];
+    $stages = is_array($d['stages'] ?? null) ? $d['stages'] : [];
+    $lastStage = ! empty($stages) ? end($stages) : [];
+    $lastStageName = is_array($lastStage) ? ($lastStage['stage'] ?? '') : '';
+@endphp
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Stress Echocardiogram Report</title>
-<style>
-@page { size: 8.5in 11in; margin: 0.5in; }
-body { font-family: Arial, sans-serif; font-size: 8pt; color: #000; margin: 0; line-height: 1.5; }
-h2 { text-align: center; font-size: 11pt; margin: 3px 0 2px; text-transform: uppercase; }
-h3 { font-size: 8pt; margin: 6px 0 2px; text-transform: uppercase; }
-p { margin: 3px 0; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-td, th { padding: 3px 4px; border: 1px solid #000; vertical-align: middle; font-size: 8pt; }
-th { background: #e5e5e5; }
-.clinic-header { text-align: center; margin-bottom: 8px; }
-.clinic-name { font-size: 16pt; font-weight: bold; color: #8B0000; }
-.clinic-sub { font-size: 8pt; }
-.report-box { border: 1px solid #000; padding: 8px; }
-.row { margin-bottom: 4px; }
-.blank {
-    display: inline-block;
-    border-bottom: 1px solid #000;
-    padding: 0 2px;
-    min-height: 12px;
-    line-height: 1.4;
-    white-space: pre-wrap;
-}
-.blank.short { min-width: 70px; }
-.blank.medium { min-width: 130px; }
-.blank.long { min-width: 210px; }
-.blank.full { min-width: 100%; }
-.notes {
-    border: 1px solid #000;
-    min-height: 80px;
-    padding: 6px;
-    white-space: pre-wrap;
-}
-.signature-block { width: 100%; margin-top: 30px; border-collapse: collapse; }
-.signature-block td { border: none; }
-.signature-line {
-    border-top: 1px solid #000;
-    border: none;
-    border-top: 1px solid #000;
-    text-align: center;
-    padding-top: 5px;
-    width: 45%;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Stress Echocardiogram Report</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            color: #000;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #a82036;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .header-title span {
+            color: #3b7bb5;
+        }
+        .header-sub {
+            font-size: 11px;
+            margin-top: 5px;
+            color: #333;
+        }
+
+        /* Main Titles */
+        .report-title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: underline;
+            margin: 30px 0 20px 0;
+        }
+
+        /* Form Elements */
+        .info-table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 5px 0;
+            vertical-align: bottom;
+        }
+
+        /* Blank lines for filling up */
+        .blank {
+            display: inline-block;
+            border-bottom: 1px solid #000;
+            min-height: 14px;
+            vertical-align: bottom;
+            margin: 0 2px;
+        }
+        .blank-xs { width: 30px; }
+        .blank-sm { width: 50px; }
+        .blank-md { width: 80px; }
+        .blank-lg { width: 120px; }
+        .blank-xl { width: 200px; }
+
+        /* Narrative answer boxes */
+        .notes {
+            border: 1px solid #000;
+            min-height: 60px;
+            padding: 6px;
+            white-space: pre-wrap;
+            text-align: left;
+            margin: 0 0 10px 0;
+        }
+
+        /* Paragraphs and Lists */
+        p {
+            margin: 0 0 10px 0;
+            text-align: justify;
+        }
+        ol {
+            margin: 0 0 15px 0;
+            padding-left: 20px;
+        }
+        ol li {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+
+        /* Signature Section */
+        .signature-section {
+            margin-top: 60px;
+            text-align: right;
+            padding-right: 50px;
+        }
+        .doctor-name {
+            font-weight: bold;
+            text-decoration: underline;
+            text-transform: uppercase;
+        }
+        .doctor-title {
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
-<div class="clinic-header">
-    <div class="clinic-name">CARDIOVASCULAR CARE CENTER</div>
-    <div class="clinic-sub">Rm 207 Mirasol bldg. 854 Apacible St, cor. Taft Ave. Mla. &bull; Tel. # 3537182</div>
-</div>
 
-<h2>Stress Echocardiogram</h2>
-<h2 style="font-size:9pt;">(Exercise Stress Test with Echocardiography)</h2>
-
-<div class="report-box">
-    <div class="row">
-        <strong>Patient Name:</strong> <span class="blank long">{{ $data['patient_name'] ?? $patient }}</span>
-        <strong>Age:</strong> <span class="blank short">{{ $data['age'] ?? '' }}</span>
-        <strong>Sex:</strong> <span class="blank short">{{ $data['sex'] ?? '' }}</span>
-        <strong>Date:</strong> <span class="blank short">{{ $date }}</span>
+    <div class="header">
+        <h1 class="header-title">CARDIOVASCULAR <span>CARE CENTER</span></h1>
+        <div class="header-sub">
+            Rm 207 Mirasol Bldg. 854 Apacible St, cor. Taft Ave. Mla., Tel. # 3537182
+        </div>
     </div>
 
-    <div class="row">
-        <strong>File No.:</strong> <span class="blank short">{{ $data['file_no'] ?? '' }}</span>
-        <strong>Requesting Physician:</strong> <span class="blank long">{{ $data['requesting_physician'] ?? '' }}</span>
-    </div>
+    <div class="report-title">STRESS ECHOCARDIOGRAM REPORT</div>
 
-    <div class="row">
-        <strong>Indication:</strong> <span class="blank full">{{ $data['indication'] ?? '' }}</span>
-    </div>
-
-    <div class="row">
-        <strong>Medications:</strong> <span class="blank long">{{ $data['medications'] ?? 'NONE' }}</span>
-    </div>
-
-    <div class="row">
-        <strong>Pre-Test:</strong>
-        BP: <span class="blank short">{{ $data['pre_bp'] ?? '' }}</span>
-        HR: <span class="blank short">{{ $data['pre_hr'] ?? '' }}</span>
-        Resting ECG: <span class="blank medium">{{ $data['pre_ecg'] ?? '' }}</span>
-        Symptoms: <span class="blank medium">{{ $data['pre_symptoms'] ?? '' }}</span>
-    </div>
-
-    <div class="row">
-        <strong>Exercise Protocol:</strong> <span class="blank long">{{ $data['protocol'] ?? '' }}</span>
-    </div>
-
-    <h3>Exercise Data</h3>
-    <table>
+    <table class="info-table">
         <tr>
-            <th>Stage</th>
-            <th>Time (min)</th>
-            <th>Speed (mph)</th>
-            <th>Grade (%)</th>
-            <th>HR (bpm)</th>
-            <th>BP (mmHg)</th>
-            <th>ECG Changes</th>
-            <th>Symptoms / Rhythm</th>
+            <td>NAME: <span class="blank" style="width: 220px;">{{ $d['patient_name'] ?? $patient }}</span></td>
+            <td style="text-align: center;">AGE: <span class="blank blank-md">{{ $d['age'] ?? '' }}</span> / <span class="blank blank-md"></span></td>
+            <td style="text-align: right;">DATE: <span class="blank blank-xl">{{ $date }}</span></td>
         </tr>
-        @php($stages = $data['stages'] ?? [])
-        @forelse ($stages as $stage)
-        <tr>
-            <td>{{ $stage['stage'] ?? '' }}</td>
-            <td>{{ $stage['time'] ?? '' }}</td>
-            <td>{{ $stage['speed'] ?? '' }}</td>
-            <td>{{ $stage['grade'] ?? '' }}</td>
-            <td>{{ $stage['hr'] ?? '' }}</td>
-            <td>{{ $stage['bp'] ?? '' }}</td>
-            <td>{{ $stage['ecg'] ?? '' }}</td>
-            <td>{{ $stage['symptoms'] ?? '' }}</td>
-        </tr>
-        @empty
-        <tr>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-        </tr>
-        @endforelse
     </table>
 
-    <div class="row">
-        <strong>Max HR:</strong> <span class="blank short">{{ $data['peak_hr'] ?? '' }}</span> bpm
-        <strong>Target HR:</strong> <span class="blank short">{{ $data['target_hr'] ?? '' }}</span> bpm
-        <strong>Peak BP:</strong> <span class="blank short">{{ $data['peak_bp'] ?? '' }}</span>
-        <strong>METs:</strong> <span class="blank short">{{ $data['mets'] ?? '' }}</span>
-        <strong>Reached Target:</strong> <span class="blank short">{{ $data['reached_target'] ?? '' }}</span>
+    <p><strong>Baseline ECG and Echocardiogram</strong></p>
+    <p>Baseline Blood Pressure: <span class="blank blank-md">{{ $d['pre_bp'] ?? '' }}</span></p>
+    <p>Baseline Heart Rate: <span class="blank blank-sm">{{ $d['pre_hr'] ?? '' }}</span></p>
+    <p>Baseline ECG: <span class="blank blank-xl">{{ $d['pre_ecg'] ?? '' }}</span></p>
+
+    <br>
+
+    <p><strong>Stress Findings:</strong></p>
+    <p>
+        Treadmill stress test was done using the <span class="blank blank-md">{{ $d['protocol'] ?? '' }}</span> Protocol and was carried up to stage <span class="blank blank-sm">{{ $lastStageName }}</span>. The total duration of exercise was <span class="blank blank-sm"></span> minutes achieving a maximum heart rate of <span class="blank blank-sm">{{ $d['peak_hr'] ?? '' }}</span> bpm which is <span class="blank blank-sm"></span> % of the predicted maximum heart rate for age at <span class="blank blank-sm">{{ $d['mets'] ?? '' }}</span> METS. Maximum blood pressure achieved at peak exercise was <span class="blank blank-md">{{ $d['peak_bp'] ?? '' }}</span> mmHg. There were <span class="blank blank-sm"></span> cardiac complaints during and after exercise.
+    </p>
+    <p>
+        Serial Treadmill Stress Electrocardiogram showed <span class="blank blank-md"></span> ST-T wave changes noted. <span class="blank blank-sm"></span> arrhythmia noted during exercise and recovery period. The test was stopped due to <span class="blank blank-md"></span>.
+    </p>
+    <p>
+        At immediate post exercise, the echocardiogram showed <span class="blank blank-md"></span> in contractility in all segments. The left ventricular ejection fraction increased from <span class="blank blank-sm">{{ $d['rest_ef'] ?? '' }}</span> % to <span class="blank blank-sm">{{ $d['peak_ef'] ?? '' }}</span> %.
+    </p>
+
+    <p><strong>FINDINGS / INTERPRETATION:</strong></p>
+    <div class="notes">{{ $d['findings'] ?? '' }}</div>
+
+    <br>
+
+    <p><strong>Conclusion:</strong></p>
+    <p>
+        Treadmill exercise test using the <span class="blank blank-md">{{ $d['protocol'] ?? '' }}</span> Protocol was maximal and negative for exercise-induced myocardial ischemia at <span class="blank blank-sm">{{ $d['mets'] ?? '' }}</span> mets.
+    </p>
+    <p>
+        Treadmill Stress Echocardiogram was negative for exercise-induced ischemia at <span class="blank blank-sm">{{ $d['mets'] ?? '' }}</span> METS.
+    </p>
+    <p>
+        Physiologic blood pressure response to exercise.
+    </p>
+    <p>
+        <span class="blank blank-md"></span> exercise capacity was <span class="blank blank-md"></span> for age.
+    </p>
+    @if (! empty($d['conclusion']))
+        <div class="notes">{{ $d['conclusion'] }}</div>
+    @endif
+
+    <div class="signature-section">
+        <div class="doctor-name">MAIDENLOVE RAGUERO-PANER MD, FPCP, FPCC</div>
+        <div class="doctor-title">Cardiologist</div>
     </div>
 
-    <h3>Echocardiographic Findings</h3>
-    <div class="row">
-        <strong>At Rest:</strong> EF: <span class="blank short">{{ $data['rest_ef'] ?? '' }}</span>%
-        Wall Motion: <span class="blank long">{{ $data['rest_wma'] ?? '' }}</span>
-    </div>
-    <div class="row">
-        <strong>At Peak Stress:</strong> EF: <span class="blank short">{{ $data['peak_ef'] ?? '' }}</span>%
-        Wall Motion: <span class="blank long">{{ $data['peak_wma'] ?? '' }}</span>
-    </div>
-    <div class="row">
-        <strong>Ischaemia / Scar / Viability:</strong> <span class="blank long">{{ $data['ischaemia'] ?? '' }}</span>
-    </div>
-
-    <h3>Findings / Interpretation</h3>
-    <div class="notes">{{ $data['findings'] ?? '' }}</div>
-
-    <h3>Conclusion</h3>
-    <div class="notes">{{ $data['conclusion'] ?? '' }}</div>
-</div>
-
-<table class="signature-block">
-    <tr>
-        <td style="width:55%;border:none;"></td>
-        <td class="signature-line">
-            <strong>{{ $doctor }}</strong><br>
-            <strong>MAIDENLOVE RAGUERO-PANER MD, FPCP, FPCC</strong><br>
-            <strong>Cardiologist</strong>
-        </td>
-    </tr>
-</table>
 </body>
 </html>
