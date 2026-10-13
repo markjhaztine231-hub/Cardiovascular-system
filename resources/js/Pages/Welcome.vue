@@ -80,114 +80,133 @@
         </header>
 
         <!-- Main Hero Section -->
-        <main class="relative flex grow items-center overflow-hidden">
-            <!-- Decorative background elements -->
-            <div
-                class="pointer-events-none absolute top-0 left-1/2 h-125 w-250 -translate-x-1/2 opacity-20"
-            >
+        <main
+            class="group relative flex grow items-center overflow-hidden lg:min-h-[640px]"
+        >
+            <!-- Full-bleed building photo as the hero background -->
+            <div class="absolute inset-0">
+                <img
+                    src="/assets/building.jpg"
+                    alt="Mirasol Building – home of Cardiovascular Care Center"
+                    class="h-full w-full transform object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <!-- Legibility overlays so the headline stays readable -->
                 <div
-                    class="absolute inset-0 -translate-y-1/2 transform rounded-full bg-linear-to-b from-[#005bb5] to-transparent blur-3xl"
+                    class="absolute inset-0 bg-linear-to-r from-[#003361]/95 via-[#005bb5]/75 to-[#00abce]/20"
+                ></div>
+                <div
+                    class="absolute inset-0 bg-linear-to-t from-black/55 via-transparent to-black/25"
                 ></div>
             </div>
 
             <div
-                class="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
+                class="relative z-10 mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
             >
-                <div
-                    class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-8"
-                >
-                    <!-- Left Column: Text Content & Location -->
-                    <div class="flex flex-col justify-center space-y-8">
-                        <div class="space-y-4">
-                            <h1
-                                class="text-5xl leading-tight font-extrabold tracking-tight text-gray-900 lg:text-6xl"
-                            >
-                                Cardiovascular Care Center <br />
-                                <span class="text-[#00abce]"
-                                    >Within Your Reach.</span
-                                >
-                            </h1>
-                            <p
-                                class="max-w-xl text-lg leading-relaxed text-gray-600"
-                            >
-                                Located in the heart of Manila, we provide
-                                state-of-the-art cardiovascular diagnostics,
-                                automated patient tracking, and AI-driven
-                                medical insights tailored to your health.
-                            </p>
-                        </div>
-
-                        <!-- Location Card -->
-                        <div
-                            class="max-w-lg rounded-l-sm rounded-r-xl border-l-4 border-[#005bb5] bg-white p-6 shadow-md transition-shadow duration-300 hover:shadow-lg"
+                <div class="flex flex-col gap-10 lg:max-w-2xl lg:gap-12">
+                    <div class="space-y-5">
+                        <span
+                            class="inline-flex items-center rounded-full bg-white/15 px-4 py-1.5 text-xs font-bold tracking-widest text-white uppercase ring-1 ring-white/30 backdrop-blur-sm"
                         >
-                            <div class="flex items-start gap-4">
-                                <div class="mt-1 shrink-0">
-                                    <svg
-                                        class="h-6 w-6 text-red-500"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                        />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3
-                                        class="mb-1 text-lg font-semibold text-gray-900"
-                                    >
-                                        Location Details
-                                    </h3>
-                                    <address
-                                        class="text-sm leading-relaxed text-gray-600 not-italic"
-                                    >
-                                        <span class="font-medium text-gray-800"
-                                            >Mirasol Building, 3rd Floor</span
-                                        ><br />
-                                        854 Taft Ave, Ermita<br />
-                                        Manila, 1004 Metro Manila<br />
-                                        Philippines
-                                    </address>
-                                </div>
-                            </div>
-                        </div>
+                            Heart diagnostics · Patient tracking · AI insights
+                        </span>
+
+                        <h1
+                            class="text-5xl leading-tight font-extrabold tracking-tight text-white lg:text-6xl"
+                        >
+                            Cardiovascular Care Center <br />
+                            <span class="text-[#7ee8ff]"
+                                >Within Your Reach.</span
+                            >
+                        </h1>
+
+                        <p
+                            class="max-w-xl text-lg leading-relaxed text-white/90"
+                        >
+                            Located in the heart of Manila, we provide
+                            state-of-the-art cardiovascular diagnostics,
+                            automated patient tracking, and AI-driven medical
+                            insights tailored to your health.
+                        </p>
                     </div>
 
-                    <!-- Right Column: Building Image -->
-                    <div
-                        class="relative w-full max-w-lg lg:ml-auto lg:max-w-none"
+                    <!-- Primary Call-to-Action -->
+                    <button
+                        @click="handleNavigation"
+                        :disabled="isNavigating"
+                        class="inline-flex w-fit items-center justify-center rounded-lg bg-white px-7 py-3.5 text-sm font-bold text-[#005bb5] shadow-lg transition-all duration-200 hover:bg-gray-50 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#005bb5] focus:outline-none disabled:cursor-not-allowed disabled:opacity-75"
                     >
-                        <!-- Decorative offset background frame -->
-                        <div
-                            class="absolute inset-0 -z-10 translate-x-4 translate-y-4 transform rounded-3xl bg-[#e0e7ff] shadow-lg"
-                        ></div>
-
-                        <!-- Main Image -->
-                        <div
-                            class="group relative overflow-hidden rounded-3xl border-4 border-white bg-white shadow-xl"
+                        <svg
+                            v-if="isNavigating"
+                            class="mr-2 -ml-1 h-4 w-4 animate-spin text-[#005bb5]"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
                         >
-                            <!-- Overlay gradient to make the image pop -->
-                            <div
-                                class="absolute inset-0 z-10 bg-linear-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                            ></div>
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
 
-                            <img
-                                src="/assets/building.jpg"
-                                alt="Mirasol Building - Cardiovascular Care Center"
-                                class="h-auto w-full transform object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                                style="max-height: 500px"
-                            />
+                        <span v-if="isNavigating">Connecting...</span>
+                        <span v-else-if="isAuthenticated"
+                            >Return to Dashboard &rarr;</span
+                        >
+                        <span v-else>Portal Login</span>
+                    </button>
+
+                    <!-- Location Card (frosted glass) -->
+                    <div
+                        class="max-w-lg rounded-xl border border-white/25 bg-white/10 p-6 shadow-lg backdrop-blur-md"
+                    >
+                        <div class="flex items-start gap-4">
+                            <div class="mt-1 shrink-0">
+                                <svg
+                                    class="h-6 w-6 text-red-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z"
+                                    />
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3
+                                    class="mb-1 text-lg font-semibold text-white"
+                                >
+                                    Location Details
+                                </h3>
+                                <address
+                                    class="text-sm leading-relaxed text-white/85 not-italic"
+                                >
+                                    <span class="font-medium text-white"
+                                        >Mirasol Building, 3rd Floor</span
+                                    ><br />
+                                    854 Taft Ave, Ermita<br />
+                                    Manila, 1004 Metro Manila<br />
+                                    Philippines
+                                </address>
+                            </div>
                         </div>
                     </div>
                 </div>
