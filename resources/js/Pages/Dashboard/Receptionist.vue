@@ -1205,7 +1205,7 @@
                 >
                     <div>
                         <h3 class="text-lg font-bold">
-                            Pre-fill Echo / TMT / Doppler
+                            Pre-fill Echo / TMT / Doppler / Stress Echo / ABPM
                         </h3>
                         <p class="text-xs text-indigo-200">
                             Recording measurements for
@@ -1397,18 +1397,33 @@
                             v-if="activeStudyTab === 'echo'"
                             v-model:echo-data="studyForm.echo_data"
                             :patient-name="studyAppt?.patient?.name ?? ''"
+                            restricted
                         />
                         <TmtForm
                             v-if="activeStudyTab === 'tmt'"
                             v-model:tmt-data="studyForm.tmt_data"
                             :echo-sex="studyForm.echo_data.sex"
                             :patient-name="studyAppt?.patient?.name ?? ''"
+                            restricted
                         />
                         <DopplerForm
                             v-if="activeStudyTab === 'doppler'"
                             v-model:doppler-data="studyForm.doppler_data"
                             :echo-data="studyForm.echo_data"
                             :patient-name="studyAppt?.patient?.name ?? ''"
+                            restricted
+                        />
+                        <StressEchoForm
+                            v-if="activeStudyTab === 'stress_echo'"
+                            v-model:stress-echo-data="studyForm.stress_echo_data"
+                            :patient-name="studyAppt?.patient?.name ?? ''"
+                            restricted
+                        />
+                        <AbpmForm
+                            v-if="activeStudyTab === 'abpm'"
+                            v-model:abpm-data="studyForm.abpm_data"
+                            :patient-name="studyAppt?.patient?.name ?? ''"
+                            restricted
                         />
                     </div>
 
@@ -1470,6 +1485,8 @@ import ScanUploadModal from '@/components/ScanUploadModal.vue';
 import EchoForm from '@/components/Clinical/EchoForm.vue';
 import TmtForm from '@/components/Clinical/TmtForm.vue';
 import DopplerForm from '@/components/Clinical/DopplerForm.vue';
+import StressEchoForm from '@/components/Clinical/StressEchoForm.vue';
+import AbpmForm from '@/components/Clinical/AbpmForm.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
@@ -1541,12 +1558,16 @@ const studyLoading = ref(false);
 const studyBusy = ref(false);
 const studyLocked = ref(false);
 const studySavedAt = ref(false);
-const activeStudyTab = ref<'echo' | 'tmt' | 'doppler'>('echo');
+const activeStudyTab = ref<
+    'echo' | 'tmt' | 'doppler' | 'stress_echo' | 'abpm'
+>('echo');
 
 const studyTabs = [
     { value: 'echo', label: 'Echo' },
     { value: 'tmt', label: 'TMT' },
     { value: 'doppler', label: 'Doppler' },
+    { value: 'stress_echo', label: 'Stress Echo' },
+    { value: 'abpm', label: 'ABPM' },
 ] as const;
 
 const studyForm = useForm(blankStudyForms());
@@ -1636,6 +1657,15 @@ function mergeStudyValues(target: Record<string, any>, source: Record<string, an
 
         if (Array.isArray(value)) {
             if (Array.isArray(target[key])) {
+                if (target[key].length === 0 && value.length > 0) {
+                    target[key] = (value as any[]).map((item) =>
+                        typeof item === 'object' && item !== null
+                            ? { ...item }
+                            : item,
+                    );
+                    continue;
+                }
+
                 (value as any[]).forEach((item, i) => {
                     if (i < target[key].length && typeof item === 'object' && item !== null) {
                         mergeStudyValues(target[key][i], item);
@@ -1683,6 +1713,8 @@ async function openStudyForm(appt: any): Promise<void> {
             mergeStudyValues(blank.echo_data, data.echo_data);
             mergeStudyValues(blank.tmt_data, data.tmt_data);
             mergeStudyValues(blank.doppler_data, data.doppler_data);
+            mergeStudyValues(blank.stress_echo_data, data.stress_echo_data);
+            mergeStudyValues(blank.abpm_data, data.abpm_data);
         }
 
         studyForm.setData(blank);

@@ -737,7 +737,7 @@ class AppointmentController extends Controller
     public function showStudyData(Request $request, Appointment $appointment)
     {
         $encounter = $appointment->encounter()->with([
-            'echocardiogram', 'treadmillTest', 'dopplerStudy',
+            'echocardiogram', 'treadmillTest', 'dopplerStudy', 'stressEcho', 'abpm',
         ])->first();
 
         $appointment->load('documents.uploader:id,name');
@@ -754,6 +754,8 @@ class AppointmentController extends Controller
             'doppler_data' => $encounter?->dopplerStudy
                 ? ClinicalRecordMapper::forPayload(null, null, $encounter->dopplerStudy)
                 : null,
+            'stress_echo_data' => $encounter?->stressEcho?->payload,
+            'abpm_data' => $encounter?->abpm?->payload,
         ];
 
         if (! $encounter) {
@@ -795,6 +797,8 @@ class AppointmentController extends Controller
             'echo_data' => 'nullable|array',
             'tmt_data' => 'nullable|array',
             'doppler_data' => 'nullable|array',
+            'stress_echo_data' => 'nullable|array',
+            'abpm_data' => 'nullable|array',
         ]);
 
         // A study form that was left entirely blank is treated as "not part of
@@ -809,6 +813,12 @@ class AppointmentController extends Controller
         if ($this->hasClinicalData($validated['doppler_data'] ?? [])) {
             $types[] = 'doppler';
         }
+        if ($this->hasClinicalData($validated['stress_echo_data'] ?? [])) {
+            $types[] = 'stress_echo';
+        }
+        if ($this->hasClinicalData($validated['abpm_data'] ?? [])) {
+            $types[] = 'abpm';
+        }
 
         if (empty($types)) {
             throw ValidationException::withMessages([
@@ -816,14 +826,20 @@ class AppointmentController extends Controller
             ]);
         }
 
+        $encounterType = 'echo';
+        foreach (['echo', 'tmt', 'doppler', 'stress_echo', 'abpm'] as $candidate) {
+            if (in_array($candidate, $types, true)) {
+                $encounterType = $candidate;
+                break;
+            }
+        }
+
         $encounter = Encounter::updateOrCreate(
             ['appointment_id' => $appointment->id],
             [
                 'patient_id' => $appointment->patient_id,
                 'provider_id' => $appointment->provider_id,
-                'encounter_type' => in_array('echo', $types, true)
-                    ? 'echo'
-                    : (in_array('tmt', $types, true) ? 'tmt' : 'doppler'),
+                'encounter_type' => $encounterType,
                 // A draft the doctor owns the moment they complete the visit.
                 'status' => 'in_progress',
                 'started_at' => Carbon::parse($appointment->scheduled_date->format('Y-m-d').' '.($appointment->scheduled_time ?? '08:00:00')),
@@ -854,6 +870,24 @@ class AppointmentController extends Controller
                 $this->mapDopplerData($validated['doppler_data']),
                 ['encounter_id' => $encounter->id, 'performed_at' => now()]
             ));
+        }
+
+        $encounter->stressEcho()?->delete();
+        if (in_array('stress_echo', $types, true)) {
+            StressEchocardiogram::create([
+                'encounter_id' => $encounter->id,
+                'payload' => $validated['stress_echo_data'],
+                'performed_at' => now(),
+            ]);
+        }
+
+        $encounter->abpm()?->delete();
+        if (in_array('abpm', $types, true)) {
+            AmbulatoryBloodPressureMonitoring::create([
+                'encounter_id' => $encounter->id,
+                'payload' => $validated['abpm_data'],
+                'performed_at' => now(),
+            ]);
         }
 
         Cache::forget('receptionist_stats');

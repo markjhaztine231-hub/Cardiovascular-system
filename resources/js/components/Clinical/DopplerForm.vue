@@ -385,9 +385,16 @@
                         class="mb-2 block text-xs font-black tracking-widest text-indigo-700 uppercase"
                         >Conclusion</label
                     >
+                    <p
+                        v-if="restricted"
+                        class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                    >
+                        Doctor only — the physician completes this section.
+                    </p>
                     <textarea
                         v-model="dopplerData.conclusion"
-                        class="h-16 w-full resize-none rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none"
+                        :disabled="restricted"
+                        class="h-16 w-full resize-none rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                     ></textarea>
                 </div>
             </div>
@@ -400,10 +407,14 @@ import type { DopplerData, EchoData } from '@/types/appointment';
 import { buildDocument, buildDopplerDocument } from '@/utils/docExport';
 
 const dopplerData = defineModel<DopplerData>('dopplerData', { required: true });
-const props = defineProps<{
-    echoData: EchoData;
-    patientName: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        echoData: EchoData;
+        patientName: string;
+        restricted?: boolean;
+    }>(),
+    { restricted: false },
+);
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

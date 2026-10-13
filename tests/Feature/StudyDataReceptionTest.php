@@ -175,6 +175,59 @@ class StudyDataReceptionTest extends TestCase
         $this->assertNotEmpty($doppler['mv_ea_ratio']);
     }
 
+    public function test_receptionist_saves_stress_echo_and_abpm_as_a_draft(): void
+    {
+        $response = $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", [
+                'stress_echo_data' => [
+                    'protocol' => 'BRUCE',
+                    'peak_hr' => '150',
+                    'stages' => [
+                        ['stage' => 'STAGE 1', 'speed' => '1.7', 'grade' => '10'],
+                    ],
+                    'conclusion' => 'Doctor wrote this',
+                ],
+                'abpm_data' => [
+                    'monitor_device' => 'Spacelabs',
+                    'day_sbp' => '135',
+                    'conclusion' => 'Doctor wrote this too',
+                ],
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $encounter = Encounter::where('appointment_id', $this->appointment->id)->first();
+
+        $this->assertNotNull($encounter);
+        $this->assertSame('stress_echo', $encounter->encounter_type);
+        $this->assertSame('BRUCE', $encounter->stressEcho->payload['protocol']);
+        $this->assertSame('Spacelabs', $encounter->abpm->payload['monitor_device']);
+
+        // The saved draft round-trips back into the receptionist modal.
+        $this->actingAs($this->receptionist)
+            ->getJson("/appointments/{$this->appointment->id}/study-data")
+            ->assertOk()
+            ->assertJsonPath('stress_echo_data.protocol', 'BRUCE')
+            ->assertJsonPath('abpm_data.monitor_device', 'Spacelabs');
+    }
+
+    public function test_doctor_prefill_includes_stress_echo_and_abpm(): void
+    {
+        $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", [
+                'stress_echo_data' => ['protocol' => 'BRUCE', 'peak_hr' => '150'],
+                'abpm_data' => ['monitor_device' => 'Spacelabs'],
+            ]);
+
+        $this->actingAs($this->doctorUser)
+            ->getJson("/doctor/appointments/{$this->appointment->id}/consultation")
+            ->assertOk()
+            ->assertJsonPath('prefill.source', 'receptionist')
+            ->assertJsonPath('prefill.stress_echo_data.protocol', 'BRUCE')
+            ->assertJsonPath('prefill.abpm_data.monitor_device', 'Spacelabs');
+    }
+
     public function test_doctor_sees_null_prefill_when_receptionist_has_not_saved_anything(): void
     {
         $this->actingAs($this->doctorUser)

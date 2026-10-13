@@ -424,9 +424,16 @@
                             class="mt-2 mb-1 block font-bold tracking-widest text-[#1e8996] uppercase"
                             >Conclusion</label
                         >
+                        <p
+                            v-if="restricted"
+                            class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                        >
+                            Doctor only — the physician completes this section.
+                        </p>
                         <textarea
                             v-model="tmtData.conclusion"
-                            class="h-16 w-full resize-none rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-900"
+                            :disabled="restricted"
+                            class="h-16 w-full resize-none rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                         ></textarea>
                     </div>
                 </div>
@@ -440,10 +447,14 @@ import type { TMTData } from '@/types/appointment';
 import { buildDocument, buildTmtDocument } from '@/utils/docExport';
 
 const tmtData = defineModel<TMTData>('tmtData', { required: true });
-const props = defineProps<{
-    echoSex: string;
-    patientName: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        echoSex: string;
+        patientName: string;
+        restricted?: boolean;
+    }>(),
+    { restricted: false },
+);
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

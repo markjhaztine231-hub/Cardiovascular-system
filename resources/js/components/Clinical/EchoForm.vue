@@ -542,10 +542,17 @@
                     class="mb-2 block border-t border-gray-200 pt-4 text-xs font-black tracking-widest text-[#146b8a] uppercase"
                     >Echocardiographic Findings</label
                 >
+                <p
+                    v-if="restricted"
+                    class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                >
+                    Doctor only — the physician completes this section.
+                </p>
                 <textarea
                     v-model="echoData.findings"
+                    :disabled="restricted"
                     placeholder="Type findings here..."
-                    class="h-32 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none focus:border-[#0f8c8e]"
+                    class="h-32 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none focus:border-[#0f8c8e] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
         </div>
@@ -557,9 +564,13 @@ import type { EchoData } from '@/types/appointment';
 import { buildDocument, buildEchoHTML } from '@/utils/docExport';
 
 const echoData = defineModel<EchoData>('echoData', { required: true });
-const props = defineProps<{
-    patientName: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        patientName: string;
+        restricted?: boolean;
+    }>(),
+    { restricted: false },
+);
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

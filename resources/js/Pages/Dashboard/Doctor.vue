@@ -2500,6 +2500,8 @@ function applyServerPrefill(prefill: any): void {
         echo_data: 'echo_data',
         tmt_data: 'tmt_data',
         doppler_data: 'doppler_data',
+        stress_echo_data: 'stress_echo_data',
+        abpm_data: 'abpm_data',
     };
 
     let applied = 0;
@@ -2508,7 +2510,7 @@ function applyServerPrefill(prefill: any): void {
         const source = prefill[key];
         if (!source || typeof source !== 'object') continue;
 
-        const form = consultForm[target] as Record<string, unknown>;
+        const form = consultForm[target] as Record<string, any>;
 
         for (const [field, value] of Object.entries(source as Record<string, unknown>)) {
             if (!(field in form)) continue;
@@ -2523,6 +2525,23 @@ function applyServerPrefill(prefill: any): void {
                 value !== ''
             ) {
                 form[field] = value;
+                applied++;
+                continue;
+            }
+
+            // Array fields (e.g. stress-echo exercise stages) prefill when the
+            // doctor's own list is still empty.
+            if (
+                Array.isArray(value) &&
+                Array.isArray(current) &&
+                current.length === 0 &&
+                value.length > 0
+            ) {
+                form[field] = value.map((item) =>
+                    typeof item === 'object' && item !== null
+                        ? { ...(item as Record<string, unknown>) }
+                        : item,
+                );
                 applied++;
             }
         }

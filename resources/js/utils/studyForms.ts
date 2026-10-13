@@ -1,4 +1,10 @@
-import type { EchoData, TMTData, DopplerData } from '@/types/appointment';
+import type {
+    EchoData,
+    TMTData,
+    DopplerData,
+    StressEchoData,
+    AbpmData,
+} from '@/types/appointment';
 
 /**
  * Blank Echo / TMT / Doppler form schemas, kept in sync with the doctor's
@@ -153,11 +159,78 @@ export const DEFAULT_DOPPLER_DATA: DopplerData = {
     conclusion: '',
 };
 
+export const DEFAULT_STRESS_ECHO_DATA: StressEchoData = {
+    requesting_physician: '',
+    file_no: '',
+    age: '',
+    sex: '',
+    indication: '',
+    medications: '',
+    pre_bp: '',
+    pre_hr: '',
+    pre_ecg: '',
+    pre_symptoms: '',
+    protocol: '',
+    stages: [],
+    peak_hr: '',
+    target_hr: '',
+    peak_bp: '',
+    mets: '',
+    reached_target: '',
+    rest_ef: '',
+    rest_wma: '',
+    peak_ef: '',
+    peak_wma: '',
+    ischaemia: '',
+    findings: '',
+    conclusion: '',
+};
+
+export const DEFAULT_ABPM_DATA: AbpmData = {
+    requesting_physician: '',
+    file_no: '',
+    age: '',
+    sex: '',
+    indication: '',
+    monitor_device: '',
+    monitor_model: '',
+    cuff_size: '',
+    bp_medications: '',
+    start_date: '',
+    start_time: '',
+    end_date: '',
+    end_time: '',
+    total_duration: '',
+    wake_from: '',
+    wake_to: '',
+    sleep_from: '',
+    sleep_to: '',
+    day_sbp: '',
+    day_dbp: '',
+    day_hr: '',
+    night_sbp: '',
+    night_dbp: '',
+    night_hr: '',
+    avg_sbp: '',
+    avg_dbp: '',
+    avg_hr: '',
+    systolic_load: '',
+    diastolic_load: '',
+    baseline_bp: '',
+    dipping: '',
+    findings: '',
+    interpretation: '',
+    recommendations: '',
+    conclusion: '',
+};
+
 /** Deep-copied blank set, so re-opening the modal never reuses a prior edit. */
 export function blankStudyForms(): {
     echo_data: EchoData;
     tmt_data: TMTData;
     doppler_data: DopplerData;
+    stress_echo_data: StressEchoData;
+    abpm_data: AbpmData;
 } {
     return {
         echo_data: { ...DEFAULT_ECHO_DATA },
@@ -166,5 +239,10 @@ export function blankStudyForms(): {
             stages: DEFAULT_TMT_DATA.stages.map((stage) => ({ ...stage })),
         },
         doppler_data: { ...DEFAULT_DOPPLER_DATA },
+        stress_echo_data: {
+            ...DEFAULT_STRESS_ECHO_DATA,
+            stages: [],
+        },
+        abpm_data: { ...DEFAULT_ABPM_DATA },
     };
 }

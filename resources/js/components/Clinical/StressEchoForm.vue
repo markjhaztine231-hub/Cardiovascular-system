@@ -388,6 +388,13 @@
                 >
                     Echocardiographic Findings
                 </h4>
+                <p
+                    v-if="restricted"
+                    class="mb-2 text-[10px] font-bold text-amber-600 uppercase"
+                >
+                    Doctor only — the physician completes the echocardiographic
+                    findings.
+                </p>
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                     <div>
                         <label
@@ -397,7 +404,8 @@
                         <input
                             type="text"
                             v-model="stressEchoData.rest_ef"
-                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600"
+                            :disabled="restricted"
+                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                         />
                     </div>
                     <div>
@@ -408,7 +416,8 @@
                         <input
                             type="text"
                             v-model="stressEchoData.rest_wma"
-                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600"
+                            :disabled="restricted"
+                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                         />
                     </div>
                     <div>
@@ -419,7 +428,8 @@
                         <input
                             type="text"
                             v-model="stressEchoData.peak_ef"
-                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600"
+                            :disabled="restricted"
+                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                         />
                     </div>
                     <div>
@@ -430,7 +440,8 @@
                         <input
                             type="text"
                             v-model="stressEchoData.peak_wma"
-                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600"
+                            :disabled="restricted"
+                            class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                         />
                     </div>
                 </div>
@@ -442,7 +453,8 @@
                     <input
                         type="text"
                         v-model="stressEchoData.ischaemia"
-                        class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600"
+                        :disabled="restricted"
+                        class="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                     />
                 </div>
             </div>
@@ -453,10 +465,17 @@
                     class="mb-1 block text-[10px] font-bold text-rose-700 uppercase"
                     >Findings / Interpretation</label
                 >
+                <p
+                    v-if="restricted"
+                    class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                >
+                    Doctor only — the physician completes this section.
+                </p>
                 <textarea
                     v-model="stressEchoData.findings"
+                    :disabled="restricted"
                     placeholder="Narrative findings and interpretation..."
-                    class="h-28 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600"
+                    class="h-28 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
             <div>
@@ -464,10 +483,17 @@
                     class="mb-1 block text-[10px] font-bold text-rose-700 uppercase"
                     >Conclusion</label
                 >
+                <p
+                    v-if="restricted"
+                    class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                >
+                    Doctor only — the physician completes this section.
+                </p>
                 <textarea
                     v-model="stressEchoData.conclusion"
+                    :disabled="restricted"
                     placeholder="Optional conclusion / impression..."
-                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600"
+                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
         </div>
@@ -482,9 +508,13 @@ const stressEchoData = defineModel<StressEchoData>('stressEchoData', {
     required: true,
 });
 
-const props = defineProps<{
-    patientName: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        patientName: string;
+        restricted?: boolean;
+    }>(),
+    { restricted: false },
+);
 
 function addStage(): void {
     stressEchoData.value.stages.push({

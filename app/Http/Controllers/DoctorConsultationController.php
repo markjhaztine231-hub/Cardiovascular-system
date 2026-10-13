@@ -28,6 +28,8 @@ class DoctorConsultationController extends Controller
             'encounter.echocardiogram',
             'encounter.treadmillTest',
             'encounter.dopplerStudy',
+            'encounter.stressEcho',
+            'encounter.abpm',
         ]);
 
         $patient = $appointment->patient;
@@ -95,6 +97,8 @@ class DoctorConsultationController extends Controller
             'doppler_data' => $encounter->dopplerStudy
                 ? ClinicalRecordMapper::forPayload(null, null, $encounter->dopplerStudy)
                 : null,
+            'stress_echo_data' => $encounter->stressEcho?->payload,
+            'abpm_data' => $encounter->abpm?->payload,
         ];
     }
 

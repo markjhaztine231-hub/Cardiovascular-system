@@ -422,10 +422,17 @@
                     class="mb-1 block text-[10px] font-bold text-emerald-700 uppercase"
                     >Analysis / Findings</label
                 >
+                <p
+                    v-if="restricted"
+                    class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                >
+                    Doctor only — the physician completes this section.
+                </p>
                 <textarea
                     v-model="abpmData.findings"
+                    :disabled="restricted"
                     placeholder="Narrative summary of the 24-hour readings..."
-                    class="h-28 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600"
+                    class="h-28 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
             <div>
@@ -435,8 +442,9 @@
                 >
                 <textarea
                     v-model="abpmData.interpretation"
+                    :disabled="restricted"
                     placeholder="Optional interpretation..."
-                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600"
+                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
             <div>
@@ -446,8 +454,9 @@
                 >
                 <textarea
                     v-model="abpmData.recommendations"
+                    :disabled="restricted"
                     placeholder="Optional recommendations..."
-                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600"
+                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
             <div>
@@ -455,10 +464,17 @@
                     class="mb-1 block text-[10px] font-bold text-emerald-700 uppercase"
                     >Conclusion</label
                 >
+                <p
+                    v-if="restricted"
+                    class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
+                >
+                    Doctor only — the physician completes this section.
+                </p>
                 <textarea
                     v-model="abpmData.conclusion"
+                    :disabled="restricted"
                     placeholder="Optional conclusion / impression..."
-                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600"
+                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
             </div>
         </div>
@@ -473,9 +489,13 @@ const abpmData = defineModel<AbpmData>('abpmData', {
     required: true,
 });
 
-const props = defineProps<{
-    patientName: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        patientName: string;
+        restricted?: boolean;
+    }>(),
+    { restricted: false },
+);
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();
