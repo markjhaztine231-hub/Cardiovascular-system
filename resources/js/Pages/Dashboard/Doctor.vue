@@ -614,6 +614,18 @@
                                                     class="rounded-sm bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700"
                                                     >DRAFT</span
                                                 >
+                                                <span
+                                                    v-if="
+                                                        record.stress_echo_data
+                                                    "
+                                                    class="rounded-sm bg-rose-100 px-1 py-0.5 text-[8px] font-bold text-rose-700"
+                                                    >STRESS</span
+                                                >
+                                                <span
+                                                    v-if="record.abpm_data"
+                                                    class="rounded-sm bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-700"
+                                                    >ABPM</span
+                                                >
                                             </div>
                                             <p
                                                 v-if="record.diagnosis"
@@ -662,6 +674,24 @@
                                                 @click.stop
                                                 class="rounded bg-amber-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-amber-700"
                                                 title="Download Manual Draft PDF"
+                                                >PDF</a
+                                            >
+                                            <a
+                                                v-if="record.stress_echo_data"
+                                                :href="`/doctor/pdf/${record.id}/stress_echo`"
+                                                target="_blank"
+                                                @click.stop
+                                                class="rounded bg-rose-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-rose-700"
+                                                title="Download Stress Echo PDF"
+                                                >PDF</a
+                                            >
+                                            <a
+                                                v-if="record.abpm_data"
+                                                :href="`/doctor/pdf/${record.id}/abpm`"
+                                                target="_blank"
+                                                @click.stop
+                                                class="rounded bg-emerald-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-emerald-700"
+                                                title="Download ABPM PDF"
                                                 >PDF</a
                                             >
                                         </div>
@@ -907,6 +937,46 @@
                                                 />
                                                 Type 4 — Manual Draft
                                             </label>
+                                            <label
+                                                class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors"
+                                                :class="
+                                                    consultForm.consultation_type.includes(
+                                                        'Type 5',
+                                                    )
+                                                        ? 'border-rose-600 bg-rose-50 text-rose-700'
+                                                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-rose-500/50'
+                                                "
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    value="Type 5"
+                                                    v-model="
+                                                        consultForm.consultation_type
+                                                    "
+                                                    class="accent-rose-600"
+                                                />
+                                                Type 5 — Stress Echo
+                                            </label>
+                                            <label
+                                                class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors"
+                                                :class="
+                                                    consultForm.consultation_type.includes(
+                                                        'Type 6',
+                                                    )
+                                                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                                                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-emerald-500/50'
+                                                "
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    value="Type 6"
+                                                    v-model="
+                                                        consultForm.consultation_type
+                                                    "
+                                                    class="accent-emerald-600"
+                                                />
+                                                Type 6 — Ambulatory BP
+                                            </label>
                                         </div>
                                     </div>
 
@@ -959,6 +1029,32 @@
                                         :manual-draft-data="
                                             consultForm.manual_draft_data
                                         "
+                                        :patient-name="activeAppt?.name ?? ''"
+                                    />
+
+                                    <!-- ============================================== -->
+                                    <!-- TYPE 5: STRESS ECHOCARDIOGRAM -->
+                                    <StressEchoForm
+                                        v-if="
+                                            consultForm.consultation_type.includes(
+                                                'Type 5',
+                                            )
+                                        "
+                                        :stress-echo-data="
+                                            consultForm.stress_echo_data
+                                        "
+                                        :patient-name="activeAppt?.name ?? ''"
+                                    />
+
+                                    <!-- ============================================== -->
+                                    <!-- TYPE 6: AMBULATORY BLOOD PRESSURE MONITORING -->
+                                    <AbpmForm
+                                        v-if="
+                                            consultForm.consultation_type.includes(
+                                                'Type 6',
+                                            )
+                                        "
+                                        :abpm-data="consultForm.abpm_data"
                                         :patient-name="activeAppt?.name ?? ''"
                                     />
 
@@ -1711,6 +1807,8 @@ import DopplerForm from '@/components/Clinical/DopplerForm.vue';
 import EchoForm from '@/components/Clinical/EchoForm.vue';
 import ManualDraftForm from '@/components/Clinical/ManualDraftForm.vue';
 import TmtForm from '@/components/Clinical/TmtForm.vue';
+import AbpmForm from '@/components/Clinical/AbpmForm.vue';
+import StressEchoForm from '@/components/Clinical/StressEchoForm.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
@@ -2114,6 +2212,69 @@ const consultForm = useForm<ConsultForm>({
         conclusion: '',
         images: [],
     },
+    stress_echo_data: {
+        requesting_physician: '',
+        file_no: '',
+        age: '',
+        sex: '',
+        indication: '',
+        medications: '',
+        pre_bp: '',
+        pre_hr: '',
+        pre_ecg: '',
+        pre_symptoms: '',
+        protocol: '',
+        stages: [],
+        peak_hr: '',
+        target_hr: '',
+        peak_bp: '',
+        mets: '',
+        reached_target: '',
+        rest_ef: '',
+        rest_wma: '',
+        peak_ef: '',
+        peak_wma: '',
+        ischaemia: '',
+        findings: '',
+        conclusion: '',
+    },
+    abpm_data: {
+        requesting_physician: '',
+        file_no: '',
+        age: '',
+        sex: '',
+        indication: '',
+        monitor_device: '',
+        monitor_model: '',
+        cuff_size: '',
+        bp_medications: '',
+        start_date: '',
+        start_time: '',
+        end_date: '',
+        end_time: '',
+        total_duration: '',
+        wake_from: '',
+        wake_to: '',
+        sleep_from: '',
+        sleep_to: '',
+        day_sbp: '',
+        day_dbp: '',
+        day_hr: '',
+        night_sbp: '',
+        night_dbp: '',
+        night_hr: '',
+        avg_sbp: '',
+        avg_dbp: '',
+        avg_hr: '',
+        systolic_load: '',
+        diastolic_load: '',
+        baseline_bp: '',
+        dipping: '',
+        findings: '',
+        interpretation: '',
+        recommendations: '',
+        conclusion: '',
+    },
 });
 
 const vitalsForm = reactive({
@@ -2409,6 +2570,8 @@ function scanTypeLabel(value: string): string {
             echo: 'Echo',
             tmt: 'TMT',
             doppler: 'Doppler',
+            stress_echo: 'Stress Echo',
+            abpm: 'Ambulatory BP',
             lab_result: 'Lab Result',
             referral: 'Referral',
             other: 'Other',
@@ -2672,6 +2835,27 @@ const saveConsultation = async () => {
         emptyTypes.push('Manual Draft (Type 4)');
     }
 
+    if (
+        selectedTypes.includes('Type 5') &&
+        !hasClinicalData(
+            consultForm.stress_echo_data as unknown as Record<
+                string,
+                unknown
+            >,
+        )
+    ) {
+        emptyTypes.push('Stress Echo (Type 5)');
+    }
+
+    if (
+        selectedTypes.includes('Type 6') &&
+        !hasClinicalData(
+            consultForm.abpm_data as unknown as Record<string, unknown>,
+        )
+    ) {
+        emptyTypes.push('Ambulatory BP (Type 6)');
+    }
+
     if (emptyTypes.length > 0) {
         showError(
             `No clinical data was entered for: ${emptyTypes.join(', ')}. Please fill in the form(s) or uncheck those service types before saving.`,
@@ -2727,6 +2911,12 @@ const saveConsultation = async () => {
                     manual_draft_data: data.consultation_type.includes('Type 4')
                         ? data.manual_draft_data
                         : null,
+                    stress_echo_data: data.consultation_type.includes('Type 5')
+                        ? data.stress_echo_data
+                        : null,
+                    abpm_data: data.consultation_type.includes('Type 6')
+                        ? data.abpm_data
+                        : null,
                 }))
                 .post(`/appointments/${appt.id}/complete`, {
                     preserveScroll: true,
@@ -2737,6 +2927,8 @@ const saveConsultation = async () => {
                             'Type 2': 'TMT',
                             'Type 3': 'Doppler',
                             'Type 4': 'Manual Draft',
+                            'Type 5': 'Stress Echo',
+                            'Type 6': 'Ambulatory BP',
                         };
                         const savedLabels = selectedTypes
                             .filter(
@@ -2765,6 +2957,20 @@ const saveConsultation = async () => {
                                     (t === 'Type 4' &&
                                         hasClinicalData(
                                             consultForm.manual_draft_data as unknown as Record<
+                                                string,
+                                                unknown
+                                            >,
+                                        )) ||
+                                    (t === 'Type 5' &&
+                                        hasClinicalData(
+                                            consultForm.stress_echo_data as unknown as Record<
+                                                string,
+                                                unknown
+                                            >,
+                                        )) ||
+                                    (t === 'Type 6' &&
+                                        hasClinicalData(
+                                            consultForm.abpm_data as unknown as Record<
                                                 string,
                                                 unknown
                                             >,

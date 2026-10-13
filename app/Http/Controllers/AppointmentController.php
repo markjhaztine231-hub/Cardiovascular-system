@@ -8,6 +8,7 @@ use App\Events\ConsultationCompleted;
 use App\Events\QueueUpdated;
 use App\Events\RescheduleRequested;
 use App\Models\Appointment;
+use App\Models\AmbulatoryBloodPressureMonitoring;
 use App\Models\AuditLog;
 use App\Models\Diagnosis;
 use App\Models\DoctorSchedule;
@@ -20,6 +21,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Provider;
 use App\Models\SoapNote;
+use App\Models\StressEchocardiogram;
 use App\Models\TreadmillTest;
 use App\Models\User;
 use App\Models\VitalSign;
@@ -446,7 +448,7 @@ class AppointmentController extends Controller
             'diagnosis' => 'required|string|max:500',
             'plan' => 'nullable|string|max:5000',
             'consultation_type' => 'nullable|array',
-            'consultation_type.*' => 'string|in:Type 1,Type 2,Type 3,Type 4',
+            'consultation_type.*' => 'string|in:Type 1,Type 2,Type 3,Type 4,Type 5,Type 6',
             'prescriptions' => 'nullable|array',
             'prescriptions.*.medicine' => 'nullable|string|max:255',
             'prescriptions.*.dosage' => 'nullable|string|max:100',
@@ -465,6 +467,75 @@ class AppointmentController extends Controller
             'manual_draft_data.images.*.id' => 'nullable',
             'manual_draft_data.images.*.url' => 'nullable|string|max:2048',
             'manual_draft_data.images.*.name' => 'nullable|string|max:255',
+            'stress_echo_data' => 'nullable|array',
+            'stress_echo_data.requesting_physician' => 'nullable|string|max:255',
+            'stress_echo_data.file_no' => 'nullable|string|max:255',
+            'stress_echo_data.age' => 'nullable|string|max:10',
+            'stress_echo_data.sex' => 'nullable|string|max:10',
+            'stress_echo_data.indication' => 'nullable|string|max:2000',
+            'stress_echo_data.medications' => 'nullable|string|max:2000',
+            'stress_echo_data.pre_bp' => 'nullable|string|max:50',
+            'stress_echo_data.pre_hr' => 'nullable|string|max:50',
+            'stress_echo_data.pre_ecg' => 'nullable|string|max:2000',
+            'stress_echo_data.pre_symptoms' => 'nullable|string|max:2000',
+            'stress_echo_data.protocol' => 'nullable|string|max:500',
+            'stress_echo_data.stages' => 'nullable|array',
+            'stress_echo_data.stages.*.stage' => 'nullable|string|max:100',
+            'stress_echo_data.stages.*.time' => 'nullable|string|max:50',
+            'stress_echo_data.stages.*.speed' => 'nullable|string|max:50',
+            'stress_echo_data.stages.*.grade' => 'nullable|string|max:50',
+            'stress_echo_data.stages.*.hr' => 'nullable|string|max:50',
+            'stress_echo_data.stages.*.bp' => 'nullable|string|max:50',
+            'stress_echo_data.stages.*.ecg' => 'nullable|string|max:1000',
+            'stress_echo_data.stages.*.symptoms' => 'nullable|string|max:1000',
+            'stress_echo_data.peak_hr' => 'nullable|string|max:50',
+            'stress_echo_data.target_hr' => 'nullable|string|max:50',
+            'stress_echo_data.peak_bp' => 'nullable|string|max:50',
+            'stress_echo_data.mets' => 'nullable|string|max:50',
+            'stress_echo_data.reached_target' => 'nullable|string|max:50',
+            'stress_echo_data.rest_ef' => 'nullable|string|max:50',
+            'stress_echo_data.rest_wma' => 'nullable|string|max:1000',
+            'stress_echo_data.peak_ef' => 'nullable|string|max:50',
+            'stress_echo_data.peak_wma' => 'nullable|string|max:1000',
+            'stress_echo_data.ischaemia' => 'nullable|string|max:2000',
+            'stress_echo_data.findings' => 'nullable|string|max:5000',
+            'stress_echo_data.conclusion' => 'nullable|string|max:5000',
+            'abpm_data' => 'nullable|array',
+            'abpm_data.requesting_physician' => 'nullable|string|max:255',
+            'abpm_data.file_no' => 'nullable|string|max:255',
+            'abpm_data.age' => 'nullable|string|max:10',
+            'abpm_data.sex' => 'nullable|string|max:10',
+            'abpm_data.indication' => 'nullable|string|max:2000',
+            'abpm_data.monitor_device' => 'nullable|string|max:255',
+            'abpm_data.monitor_model' => 'nullable|string|max:255',
+            'abpm_data.cuff_size' => 'nullable|string|max:100',
+            'abpm_data.bp_medications' => 'nullable|string|max:2000',
+            'abpm_data.start_date' => 'nullable|string|max:100',
+            'abpm_data.start_time' => 'nullable|string|max:100',
+            'abpm_data.end_date' => 'nullable|string|max:100',
+            'abpm_data.end_time' => 'nullable|string|max:100',
+            'abpm_data.total_duration' => 'nullable|string|max:100',
+            'abpm_data.wake_from' => 'nullable|string|max:50',
+            'abpm_data.wake_to' => 'nullable|string|max:50',
+            'abpm_data.sleep_from' => 'nullable|string|max:50',
+            'abpm_data.sleep_to' => 'nullable|string|max:50',
+            'abpm_data.day_sbp' => 'nullable|string|max:50',
+            'abpm_data.day_dbp' => 'nullable|string|max:50',
+            'abpm_data.day_hr' => 'nullable|string|max:50',
+            'abpm_data.night_sbp' => 'nullable|string|max:50',
+            'abpm_data.night_dbp' => 'nullable|string|max:50',
+            'abpm_data.night_hr' => 'nullable|string|max:50',
+            'abpm_data.avg_sbp' => 'nullable|string|max:50',
+            'abpm_data.avg_dbp' => 'nullable|string|max:50',
+            'abpm_data.avg_hr' => 'nullable|string|max:50',
+            'abpm_data.systolic_load' => 'nullable|string|max:50',
+            'abpm_data.diastolic_load' => 'nullable|string|max:50',
+            'abpm_data.baseline_bp' => 'nullable|string|max:50',
+            'abpm_data.dipping' => 'nullable|string|max:500',
+            'abpm_data.findings' => 'nullable|string|max:5000',
+            'abpm_data.interpretation' => 'nullable|string|max:5000',
+            'abpm_data.recommendations' => 'nullable|string|max:5000',
+            'abpm_data.conclusion' => 'nullable|string|max:5000',
         ]);
 
         // Sanitize text fields to prevent XSS
@@ -505,6 +576,14 @@ class AppointmentController extends Controller
 
         if (! in_array('Type 4', $selectedTypes)) {
             $validated['manual_draft_data'] = null;
+        }
+
+        if (! in_array('Type 5', $selectedTypes)) {
+            $validated['stress_echo_data'] = null;
+        }
+
+        if (! in_array('Type 6', $selectedTypes)) {
+            $validated['abpm_data'] = null;
         }
 
         $encounter = Encounter::updateOrCreate(
@@ -609,6 +688,24 @@ class AppointmentController extends Controller
                 $this->mapManualDraftData($validated['manual_draft_data']),
                 ['encounter_id' => $encounter->id, 'performed_at' => now()]
             ));
+        }
+
+        $encounter->stressEcho()?->delete();
+        if (! empty($validated['stress_echo_data'])) {
+            StressEchocardiogram::create([
+                'encounter_id' => $encounter->id,
+                'payload' => $validated['stress_echo_data'],
+                'performed_at' => now(),
+            ]);
+        }
+
+        $encounter->abpm()?->delete();
+        if (! empty($validated['abpm_data'])) {
+            AmbulatoryBloodPressureMonitoring::create([
+                'encounter_id' => $encounter->id,
+                'payload' => $validated['abpm_data'],
+                'performed_at' => now(),
+            ]);
         }
 
         $appointment->update(['status' => 'Completed']);
@@ -846,6 +943,8 @@ class AppointmentController extends Controller
             in_array('Type 2', $types) => 'tmt',
             in_array('Type 3', $types) => 'doppler',
             in_array('Type 4', $types) => 'manual_draft',
+            in_array('Type 5', $types) => 'stress_echo',
+            in_array('Type 6', $types) => 'abpm',
             default => 'consultation',
         };
     }

@@ -27,6 +27,8 @@ export interface Appointment {
         tmt_data?: Record<string, any>;
         doppler_data?: Record<string, any>;
         manual_draft_data?: Record<string, any>;
+        stress_echo_data?: Record<string, any>;
+        abpm_data?: Record<string, any>;
     }>;
 }
 
@@ -191,6 +193,82 @@ export interface ManualDraftData {
     images: ManualDraftImage[];
 }
 
+export interface StressEchoStage {
+    stage: string;
+    time: string;
+    speed: string;
+    grade: string;
+    hr: string;
+    bp: string;
+    ecg: string;
+    symptoms: string;
+}
+
+export interface StressEchoData {
+    requesting_physician: string;
+    file_no: string;
+    age: string;
+    sex: string;
+    indication: string;
+    medications: string;
+    pre_bp: string;
+    pre_hr: string;
+    pre_ecg: string;
+    pre_symptoms: string;
+    protocol: string;
+    stages: StressEchoStage[];
+    peak_hr: string;
+    target_hr: string;
+    peak_bp: string;
+    mets: string;
+    reached_target: string;
+    rest_ef: string;
+    rest_wma: string;
+    peak_ef: string;
+    peak_wma: string;
+    ischaemia: string;
+    findings: string;
+    conclusion: string;
+}
+
+export interface AbpmData {
+    requesting_physician: string;
+    file_no: string;
+    age: string;
+    sex: string;
+    indication: string;
+    monitor_device: string;
+    monitor_model: string;
+    cuff_size: string;
+    bp_medications: string;
+    start_date: string;
+    start_time: string;
+    end_date: string;
+    end_time: string;
+    total_duration: string;
+    wake_from: string;
+    wake_to: string;
+    sleep_from: string;
+    sleep_to: string;
+    day_sbp: string;
+    day_dbp: string;
+    day_hr: string;
+    night_sbp: string;
+    night_dbp: string;
+    night_hr: string;
+    avg_sbp: string;
+    avg_dbp: string;
+    avg_hr: string;
+    systolic_load: string;
+    diastolic_load: string;
+    baseline_bp: string;
+    dipping: string;
+    findings: string;
+    interpretation: string;
+    recommendations: string;
+    conclusion: string;
+}
+
 export interface ConsultForm {
     symptoms: string;
     vitals: string;
@@ -203,4 +281,6 @@ export interface ConsultForm {
     tmt_data: TMTData;
     doppler_data: DopplerData;
     manual_draft_data: ManualDraftData;
+    stress_echo_data: StressEchoData;
+    abpm_data: AbpmData;
 }

@@ -842,6 +842,8 @@
                                                         record.doppler_data ||
                                                         record.tmt_data ||
                                                         record.manual_draft_data ||
+                                                        record.stress_echo_data ||
+                                                        record.abpm_data ||
                                                         parsedPrescriptions(record).length > 0
                                                     "
                                                     class="flex flex-wrap justify-end gap-1.5"
@@ -982,6 +984,76 @@
                                                                 )
                                                             "
                                                             class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
+                                                        >
+                                                            PDF
+                                                        </button>
+                                                    </template>
+
+                                                    <!-- Stress Echo export group -->
+                                                    <template
+                                                        v-if="
+                                                            record.stress_echo_data
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="self-center text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                                            >Stress:</span
+                                                        >
+                                                        <button
+                                                            @click.stop="
+                                                                doExport(
+                                                                    'stress_echo',
+                                                                    'docx',
+                                                                    record,
+                                                                )
+                                                            "
+                                                            class="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-600 hover:text-white"
+                                                        >
+                                                            DOCX
+                                                        </button>
+                                                        <button
+                                                            @click.stop="
+                                                                doExport(
+                                                                    'stress_echo',
+                                                                    'pdf',
+                                                                    record,
+                                                                )
+                                                            "
+                                                            class="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-600 hover:text-white"
+                                                        >
+                                                            PDF
+                                                        </button>
+                                                    </template>
+
+                                                    <!-- ABPM export group -->
+                                                    <template
+                                                        v-if="record.abpm_data"
+                                                    >
+                                                        <span
+                                                            class="self-center text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                                            >ABPM:</span
+                                                        >
+                                                        <button
+                                                            @click.stop="
+                                                                doExport(
+                                                                    'abpm',
+                                                                    'docx',
+                                                                    record,
+                                                                )
+                                                            "
+                                                            class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
+                                                        >
+                                                            DOCX
+                                                        </button>
+                                                        <button
+                                                            @click.stop="
+                                                                doExport(
+                                                                    'abpm',
+                                                                    'pdf',
+                                                                    record,
+                                                                )
+                                                            "
+                                                            class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
                                                         >
                                                             PDF
                                                         </button>
@@ -1201,6 +1273,48 @@
                             Draft PDF
                         </button>
                         <button
+                            v-if="selectedRecord.stress_echo_data"
+                            @click="
+                                downloadServerPdf('stress_echo', selectedRecord)
+                            "
+                            class="flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-rose-700"
+                        >
+                            <svg
+                                class="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                />
+                            </svg>
+                            Stress Echo PDF
+                        </button>
+                        <button
+                            v-if="selectedRecord.abpm_data"
+                            @click="downloadServerPdf('abpm', selectedRecord)"
+                            class="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                        >
+                            <svg
+                                class="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                />
+                            </svg>
+                            ABPM PDF
+                        </button>
+                        <button
                             v-if="
                                 parsedPrescriptions(selectedRecord).length > 0
                             "
@@ -1278,11 +1392,23 @@
                                 >Type 4 — Manual Draft</span
                             >
                             <span
+                                v-if="selectedRecord.stress_echo_data"
+                                class="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700"
+                                >Type 5 — Stress Echo</span
+                            >
+                            <span
+                                v-if="selectedRecord.abpm_data"
+                                class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700"
+                                >Type 6 — Ambulatory BP</span
+                            >
+                            <span
                                 v-if="
                                     !selectedRecord.echo_data &&
                                     !selectedRecord.tmt_data &&
                                     !selectedRecord.doppler_data &&
-                                    !selectedRecord.manual_draft_data
+                                    !selectedRecord.manual_draft_data &&
+                                    !selectedRecord.stress_echo_data &&
+                                    !selectedRecord.abpm_data
                                 "
                                 class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600"
                                 >Standard Consultation</span
@@ -2040,6 +2166,533 @@
                                 </p>
                             </div>
                         </div>
+
+                        <!-- STRESS ECHO DATA (Type 5) -->
+                        <div
+                            v-if="selectedRecord.stress_echo_data"
+                            class="rounded-2xl border border-rose-100 bg-white p-6 shadow-sm"
+                        >
+                            <div class="mb-5 flex items-center justify-between">
+                                <h3
+                                    class="flex items-center text-sm font-extrabold tracking-widest text-rose-700 uppercase"
+                                >
+                                    <span
+                                        class="mr-2 rounded bg-rose-100 px-2 py-0.5 text-rose-700"
+                                        >Type 5</span
+                                    >
+                                    Stress Echocardiogram
+                                </h3>
+                                <button
+                                    @click="
+                                        downloadServerPdf(
+                                            'stress_echo',
+                                            selectedRecord,
+                                        )
+                                    "
+                                    class="flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700"
+                                >
+                                    <svg
+                                        class="h-3.5 w-3.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                        />
+                                    </svg>
+                                    Download PDF
+                                </button>
+                            </div>
+
+                            <div
+                                class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                            >
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Requesting Physician
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .requesting_physician || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Indication
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .indication || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Max / Target HR
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .peak_hr || '—'
+                                        }}
+                                        /
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .target_hr || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Peak BP
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .peak_bp || '—'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="
+                                    selectedRecord.stress_echo_data.stages
+                                        ?.length
+                                "
+                                class="mb-4 overflow-x-auto rounded-xl border border-gray-200"
+                            >
+                                <table
+                                    class="w-full min-w-[640px] text-xs"
+                                >
+                                    <thead
+                                        class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase"
+                                    >
+                                        <tr>
+                                            <th class="px-3 py-2 text-left">
+                                                Stage
+                                            </th>
+                                            <th class="px-3 py-2">Time</th>
+                                            <th class="px-3 py-2">Speed</th>
+                                            <th class="px-3 py-2">Grade</th>
+                                            <th class="px-3 py-2">HR</th>
+                                            <th class="px-3 py-2">BP</th>
+                                            <th class="px-3 py-2">ECG</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="(
+                                                stage, idx
+                                            ) in selectedRecord
+                                                .stress_echo_data.stages"
+                                            :key="idx"
+                                            class="border-t border-gray-100"
+                                        >
+                                            <td class="px-3 py-2 font-bold">
+                                                {{ stage.stage || '—' }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ stage.time || '—' }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ stage.speed || '—' }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ stage.grade || '—' }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ stage.hr || '—' }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ stage.bp || '—' }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ stage.ecg || '—' }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div
+                                class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                            >
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Rest EF
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .rest_ef || '—'
+                                        }}%
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Peak EF
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .peak_ef || '—'
+                                        }}%
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        METs
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .mets || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Reached Target
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.stress_echo_data
+                                                .reached_target || '—'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="selectedRecord.stress_echo_data.findings"
+                                class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Findings / Interpretation
+                                </p>
+                                <p
+                                    class="text-sm font-medium whitespace-pre-wrap text-gray-700"
+                                >
+                                    {{
+                                        selectedRecord.stress_echo_data
+                                            .findings
+                                    }}
+                                </p>
+                            </div>
+                            <div
+                                v-if="
+                                    selectedRecord.stress_echo_data.conclusion
+                                "
+                                class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Conclusion
+                                </p>
+                                <p class="text-sm font-bold text-gray-800">
+                                    {{
+                                        selectedRecord.stress_echo_data
+                                            .conclusion
+                                    }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- ABPM DATA (Type 6) -->
+                        <div
+                            v-if="selectedRecord.abpm_data"
+                            class="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm"
+                        >
+                            <div class="mb-5 flex items-center justify-between">
+                                <h3
+                                    class="flex items-center text-sm font-extrabold tracking-widest text-emerald-700 uppercase"
+                                >
+                                    <span
+                                        class="mr-2 rounded bg-emerald-100 px-2 py-0.5 text-emerald-700"
+                                        >Type 6</span
+                                    >
+                                    Ambulatory Blood Pressure Monitoring
+                                </h3>
+                                <button
+                                    @click="
+                                        downloadServerPdf('abpm', selectedRecord)
+                                    "
+                                    class="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                                >
+                                    <svg
+                                        class="h-3.5 w-3.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                        />
+                                    </svg>
+                                    Download PDF
+                                </button>
+                            </div>
+
+                            <div
+                                class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                            >
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Requesting Physician
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.abpm_data
+                                                .requesting_physician || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Indication
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.abpm_data
+                                                .indication || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Duration
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.abpm_data
+                                                .total_duration || '—'
+                                        }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <p
+                                        class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        BP Medications
+                                    </p>
+                                    <p class="text-sm font-bold text-gray-800">
+                                        {{
+                                            selectedRecord.abpm_data
+                                                .bp_medications || 'NONE'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                class="mb-4 overflow-x-auto rounded-xl border border-gray-200"
+                            >
+                                <table class="w-full min-w-[520px] text-xs">
+                                    <thead
+                                        class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase"
+                                    >
+                                        <tr>
+                                            <th class="px-3 py-2 text-left">
+                                                Period
+                                            </th>
+                                            <th class="px-3 py-2">Mean SBP</th>
+                                            <th class="px-3 py-2">Mean DBP</th>
+                                            <th class="px-3 py-2">Mean HR</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-center">
+                                        <tr
+                                            class="border-t border-gray-100"
+                                        >
+                                            <td
+                                                class="px-3 py-2 text-left font-bold"
+                                            >
+                                                Daytime
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .day_sbp || '—'
+                                                }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .day_dbp || '—'
+                                                }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .day_hr || '—'
+                                                }}
+                                            </td>
+                                        </tr>
+                                        <tr
+                                            class="border-t border-gray-100"
+                                        >
+                                            <td
+                                                class="px-3 py-2 text-left font-bold"
+                                            >
+                                                Nighttime
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .night_sbp || '—'
+                                                }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .night_dbp || '—'
+                                                }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .night_hr || '—'
+                                                }}
+                                            </td>
+                                        </tr>
+                                        <tr
+                                            class="border-t border-gray-100"
+                                        >
+                                            <td
+                                                class="px-3 py-2 text-left font-bold"
+                                            >
+                                                24-Hour Average
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .avg_sbp || '—'
+                                                }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .avg_dbp || '—'
+                                                }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{
+                                                    selectedRecord.abpm_data
+                                                        .avg_hr || '—'
+                                                }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div
+                                v-if="selectedRecord.abpm_data.findings"
+                                class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Analysis / Findings
+                                </p>
+                                <p
+                                    class="text-sm font-medium whitespace-pre-wrap text-gray-700"
+                                >
+                                    {{ selectedRecord.abpm_data.findings }}
+                                </p>
+                            </div>
+                            <div
+                                v-if="selectedRecord.abpm_data.interpretation"
+                                class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Interpretation
+                                </p>
+                                <p
+                                    class="text-sm font-medium whitespace-pre-wrap text-gray-700"
+                                >
+                                    {{
+                                        selectedRecord.abpm_data
+                                            .interpretation
+                                    }}
+                                </p>
+                            </div>
+                            <div
+                                v-if="selectedRecord.abpm_data.conclusion"
+                                class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                                <p
+                                    class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Conclusion
+                                </p>
+                                <p class="text-sm font-bold text-gray-800">
+                                    {{ selectedRecord.abpm_data.conclusion }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2060,12 +2713,16 @@ import type {
     DopplerData,
     TMTData,
     ManualDraftData,
+    StressEchoData,
+    AbpmData,
 } from '@/types/appointment';
 import {
     buildEchoHTML,
     buildDopplerDocument,
     buildManualDraftDocument,
     buildTmtDocument,
+    buildAbpmDocument,
+    buildStressEchoDocument,
     exportAsDocx,
 } from '@/utils/docExport';
 
@@ -2107,9 +2764,18 @@ interface ConsultationRecord extends Appointment {
     doppler_data?: Record<string, any>;
     tmt_data?: Record<string, any>;
     manual_draft_data?: Record<string, any>;
+    stress_echo_data?: Record<string, any>;
+    abpm_data?: Record<string, any>;
 }
 
-type ExportType = 'echo' | 'doppler' | 'tmt' | 'manual_draft' | 'prescription';
+type ExportType =
+    | 'echo'
+    | 'doppler'
+    | 'tmt'
+    | 'manual_draft'
+    | 'stress_echo'
+    | 'abpm'
+    | 'prescription';
 type ExportFormat = 'docx' | 'pdf';
 
 interface OcrDocument {
@@ -2176,6 +2842,8 @@ const ocrTypeLabels: Record<string, string> = {
     echo: 'Echo',
     tmt: 'TMT',
     doppler: 'Doppler',
+    stress_echo: 'Stress Echo',
+    abpm: 'Ambulatory BP',
     lab_result: 'Lab Result',
     referral: 'Referral',
     other: 'Other',
@@ -2781,6 +3449,36 @@ function doExport(
                     doctor,
                 );
                 filename = `Manual_Draft_${slug}_${date}`;
+                break;
+            case 'stress_echo':
+                if (!record.stress_echo_data) {
+                    showError('No Stress Echo data for this record.');
+
+                    return;
+                }
+
+                bodyHtml = buildStressEchoDocument(
+                    record.stress_echo_data as unknown as StressEchoData,
+                    name,
+                    date,
+                    doctor,
+                );
+                filename = `Stress_Echo_${slug}_${date}`;
+                break;
+            case 'abpm':
+                if (!record.abpm_data) {
+                    showError('No ABPM data for this record.');
+
+                    return;
+                }
+
+                bodyHtml = buildAbpmDocument(
+                    record.abpm_data as unknown as AbpmData,
+                    name,
+                    date,
+                    doctor,
+                );
+                filename = `ABPM_${slug}_${date}`;
                 break;
             default:
                 showError('Invalid export type');

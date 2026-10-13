@@ -3,6 +3,8 @@ import type {
     DopplerData,
     TMTData,
     ManualDraftData,
+    StressEchoData,
+    AbpmData,
 } from '@/types/appointment';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -614,3 +616,230 @@ ${
 }
 ${signatureBlock(doctorName)}`;
 };
+
+/**
+ * Builds the **24-Hour Ambulatory Blood Pressure Monitoring (ABPM)** Word
+ * export body HTML — the same fill-in blanks as the ABPM PDF blade, so what the
+ * doctor types in the form renders identically in both formats.
+ */
+export const buildAbpmDocument = (
+    data: AbpmData,
+    patientName: string,
+    date: string,
+    doctorName?: string,
+): string => `
+<h2>24-Hour Ambulatory Blood Pressure Monitoring (ABPM)</h2>
+<table class="no-border">
+  <tr>
+    <td style="border:none;"><b>Patient Name:</b> ${patientName}</td>
+    <td style="border:none;"><b>Age:</b> ${v(data.age)}</td>
+    <td style="border:none;"><b>Sex:</b> ${v(data.sex)}</td>
+    <td style="border:none;"><b>Date:</b> ${date}</td>
+  </tr>
+  <tr>
+    <td style="border:none;" colspan="2"><b>File No.:</b> ${v(data.file_no)}</td>
+    <td style="border:none;" colspan="2"><b>Requesting Physician:</b> ${v(
+        data.requesting_physician,
+    )}</td>
+  </tr>
+  ${
+      v(data.indication)
+          ? `<tr><td style="border:none;" colspan="4"><b>Indication:</b> ${v(
+                data.indication,
+            )}</td></tr>`
+          : ''
+  }
+  <tr>
+    <td style="border:none;" colspan="2"><b>Monitor Device:</b> ${v(
+        data.monitor_device,
+    )}</td>
+    <td style="border:none;" colspan="2"><b>Model:</b> ${v(data.monitor_model)}</td>
+  </tr>
+  <tr>
+    <td style="border:none;" colspan="2"><b>Cuff Size:</b> ${v(data.cuff_size)}</td>
+    <td style="border:none;" colspan="2"><b>BP Medications:</b> ${v(
+        data.bp_medications,
+    ) || 'NONE'}</td>
+  </tr>
+  <tr>
+    <td style="border:none;"><b>Started:</b> ${v(data.start_date)} ${v(
+        data.start_time,
+    )}</td>
+    <td style="border:none;"><b>Ended:</b> ${v(data.end_date)} ${v(
+        data.end_time,
+    )}</td>
+    <td style="border:none;" colspan="2"><b>Total Duration:</b> ${v(
+        data.total_duration,
+    )}</td>
+  </tr>
+</table>
+<h3>Blood Pressure Data</h3>
+<table>
+  <tr>
+    <th></th><th>Mean SBP (mmHg)</th><th>Mean DBP (mmHg)</th>
+    <th>Mean HR (bpm)</th><th>Time Range</th>
+  </tr>
+  <tr>
+    <td><b>Daytime (Waking)</b></td>
+    <td>${v(data.day_sbp)}</td><td>${v(data.day_dbp)}</td><td>${v(data.day_hr)}</td>
+    <td>${v(data.wake_from)} – ${v(data.wake_to)}</td>
+  </tr>
+  <tr>
+    <td><b>Nighttime (Sleeping)</b></td>
+    <td>${v(data.night_sbp)}</td><td>${v(data.night_dbp)}</td><td>${v(data.night_hr)}</td>
+    <td>${v(data.sleep_from)} – ${v(data.sleep_to)}</td>
+  </tr>
+  <tr>
+    <td><b>24-Hour Average</b></td>
+    <td>${v(data.avg_sbp)}</td><td>${v(data.avg_dbp)}</td><td>${v(data.avg_hr)}</td>
+    <td></td>
+  </tr>
+</table>
+${
+    v(data.systolic_load) ||
+    v(data.diastolic_load) ||
+    v(data.baseline_bp) ||
+    v(data.dipping)
+        ? `<p><b>Systolic Load:</b> ${v(data.systolic_load)}% &nbsp;
+<b>Diastolic Load:</b> ${v(data.diastolic_load)}% &nbsp;
+<b>Baseline BP:</b> ${v(data.baseline_bp)} &nbsp;
+<b>Dipping:</b> ${v(data.dipping)}</p>`
+        : ''
+}
+<h3>Analysis / Findings</h3>
+<p style="white-space:pre-wrap;min-height:60px;">${v(data.findings)}</p>
+${
+    v(data.interpretation)
+        ? `<h3>Interpretation</h3>
+<p style="white-space:pre-wrap;">${v(data.interpretation)}</p>`
+        : ''
+}
+${
+    v(data.recommendations)
+        ? `<h3>Recommendations</h3>
+<p style="white-space:pre-wrap;">${v(data.recommendations)}</p>`
+        : ''
+}
+${
+    v(data.conclusion)
+        ? `<h3>Conclusion</h3>
+<p style="white-space:pre-wrap;">${v(data.conclusion)}</p>`
+        : ''
+}
+${signatureBlock(doctorName)}`;
+
+/**
+ * Builds the **Stress Echocardiogram** Word export body HTML — again mirroring
+ * the Stress Echo PDF blade (stage grid + echo findings fill-in blanks).
+ */
+export const buildStressEchoDocument = (
+    data: StressEchoData,
+    patientName: string,
+    date: string,
+    doctorName?: string,
+): string => `
+<h2>Stress Echocardiogram</h2>
+<h3 style="text-align:center;">(Exercise Stress Test with Echocardiography)</h3>
+<table class="no-border">
+  <tr>
+    <td style="border:none;"><b>Patient Name:</b> ${patientName}</td>
+    <td style="border:none;"><b>Age:</b> ${v(data.age)}</td>
+    <td style="border:none;"><b>Sex:</b> ${v(data.sex)}</td>
+    <td style="border:none;"><b>Date:</b> ${date}</td>
+  </tr>
+  <tr>
+    <td style="border:none;" colspan="2"><b>File No.:</b> ${v(data.file_no)}</td>
+    <td style="border:none;" colspan="2"><b>Requesting Physician:</b> ${v(
+        data.requesting_physician,
+    )}</td>
+  </tr>
+  ${
+      v(data.indication)
+          ? `<tr><td style="border:none;" colspan="4"><b>Indication:</b> ${v(
+                data.indication,
+            )}</td></tr>`
+          : ''
+  }
+  ${
+      v(data.medications)
+          ? `<tr><td style="border:none;" colspan="4"><b>Medications:</b> ${v(
+                data.medications,
+            )}</td></tr>`
+          : ''
+  }
+  ${
+      v(data.pre_bp) || v(data.pre_hr) || v(data.pre_ecg) || v(data.pre_symptoms)
+          ? `<tr><td style="border:none;" colspan="4"><b>Pre-Test:</b> BP: ${v(
+                data.pre_bp,
+            )} &nbsp; HR: ${v(data.pre_hr)} &nbsp; Resting ECG: ${v(
+                data.pre_ecg,
+            )} &nbsp; Symptoms: ${v(data.pre_symptoms)}</td></tr>`
+          : ''
+  }
+  ${
+      v(data.protocol)
+          ? `<tr><td style="border:none;" colspan="4"><b>Protocol:</b> ${v(
+                data.protocol,
+            )}</td></tr>`
+          : ''
+  }
+</table>
+<h3>Exercise Data</h3>
+${
+    (data.stages ?? []).length > 0
+        ? `<table>
+  <tr>
+    <th>Stage</th><th>Time (min)</th><th>Speed (mph)</th><th>Grade (%)</th>
+    <th>HR (bpm)</th><th>BP (mmHg)</th><th>ECG Changes</th><th>Symptoms / Rhythm</th>
+  </tr>
+${(data.stages ?? [])
+    .map(
+        (s) => `<tr>
+    <td>${v(s.stage)}</td><td>${v(s.time)}</td><td>${v(s.speed)}</td><td>${v(
+            s.grade,
+        )}</td>
+    <td>${v(s.hr)}</td><td>${v(s.bp)}</td><td>${v(s.ecg)}</td><td>${v(
+            s.symptoms,
+        )}</td>
+  </tr>`,
+    )
+    .join('')}
+</table>`
+        : ''
+}
+${
+    v(data.peak_hr) ||
+    v(data.target_hr) ||
+    v(data.peak_bp) ||
+    v(data.mets) ||
+    v(data.reached_target)
+        ? `<p><b>Max HR:</b> ${v(data.peak_hr)} bpm &nbsp;
+<b>Target HR:</b> ${v(data.target_hr)} bpm &nbsp;
+<b>Peak BP:</b> ${v(data.peak_bp)} &nbsp;
+<b>METs:</b> ${v(data.mets)} &nbsp;
+<b>Reached Target:</b> ${v(data.reached_target)}</p>`
+        : ''
+}
+<h3>Echocardiographic Findings</h3>
+<p><b>At Rest:</b> EF: ${v(data.rest_ef)}% &nbsp; Wall Motion: ${v(data.rest_wma)}</p>
+<p><b>At Peak Stress:</b> EF: ${v(data.peak_ef)}% &nbsp; Wall Motion: ${v(
+    data.peak_wma,
+)}</p>
+${
+    v(data.ischaemia)
+        ? `<p><b>Ischaemia / Scar / Viability:</b> ${v(data.ischaemia)}</p>`
+        : ''
+}
+${
+    v(data.findings)
+        ? `<h3>Findings / Interpretation</h3>
+<p style="white-space:pre-wrap;min-height:60px;">${v(data.findings)}</p>`
+        : ''
+}
+${
+    v(data.conclusion)
+        ? `<h3>Conclusion</h3>
+<p style="white-space:pre-wrap;">${v(data.conclusion)}</p>`
+        : ''
+}
+${signatureBlock(doctorName)}`;

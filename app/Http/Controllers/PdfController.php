@@ -22,7 +22,7 @@ class PdfController extends Controller
      * PDF blade views still expect the legacy blob keys, so the structured
      * studies are mapped back to that shape at export time.
      *
-     * @param  string  $type  echo | tmt | doppler | manual_draft | prescription
+     * @param  string  $type  echo | tmt | doppler | manual_draft | stress_echo | abpm | prescription
      */
     public function download(Appointment $appointment, string $type)
     {
@@ -65,6 +65,8 @@ class PdfController extends Controller
             'tmt' => ! $encounter->treadmillTest,
             'doppler' => ! $encounter->dopplerStudy,
             'manual_draft' => ! $encounter->manualDraft,
+            'stress_echo' => ! $encounter->stressEcho,
+            'abpm' => ! $encounter->abpm,
             default => true,
         }) {
             abort(404, "This consultation has no {$type} record to export.");
@@ -119,6 +121,24 @@ class PdfController extends Controller
             ])
                 ->setPaper('letter')
                 ->download("Manual_Draft_{$slug}_{$date}.pdf"),
+
+            'stress_echo' => Pdf::loadView('pdfs.stress-echo', [
+                'data' => $encounter->stressEcho->payload ?? [],
+                'patient' => $patientName,
+                'date' => $date,
+                'doctor' => $doctorName,
+            ])
+                ->setPaper('letter')
+                ->download("Stress_Echo_{$slug}_{$date}.pdf"),
+
+            'abpm' => Pdf::loadView('pdfs.abpm', [
+                'data' => $encounter->abpm->payload ?? [],
+                'patient' => $patientName,
+                'date' => $date,
+                'doctor' => $doctorName,
+            ])
+                ->setPaper('letter')
+                ->download("ABPM_{$slug}_{$date}.pdf"),
 
             default => abort(404, 'Unknown PDF type'),
         };

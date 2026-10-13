@@ -80,6 +80,16 @@ class Encounter extends Model
         return $this->hasOne(ManualDraft::class);
     }
 
+    public function stressEcho(): HasOne
+    {
+        return $this->hasOne(StressEchocardiogram::class);
+    }
+
+    public function abpm(): HasOne
+    {
+        return $this->hasOne(AmbulatoryBloodPressureMonitoring::class);
+    }
+
     public function scopeForPatient($query, int $patientId)
     {
         return $query->where('patient_id', $patientId);

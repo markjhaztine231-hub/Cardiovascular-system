@@ -234,7 +234,7 @@ Route::middleware('auth')->group(function () {
     // --- PDF EXPORTS (server-side via barryvdh/laravel-dompdf) ---
     Route::get('/doctor/reports/monthly/pdf', [PdfController::class, 'downloadMonthlyReport'])->middleware(['role:doctor', 'throttle:doctor-pdf'])->name('pdf.monthly-report');
     Route::get('/doctor/pdf/{appointment}/{type}', [PdfController::class, 'download'])
-        ->where('type', 'echo|tmt|doppler|manual_draft|prescription')
+        ->where('type', 'echo|tmt|doppler|manual_draft|stress_echo|abpm|prescription')
         ->middleware('role:doctor,patient')
         ->name('pdf.download');
 

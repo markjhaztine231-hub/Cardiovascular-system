@@ -308,6 +308,8 @@ class DoctorController extends Controller
                 'treadmillTest',
                 'dopplerStudy',
                 'manualDraft',
+                'stressEcho',
+                'abpm',
             ])
             ->where('status', 'completed')
             ->orderByDesc('started_at')
@@ -354,6 +356,8 @@ class DoctorController extends Controller
                         'tmt' => 'Type 2 - Treadmill (TMT)',
                         'doppler' => 'Type 3 - Color Doppler',
                         'manual_draft' => 'Type 4 - Manual Draft',
+                        'stress_echo' => 'Type 5 - Stress Echo',
+                        'abpm' => 'Type 6 - Ambulatory BP Monitoring',
                         default => 'Consultation',
                     },
                     // Study panels are gated on the relation existing rather
@@ -375,6 +379,8 @@ class DoctorController extends Controller
                         'conclusion' => $encounter->manualDraft->conclusion,
                         'images' => $encounter->manualDraft->attachments ?? [],
                     ] : null,
+                    'stress_echo_data' => $encounter->stressEcho?->payload ?? null,
+                    'abpm_data' => $encounter->abpm?->payload ?? null,
                     'vital_sign' => [
                         'bp' => $vs ? $vs->blood_pressure_systolic.'/'.$vs->blood_pressure_diastolic : null,
                         'hr' => $vs?->heart_rate_bpm,
