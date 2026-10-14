@@ -330,11 +330,6 @@
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div
-                                        v-if="
-                                            appt.status !== 'Completed' &&
-                                            appt.status !== 'No-Show' &&
-                                            appt.status !== 'Cancelled'
-                                        "
                                         class="flex justify-end gap-2"
                                     >
                                         <button
