@@ -135,11 +135,8 @@ class ReceptionistController extends Controller
             'provider:id,user_id',
             'provider.user:id,name',
         ])
-            // Include today: today's appointments belong in the calendar and
-            // were previously excluded by the strict `>` boundary, which left
-            // the calendar empty for the current day while the master queue
-            // still listed them.
-            ->whereDate('scheduled_date', '>=', today())
+            // Load every appointment (past and future) so browsing to any day
+            // in the calendar — including yesterday — still lists its visits.
             ->select([
                 'id', 'patient_id', 'provider_id', 'scheduled_date',
                 'scheduled_time', 'status', 'service_type',

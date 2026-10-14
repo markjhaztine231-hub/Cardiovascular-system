@@ -692,11 +692,6 @@
                                     </span>
                                 </div>
                                 <div
-                                    v-if="
-                                        appt.status !== 'Completed' &&
-                                        appt.status !== 'No-Show' &&
-                                        appt.status !== 'Cancelled'
-                                    "
                                     class="flex flex-wrap gap-1.5"
                                 >
                                     <button
@@ -866,7 +861,7 @@
                         class="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                         <div class="flex-1">
-                            <p class="text-sm font-black text-gray-900">
+                            <p class="text-sm font-black text-black-900">
                                 {{ req.patient?.name || 'Unknown Patient' }}
                             </p>
                             <p class="mt-0.5 text-xs font-medium text-gray-500">
