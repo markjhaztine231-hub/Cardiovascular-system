@@ -443,8 +443,8 @@ class AppointmentController extends Controller
 
         // Comprehensive validation with required fields and constraints
         $validated = $request->validate([
-            'symptoms' => 'required|string|max:5000',
-            'vitals' => 'required|string|max:5000',
+            'symptoms' => 'nullable|string|max:5000',
+            'vitals' => 'nullable|string|max:5000',
             'diagnosis' => 'required|string|max:500',
             'plan' => 'nullable|string|max:5000',
             'consultation_type' => 'nullable|array',
@@ -990,7 +990,6 @@ class AppointmentController extends Controller
         $queue = Appointment::with('patient:id,user_id', 'patient.user:id,name')
             ->where('provider_id', $providerId)
             ->whereDate('scheduled_date', today())
-            ->whereNotIn('status', ['Completed', 'No-Show'])
             ->orderBy('scheduled_time')
             ->get();
 
