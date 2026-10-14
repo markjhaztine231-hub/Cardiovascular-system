@@ -140,7 +140,6 @@ class ReceptionistController extends Controller
             // the calendar empty for the current day while the master queue
             // still listed them.
             ->whereDate('scheduled_date', '>=', today())
-            ->whereNotIn('status', ['Cancelled'])
             ->select([
                 'id', 'patient_id', 'provider_id', 'scheduled_date',
                 'scheduled_time', 'status', 'service_type',
