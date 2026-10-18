@@ -22,20 +22,6 @@ export function validateConsultation(form: any): ValidationError[] {
     const errors: ValidationError[] = [];
 
     // Validate SOAP notes
-    if (!form.symptoms?.trim()) {
-        errors.push({
-            field: 'symptoms',
-            message: 'Symptoms/Subjective notes are required',
-        });
-    }
-
-    if (!form.vitals?.trim()) {
-        errors.push({
-            field: 'vitals',
-            message: 'Vitals/Objective findings are required',
-        });
-    }
-
     if (!form.diagnosis?.trim()) {
         errors.push({
             field: 'diagnosis',
