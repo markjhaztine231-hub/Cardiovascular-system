@@ -98,6 +98,8 @@ class AiController extends Controller
 
     public function generateMonthlyReport(Request $request)
     {
+        set_time_limit(180);
+
         $request->validate(['month' => 'required|date_format:Y-m']);
 
         $doctorId = Auth::id();
@@ -133,6 +135,15 @@ class AiController extends Controller
             ->forMonth($request->month)
             ->latest()
             ->first();
+
+        // Never fail silently: if the statistics were built but the AI
+        // narrative came back empty, tell the doctor instead of showing a
+        // report with no narrative and no explanation.
+        if ($report && blank($report->report_text) && (($report->stats['total'] ?? 0) > 0)) {
+            return back()->withErrors([
+                'month' => 'Report statistics were generated, but the AI narrative is currently unavailable. Please try again in a moment.',
+            ]);
+        }
 
         return $this->reportResponse($report);
     }

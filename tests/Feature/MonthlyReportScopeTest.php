@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\MonthlyReportService;
 use App\Support\AgeBand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -222,5 +223,67 @@ class MonthlyReportScopeTest extends TestCase
         // practice-wide report.
         $this->assertSame(0, MonthlyReport::count());
         $this->assertSame(0, MonthlyReport::practice()->count());
+    }
+
+    /**
+     * Http::fake() merges stubs, and the setUp default is registered first, so
+     * a fresh factory is swapped in to fully replace the default narrative.
+     */
+    private function fakeNarrativeResponses(array $stubs): void
+    {
+        Http::swap(new Factory);
+
+        Http::fake($stubs);
+    }
+
+    public function test_empty_ai_content_is_treated_as_a_failure_and_not_persisted(): void
+    {
+        // A reasoning model can return 200 with an empty string once its token
+        // budget is spent. That must never be stored as a "blank" narrative.
+        $this->fakeNarrativeResponses([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => "   \n  "]]],
+            ]),
+        ]);
+
+        [$user] = $this->doctorWithPatients([20]);
+
+        $result = MonthlyReportService::generate($user->id, '2026-09');
+
+        $this->assertNull($result['report_text']);
+
+        $row = MonthlyReport::forDoctor($user->id)->forMonth('2026-09')->latest()->firstOrFail();
+        $this->assertNull($row->report_text);
+        $this->assertGreaterThan(0, $row->stats['total'], 'stats must still be persisted');
+    }
+
+    public function test_transient_server_error_is_retried_until_success(): void
+    {
+        $this->fakeNarrativeResponses([
+            'openrouter.ai/*' => Http::sequence()
+                ->push('upstream exploded', 500)
+                ->push(['choices' => [['message' => ['content' => 'Recovered narrative.']]]]),
+        ]);
+
+        [$user] = $this->doctorWithPatients([20]);
+
+        $result = MonthlyReportService::generate($user->id, '2026-09');
+
+        $this->assertSame('Recovered narrative.', $result['report_text']);
+    }
+
+    public function test_generation_surfaces_an_error_when_the_narrative_is_unavailable(): void
+    {
+        $this->fakeNarrativeResponses([
+            'openrouter.ai/*' => Http::response(['choices' => [['message' => ['content' => '']]]]),
+        ]);
+
+        [$user] = $this->doctorWithPatients([20]);
+
+        $response = $this->actingAs($user)
+            ->post('/doctor/reports/monthly', ['month' => '2026-09']);
+
+        $response->assertSessionHasErrors('month');
+        $this->assertDatabaseHas('monthly_reports', ['month' => '2026-09']);
     }
 }

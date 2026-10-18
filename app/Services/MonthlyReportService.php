@@ -13,6 +13,7 @@ use App\Models\Provider;
 use App\Support\AgeBand;
 use Carbon\Carbon;
 use DateTimeInterface;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -864,8 +865,16 @@ CMP;
         $p9_instruction = $hasPrev && $prevMonthLabel
             ? "{$p9}: Write one paragraph comparing {$monthLabel} to {$prevMonthLabel}. Use ONLY the pre-calculated change values above. Do NOT recalculate anything. Highlight the most significant increases or decreases in operational metrics, demographics, procedures, and diagnoses."
             : '';
-        $maxTokens = $hasAdherence ? 1800 : ($hasNsPattern ? 1500 : ($hasPrev ? 1200 : 1000));
-        $maxTokens += $hasAgeProfile ? 300 : 0;
+        // Reasoning models spend part of the completion budget on hidden
+        // reasoning tokens before emitting any prose, so a tight budget can
+        // yield an empty or truncated narrative. Give generous headroom and
+        // cap at the same ceiling the patient abstract uses.
+        $maxTokens = 4000;
+        $maxTokens += $hasAdherence ? 1000 : 0;
+        $maxTokens += $hasNsPattern ? 800 : 0;
+        $maxTokens += $hasPrev ? 800 : 0;
+        $maxTokens += $hasAgeProfile ? 800 : 0;
+        $maxTokens = min(8000, $maxTokens);
 
         $prompt = <<<PROMPT
 You are a clinical administrator writing a formal Monthly Clinical Report for Cardiovascular Care Center for {$monthLabel}.
@@ -1014,18 +1023,32 @@ PROMPT;
         array $extraHeaders = [],
     ): ?string {
         try {
-            $response = Http::withHeaders(array_merge([
-                'Authorization' => 'Bearer '.$apiKey,
-                'Content-Type' => 'application/json',
-            ], $extraHeaders))
+            // Retry transient server errors exactly like the patient abstract
+            // path, so a momentary 5xx/529 does not silently drop the narrative.
+            $response = Http::retry(3, 2000, function ($exception, $request) {
+                return $exception instanceof RequestException
+                    && $exception->response->serverError();
+            })
+                ->withHeaders(array_merge([
+                    'Authorization' => 'Bearer '.$apiKey,
+                    'Content-Type' => 'application/json',
+                ], $extraHeaders))
                 ->timeout($timeout)
                 ->post($url, $payload);
 
             if ($response->successful()) {
-                return trim($response->json('choices.0.message.content') ?? '');
-            }
+                $text = trim((string) ($response->json('choices.0.message.content') ?? ''));
 
-            Log::error('MonthlyReportService narrative failed: '.$response->body());
+                // A 200 with empty content is still a failure: fall through to
+                // the next provider instead of persisting a blank narrative.
+                if ($text !== '') {
+                    return $text;
+                }
+
+                Log::warning('MonthlyReportService narrative returned empty content from '.$url);
+            } else {
+                Log::error('MonthlyReportService narrative failed: '.$response->body());
+            }
         } catch (\Throwable $e) {
             Log::error('MonthlyReportService narrative exception: '.$e->getMessage());
         }
