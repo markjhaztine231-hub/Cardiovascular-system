@@ -73,10 +73,9 @@
                             New password
                         </label>
                         <div class="mt-1">
-                            <input
+                            <PasswordField
                                 id="password"
                                 v-model="form.password"
-                                type="password"
                                 autocomplete="new-password"
                                 required
                                 autofocus
@@ -103,10 +102,9 @@
                             Confirm new password
                         </label>
                         <div class="mt-1">
-                            <input
+                            <PasswordField
                                 id="password_confirmation"
                                 v-model="form.password_confirmation"
-                                type="password"
                                 autocomplete="new-password"
                                 required
                                 class="block w-full appearance-none rounded-xl border border-gray-300 px-3 py-2.5 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
@@ -163,6 +161,7 @@
 
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
+import PasswordField from '@/components/PasswordField.vue';
 
 const props = defineProps<{
     token: string;

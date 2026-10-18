@@ -81,7 +81,7 @@
 
                             <div>
                                 <label class="mb-1.5 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase">Temporary Password</label>
-                                <input type="password" v-model="form.password" placeholder="Min 12 characters with mixed case, numbers, symbols" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20" required />
+                                <PasswordField v-model="form.password" placeholder="Min 12 characters with mixed case, numbers, symbols" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20" required />
                                 <p v-if="form.errors.password" class="mt-1 text-xs font-bold text-red-500">{{ form.errors.password }}</p>
                             </div>
 
@@ -101,6 +101,7 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3';
 import AdminSidebar from '@/components/AdminSidebar.vue';
+import PasswordField from '@/components/PasswordField.vue';
 
 const props = defineProps<{ user: any }>();
 

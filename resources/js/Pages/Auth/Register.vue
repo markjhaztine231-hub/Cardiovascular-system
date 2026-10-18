@@ -169,10 +169,9 @@
                             Password
                         </label>
                         <div class="mt-1">
-                            <input
+                            <PasswordField
                                 id="password"
                                 v-model="form.password"
-                                type="password"
                                 autocomplete="new-password"
                                 required
                                 placeholder="Password"
@@ -195,10 +194,9 @@
                             Confirm password
                         </label>
                         <div class="mt-1">
-                            <input
+                            <PasswordField
                                 id="password_confirmation"
                                 v-model="form.password_confirmation"
-                                type="password"
                                 autocomplete="new-password"
                                 required
                                 placeholder="Confirm password"
@@ -310,6 +308,7 @@
 
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3';
+import PasswordField from '@/components/PasswordField.vue';
 
 interface TermsMeta {
     title: string;

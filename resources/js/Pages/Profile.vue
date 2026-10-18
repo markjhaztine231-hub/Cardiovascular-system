@@ -71,7 +71,7 @@
                         {{ user.name.charAt(0).toUpperCase() }}
                     </div>
                     <div>
-                        <p class="text-xl font-black text-white">
+                        <p class="text-xl font-black text-black">
                             {{ user.name }}
                         </p>
                         <p class="mt-0.5 text-sm font-medium text-slate-300">
@@ -228,8 +228,7 @@
                             class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
                             >Current Password</label
                         >
-                        <input
-                            type="password"
+                        <PasswordField
                             v-model="passwordForm.current_password"
                             class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                             required
@@ -248,8 +247,7 @@
                                 class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
                                 >New Password</label
                             >
-                            <input
-                                type="password"
+                            <PasswordField
                                 v-model="passwordForm.new_password"
                                 class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 required
@@ -267,8 +265,7 @@
                                 class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
                                 >Confirm New Password</label
                             >
-                            <input
-                                type="password"
+                            <PasswordField
                                 v-model="passwordForm.new_password_confirmation"
                                 class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 required
@@ -298,6 +295,7 @@
 <script setup lang="ts">
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PasswordField from '@/components/PasswordField.vue';
 
 interface User {
     name: string;

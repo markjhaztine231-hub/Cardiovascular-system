@@ -81,9 +81,8 @@
                             class="mb-1 block text-sm font-semibold text-[#2c3e50]"
                             >Password</label
                         >
-                        <input
+                        <PasswordField
                             v-model="form.password"
-                            type="password"
                             class="w-full rounded-lg border px-4 py-2 outline-none focus:ring-2 focus:ring-[#0056b3]"
                             required
                         />
@@ -149,6 +148,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import PasswordField from '@/components/PasswordField.vue';
 
 const isRegistering = ref(false);
 
