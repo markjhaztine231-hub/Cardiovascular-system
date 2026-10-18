@@ -7,7 +7,7 @@
             <div class="flex items-center gap-3">
                 <button
                     @click="goBack"
-                    class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                    class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-black transition-colors hover:bg-gray-100 hover:text-gray-800"
                 >
                     <svg
                         class="h-4 w-4"
@@ -25,7 +25,7 @@
                     Back to Dashboard
                 </button>
             </div>
-            <h1 class="text-lg font-black tracking-tight text-gray-800">
+            <h1 class="text-lg font-black tracking-tight text-black">
                 My Profile
             </h1>
             <div
@@ -74,11 +74,11 @@
                         <p class="text-xl font-black text-black">
                             {{ user.name }}
                         </p>
-                        <p class="mt-0.5 text-sm font-medium text-slate-300">
+                        <p class="mt-0.5 text-sm font-medium text-black">
                             {{ user.email }}
                         </p>
                         <span
-                            class="mt-2 inline-block rounded-md border border-indigo-400/30 bg-indigo-500/20 px-2.5 py-0.5 text-xs font-bold tracking-widest text-indigo-200 uppercase"
+                            class="mt-2 inline-block rounded-md border border-indigo-400/30 bg-indigo-500/20 px-2.5 py-0.5 text-xs font-bold tracking-widest text-black uppercase"
                         >
                             {{ user.role }}
                         </span>
@@ -88,7 +88,7 @@
                 <!-- Edit form -->
                 <form @submit.prevent="submitProfile" class="space-y-5 p-8">
                     <h3
-                        class="text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                        class="text-xs font-extrabold tracking-widest text-black uppercase"
                     >
                         Personal Information
                     </h3>
@@ -97,13 +97,13 @@
                         <!-- Full Name -->
                         <div class="sm:col-span-2">
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >Full Name</label
                             >
                             <input
                                 type="text"
                                 v-model="profileForm.name"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 required
                             />
                             <p
@@ -117,13 +117,13 @@
                         <!-- Email -->
                         <div class="sm:col-span-2">
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >Email Address</label
                             >
                             <input
                                 type="email"
                                 v-model="profileForm.email"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 required
                             />
                             <p
@@ -137,7 +137,7 @@
                         <!-- Age -->
                         <div>
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >Age</label
                             >
                             <input
@@ -146,19 +146,19 @@
                                 min="1"
                                 max="130"
                                 placeholder="e.g. 35"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                             />
                         </div>
 
                         <!-- Sex -->
                         <div>
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >Sex</label
                             >
                             <select
                                 v-model="profileForm.sex"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                             >
                                 <option value="">Prefer not to say</option>
                                 <option value="Male">Male</option>
@@ -169,14 +169,14 @@
                         <!-- Contact -->
                         <div class="sm:col-span-2">
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >Contact / Mobile</label
                             >
                             <input
                                 type="text"
                                 v-model="profileForm.contact"
                                 placeholder="e.g. +63 912 345 6789"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                             />
                         </div>
                     </div>
@@ -203,7 +203,7 @@
             >
                 <div class="border-b border-gray-100 bg-gray-50/60 px-8 py-5">
                     <h3
-                        class="flex items-center gap-2 text-sm font-extrabold tracking-widest text-gray-500 uppercase"
+                        class="flex items-center gap-2 text-sm font-extrabold tracking-widest text-black uppercase"
                     >
                         <svg
                             class="h-4 w-4"
@@ -225,12 +225,12 @@
                 <form @submit.prevent="submitPassword" class="space-y-5 p-8">
                     <div>
                         <label
-                            class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                            class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                             >Current Password</label
                         >
                         <PasswordField
                             v-model="passwordForm.current_password"
-                            class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                            class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                             required
                         />
                         <p
@@ -244,12 +244,12 @@
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >New Password</label
                             >
                             <PasswordField
                                 v-model="passwordForm.new_password"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 required
                                 minlength="8"
                             />
@@ -268,12 +268,12 @@
                         </div>
                         <div>
                             <label
-                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
+                                class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
                                 >Confirm New Password</label
                             >
                             <PasswordField
                                 v-model="passwordForm.new_password_confirmation"
-                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 required
                             />
                         </div>
