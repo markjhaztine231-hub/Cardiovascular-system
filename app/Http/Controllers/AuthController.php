@@ -79,6 +79,8 @@ class AuthController extends Controller
                 ]);
             }
 
+            $this->assertAccountNotBlocked($user);
+
             $request->session()->put([
                 'login.id' => $user->id,
                 'login.remember' => $request->boolean('remember'),
@@ -92,6 +94,8 @@ class AuthController extends Controller
         // lookup is an exact match on email, which would reintroduce the
         // case-sensitivity we just removed.
         if ($user && Hash::check($credentials['password'], $user->password)) {
+            $this->assertAccountNotBlocked($user);
+
             Auth::login($user, $request->boolean('remember'));
             $user = Auth::user();
 
@@ -290,5 +294,27 @@ class AuthController extends Controller
         ]);
 
         return redirect('/login')->with('status', 'Password reset successfully. Please log in.');
+    }
+
+    /**
+     * Block authentication for suspended/inactive accounts. Called only after
+     * the password has been verified so the status is not revealed to someone
+     * guessing credentials.
+     */
+    private function assertAccountNotBlocked(User $user): void
+    {
+        if (! $user->isBlocked()) {
+            return;
+        }
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'Blocked login attempt for '.strtolower($user->status)
+                .' account from IP: '.request()->ip(),
+        ]);
+
+        throw ValidationException::withMessages([
+            'email' => 'Your account is '.strtolower($user->status).'. Please contact the administrator.',
+        ]);
     }
 }

@@ -21,12 +21,19 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use AnonymizableName, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
+    /**
+     * Statuses that are not allowed to authenticate or use the app. "Register"
+     * and "Walk-in Register" are legitimate pre-activation states, so they are
+     * deliberately left out.
+     */
+    public const BLOCKED_STATUSES = ['Inactive', 'Suspended'];
+
     protected $fillable = [
         'name',
         'email',
         'password',
         'role',   // admin | doctor | receptionist | patient
-        'status', // Register | Active | Inactive | Suspended
+        'status', // Register | Walk-in Register | Active | Inactive | Suspended
         'terms_accepted_at',
         'terms_version',
     ];
@@ -57,6 +64,12 @@ class User extends Authenticatable
     public function scopeWhereEmail(Builder $query, string $email): Builder
     {
         return $query->whereRaw('LOWER(email) = ?', [Str::lower(trim($email))]);
+    }
+
+    /** Whether this account is blocked from authenticating (suspended/inactive). */
+    public function isBlocked(): bool
+    {
+        return in_array($this->status, self::BLOCKED_STATUSES, true);
     }
 
     protected function casts(): array
