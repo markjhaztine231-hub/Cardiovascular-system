@@ -253,6 +253,12 @@
                                 required
                                 minlength="8"
                             />
+                            <PasswordRequirements
+                                v-if="passwordForm.new_password"
+                                :password="passwordForm.new_password"
+                                :min="8"
+                                :full="false"
+                            />
                             <p
                                 v-if="passwordForm.errors.new_password"
                                 class="mt-1 text-xs font-bold text-red-500"
@@ -296,6 +302,7 @@
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import PasswordField from '@/components/PasswordField.vue';
+import PasswordRequirements from '@/components/PasswordRequirements.vue';
 
 interface User {
     name: string;

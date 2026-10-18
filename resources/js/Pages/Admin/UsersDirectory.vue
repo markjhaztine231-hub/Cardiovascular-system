@@ -132,6 +132,12 @@
                     <div>
                         <label class="mb-1.5 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase">New Password (leave blank to keep current)</label>
                         <PasswordField v-model="editForm.password" placeholder="Min 8 characters" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20" />
+                        <PasswordRequirements
+                            v-if="editForm.password"
+                            :password="editForm.password"
+                            :min="8"
+                            :full="false"
+                        />
                     </div>
                     <div class="flex justify-end gap-3 pt-2">
                         <button type="button" @click="editingUser = null" class="rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50">Cancel</button>
@@ -150,6 +156,7 @@ import { Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import AdminSidebar from '@/components/AdminSidebar.vue';
 import PasswordField from '@/components/PasswordField.vue';
+import PasswordRequirements from '@/components/PasswordRequirements.vue';
 import { useToast } from '@/composables/useToast';
 
 const { success: showSuccess, error: showError } = useToast();

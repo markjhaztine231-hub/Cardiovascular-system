@@ -86,6 +86,7 @@
                                 }"
                             />
                         </div>
+                        <PasswordRequirements :password="form.password" :min="12" />
                         <p
                             v-if="form.errors.password"
                             class="mt-2 text-sm text-red-600 dark:text-red-400"
@@ -162,6 +163,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import PasswordField from '@/components/PasswordField.vue';
+import PasswordRequirements from '@/components/PasswordRequirements.vue';
 
 const props = defineProps<{
     token: string;
