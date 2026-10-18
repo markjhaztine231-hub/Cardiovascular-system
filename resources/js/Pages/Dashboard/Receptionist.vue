@@ -292,7 +292,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             <tr
-                                v-for="appt in masterQueue"
+                                v-for="appt in paginatedQueue"
                                 :key="appt.id"
                                 class="transition-colors hover:bg-gray-50"
                             >
@@ -467,6 +467,69 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- QUEUE PAGINATION -->
+                <div
+                    v-if="queueTotal > 0"
+                    class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-3"
+                >
+                    <p class="text-xs font-bold text-gray-500">
+                        Showing
+                        <span class="text-gray-800">{{ queueRangeStart }}</span>
+                        –
+                        <span class="text-gray-800">{{ queueRangeEnd }}</span>
+                        of
+                        <span class="text-gray-800">{{ queueTotal }}</span>
+                        appointment(s)
+                    </p>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <label
+                            class="flex items-center gap-2 text-xs font-bold text-gray-500"
+                        >
+                            Rows
+                            <select
+                                v-model.number="queuePerPage"
+                                class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
+                            >
+                                <option :value="10">10</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                            </select>
+                        </label>
+                        <div class="flex items-center gap-1">
+                            <button
+                                type="button"
+                                :disabled="queuePage <= 1"
+                                @click="goToQueuePage(queuePage - 1)"
+                                class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Prev
+                            </button>
+                            <button
+                                v-for="page in queuePageNumbers"
+                                :key="page"
+                                type="button"
+                                @click="goToQueuePage(page)"
+                                class="rounded-lg border px-3 py-1.5 text-xs font-bold shadow-sm transition-colors"
+                                :class="
+                                    page === queuePage
+                                        ? 'border-[#0f8c8e] bg-[#0f8c8e] text-white'
+                                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100'
+                                "
+                            >
+                                {{ page }}
+                            </button>
+                            <button
+                                type="button"
+                                :disabled="queuePage >= queueTotalPages"
+                                @click="goToQueuePage(queuePage + 1)"
+                                class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- UPCOMING CALENDAR (Google Calendar style) -->
@@ -1865,6 +1928,67 @@ const props = defineProps<{
 const calendarOpen = ref(false);
 const calendarCursor = ref(new Date());
 const selectedDateKey = ref(dateKey(new Date()));
+
+// ── Queue pagination ───────────────────────────────────────────────
+const queuePage = ref(1);
+const queuePerPage = ref(10);
+
+const queueTotal = computed(() => props.masterQueue?.length ?? 0);
+
+const queueTotalPages = computed(() =>
+    Math.max(1, Math.ceil(queueTotal.value / queuePerPage.value)),
+);
+
+const paginatedQueue = computed(() => {
+    const start = (queuePage.value - 1) * queuePerPage.value;
+
+    return (props.masterQueue ?? []).slice(start, start + queuePerPage.value);
+});
+
+const queueRangeStart = computed(() =>
+    queueTotal.value === 0
+        ? 0
+        : (queuePage.value - 1) * queuePerPage.value + 1,
+);
+
+const queueRangeEnd = computed(() =>
+    Math.min(queuePage.value * queuePerPage.value, queueTotal.value),
+);
+
+function goToQueuePage(page: number): void {
+    queuePage.value = Math.min(Math.max(1, page), queueTotalPages.value);
+}
+
+const queuePageNumbers = computed<number[]>(() => {
+    const total = queueTotalPages.value;
+    const current = queuePage.value;
+    const size = 5;
+
+    let start = Math.max(1, current - Math.floor(size / 2));
+    const end = Math.min(total, start + size - 1);
+    start = Math.max(1, end - size + 1);
+
+    const pages: number[] = [];
+    for (let page = start; page <= end; page++) {
+        pages.push(page);
+    }
+
+    return pages;
+});
+
+watch(
+    () => queueTotal.value,
+    () => {
+        if (queuePage.value > queueTotalPages.value) {
+            queuePage.value = queueTotalPages.value;
+        }
+    },
+);
+
+watch(queuePerPage, () => {
+    queuePage.value = 1;
+});
+
 
 const scanModalOpen = ref(false);
 const scanAppointment = ref<any>(null);
