@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DoctorConsultationController;
 use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\MedicationController;
+use App\Http\Controllers\PatientCalendarController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReceptionistController;
@@ -16,6 +17,7 @@ use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 
 // 1. PUBLIC HOMEPAGE
@@ -53,6 +55,12 @@ Route::middleware('guest')->group(function () {
 
 // Secure Logout
 Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
+
+// Patient .ics calendar feed (signed URL so a calendar app can subscribe
+// without a browser session).
+Route::get('/calendar/feed/{user}.ics', [PatientCalendarController::class, 'feed'])
+    ->middleware('signed')
+    ->name('patient.calendar.feed');
 
 // 3. SECURE PORTALS
 Route::middleware('auth')->group(function () {
@@ -136,8 +144,15 @@ Route::middleware('auth')->group(function () {
             'user' => Auth::user(),
             'nextAppointment' => $nextAppt ? $shape($nextAppt) : null,
             'history' => $history->map($shape)->values(),
+            'calendarDownloadUrl' => URL::route('patient.calendar.download'),
+            'calendarFeedUrl' => URL::signedRoute('patient.calendar.feed', ['user' => Auth::id()]),
         ]);
     })->name('patient.dashboard');
+
+    // Patient .ics calendar download (session-authenticated).
+    Route::get('/patient/calendar.ics', [PatientCalendarController::class, 'download'])
+        ->middleware('role:patient')
+        ->name('patient.calendar.download');
 
     // --- AI & REPORTING ROUTES ---
     // Generates the Patient Abstract (Gemini + PubMed)

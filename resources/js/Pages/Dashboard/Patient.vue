@@ -561,6 +561,71 @@
                                         Cancel Appointment
                                     </button>
                                 </div>
+
+                                <div
+                                    v-if="props.calendarDownloadUrl"
+                                    class="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-5"
+                                >
+                                    <div class="flex items-start gap-3">
+                                        <svg
+                                            class="mt-0.5 h-5 w-5 shrink-0 text-[#005bb5]"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                            />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p
+                                                class="text-sm font-black text-[#003366]"
+                                            >
+                                                Sync to your calendar
+                                            </p>
+                                            <p
+                                                class="mt-0.5 text-xs text-gray-600"
+                                            >
+                                                Add your appointments and
+                                                medication reminders to any
+                                                calendar app (.ics).
+                                            </p>
+                                            <div
+                                                class="mt-3 flex flex-wrap gap-2"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    @click="downloadCalendar"
+                                                    class="rounded-lg bg-[#005bb5] px-4 py-2 text-xs font-bold text-white transition duration-200 hover:bg-[#003366]"
+                                                >
+                                                    Download .ics
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    @click="copyCalendarFeed"
+                                                    class="rounded-lg border border-[#005bb5] px-4 py-2 text-xs font-bold text-[#005bb5] transition duration-200 hover:bg-white"
+                                                >
+                                                    {{
+                                                        calendarLinkCopied
+                                                            ? 'Link copied!'
+                                                            : 'Copy subscribe link'
+                                                    }}
+                                                </button>
+                                            </div>
+                                            <p
+                                                v-if="calendarLinkCopied"
+                                                class="mt-2 text-xs font-semibold text-green-600"
+                                            >
+                                                Paste the link into your
+                                                calendar's "Subscribe by URL"
+                                                option for automatic updates.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div
                                 v-if="hasActiveAppointment"
@@ -1701,7 +1766,29 @@ const props = defineProps<{
     user: User;
     nextAppointment?: Appointment | null;
     history: ConsultationRecord[];
+    calendarDownloadUrl?: string;
+    calendarFeedUrl?: string;
 }>();
+
+const calendarLinkCopied = ref(false);
+
+function downloadCalendar() {
+    if (props.calendarDownloadUrl) {
+        window.location.href = props.calendarDownloadUrl;
+    }
+}
+
+function copyCalendarFeed() {
+    if (!props.calendarFeedUrl) {
+        return;
+    }
+
+    const webcal = props.calendarFeedUrl.replace(/^https?:\/\//, 'webcal://');
+    navigator.clipboard?.writeText(webcal).then(() => {
+        calendarLinkCopied.value = true;
+        window.setTimeout(() => (calendarLinkCopied.value = false), 4000);
+    });
+}
 
 // Tab Navigation State
 const activeTab = ref<'dashboard' | 'medications' | 'records'>('dashboard');
