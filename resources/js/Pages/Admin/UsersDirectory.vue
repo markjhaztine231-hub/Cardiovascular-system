@@ -33,9 +33,9 @@
                         <span class="text-sm font-medium text-gray-500 ml-auto">{{ users.total }} users</span>
                     </div>
 
-                    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <div class="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
                         <table class="w-full">
-                            <thead>
+                            <thead class="sticky top-0 z-10">
                                 <tr class="border-b border-gray-100 bg-gray-50">
                                     <th class="px-6 py-4 text-left text-[10px] font-extrabold tracking-widest text-gray-500 uppercase">System ID</th>
                                     <th class="px-6 py-4 text-left text-[10px] font-extrabold tracking-widest text-gray-500 uppercase">Name & Email</th>
