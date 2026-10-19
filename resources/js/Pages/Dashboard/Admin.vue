@@ -11,8 +11,8 @@
                 <div class="flex items-center gap-3">
                     <button
                         type="button"
-                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
-                        @click="toggleMobile"
+                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                        @click="toggle"
                         aria-label="Open sidebar"
                     >
                         <svg
@@ -259,7 +259,7 @@ defineProps<{
     recent?: any[];
 }>();
 
-const { toggleMobile } = useSidebar('admin');
+const { toggle } = useSidebar('admin');
 
 const roleColor = (role: string): string => {
     switch (role) {

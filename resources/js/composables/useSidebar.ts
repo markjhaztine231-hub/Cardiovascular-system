@@ -52,11 +52,23 @@ export function useSidebar(storageKey: string = 'cardiocare-sidebar-open') {
         isMobileOpen.value = false;
     }
 
+    function toggle(): void {
+        if (
+            typeof window !== 'undefined' &&
+            window.matchMedia('(min-width: 768px)').matches
+        ) {
+            toggleDesktop();
+        } else {
+            toggleMobile();
+        }
+    }
+
     return {
         isOpen,
         isMobileOpen,
         toggleDesktop,
         toggleMobile,
+        toggle,
         closeMobile,
     };
 }

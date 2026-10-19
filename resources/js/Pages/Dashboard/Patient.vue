@@ -231,12 +231,12 @@
         <!-- MAIN CONTENT -->
         <main class="relative flex h-screen flex-1 flex-col overflow-hidden">
             <div
-                class="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 shadow-sm md:hidden"
+                class="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 shadow-sm"
             >
                 <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                    @click="toggleMobile"
+                    @click="toggle"
                     aria-label="Open sidebar"
                 >
                     <svg
@@ -1875,7 +1875,7 @@ interface AdherenceMed {
 }
 
 const { success: showSuccess, error: showError } = useToast();
-const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+const { isOpen, isMobileOpen, toggleDesktop, toggle, closeMobile } =
     useSidebar('patient');
 
 const props = defineProps<{

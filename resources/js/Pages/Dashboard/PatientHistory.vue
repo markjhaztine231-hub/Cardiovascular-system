@@ -179,8 +179,8 @@
                 <div class="flex items-center gap-4">
                     <button
                         type="button"
-                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
-                        @click="toggleMobile"
+                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                        @click="toggle"
                         aria-label="Open sidebar"
                     >
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2849,7 +2849,7 @@ const props = defineProps<{
 const ocrHistory = computed<OcrDocument[]>(() => props.ocrHistory ?? []);
 
 const { success: showSuccess, error: showError } = useToast();
-const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+const { isOpen, isMobileOpen, toggleDesktop, toggle, closeMobile } =
     useSidebar('doctor');
 
 const flashSuccess = computed(() => {

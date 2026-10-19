@@ -196,8 +196,8 @@
                 <div class="flex items-center gap-3">
                     <button
                         type="button"
-                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
-                        @click="toggleMobile"
+                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                        @click="toggle"
                         aria-label="Open sidebar"
                     >
                         <svg
@@ -1925,7 +1925,7 @@ import { useToast } from '@/composables/useToast';
 import { useSidebar } from '@/composables/useSidebar';
 import { getEcho } from '@/echo';
 
-const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+const { isOpen, isMobileOpen, toggleDesktop, toggle, closeMobile } =
     useSidebar('doctor');
 import type { ConsultForm, Appointment } from '@/types/appointment';
 import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
