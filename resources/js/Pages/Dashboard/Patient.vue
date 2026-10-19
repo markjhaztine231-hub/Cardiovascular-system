@@ -234,6 +234,7 @@
                 class="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 shadow-sm"
             >
                 <button
+                    v-if="!isSidebarOpen"
                     type="button"
                     class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                     @click="toggle"
@@ -1314,154 +1315,6 @@
                             </div>
                         </div>
 
-                        <!-- ── ACTIVE PRESCRIPTIONS ──────────────────── -->
-                        <div
-                            class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
-                        >
-                            <h3
-                                class="mb-2 flex items-center border-b border-gray-100 pb-4 text-xl font-black text-gray-900"
-                            >
-                                <svg
-                                    class="mr-2 h-6 w-6 text-[#005bb5]"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                                    />
-                                </svg>
-                                Active Prescriptions
-                            </h3>
-
-                            <div
-                                v-if="medicationWarnings.length > 0"
-                                class="mb-6 space-y-2"
-                            >
-                                <div
-                                    v-for="(warning, idx) in medicationWarnings"
-                                    :key="`warning-${idx}`"
-                                    class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"
-                                >
-                                    {{ warning }}
-                                </div>
-                            </div>
-
-                            <div
-                                v-if="activePrescriptions.length > 0"
-                                class="mt-6 grid grid-cols-1 gap-6"
-                            >
-                                <div
-                                    v-for="(med, idx) in activePrescriptions"
-                                    :key="idx"
-                                    class="relative overflow-hidden rounded-xl border border-blue-100 bg-blue-50/50 p-6"
-                                >
-                                    <div
-                                        class="absolute top-0 left-0 h-full w-2 bg-[#005bb5]"
-                                    ></div>
-                                    <!-- Medicine Name -->
-                                    <h4
-                                        class="text-lg font-black text-[#003366] capitalize"
-                                    >
-                                        {{ displayMedicineName(med.medicine) }}
-                                    </h4>
-
-                                    <!-- Dosage -->
-                                    <p
-                                        class="mt-2 text-sm font-bold text-gray-600"
-                                    >
-                                        Dosage:
-                                        <span class="text-gray-900">{{
-                                            displayDosage(med.dosage)
-                                        }}</span>
-                                    </p>
-
-                                    <!-- Frequency -->
-                                    <p class="text-sm font-bold text-gray-600">
-                                        Frequency:
-                                        <span class="text-gray-900">{{
-                                            med.frequency || 'As prescribed'
-                                        }}</span>
-                                    </p>
-
-                                    <!-- Duration -->
-                                    <p class="text-sm font-bold text-gray-600">
-                                        Duration:
-                                        <span class="text-gray-900">{{
-                                            med.duration
-                                        }}</span>
-                                        <span class="text-xs text-gray-500">{{
-                                            typeof med.duration === 'number'
-                                                ? 'days'
-                                                : ''
-                                        }}</span>
-                                    </p>
-
-                                    <!-- Prescribed By (if available) -->
-                                    <p
-                                        v-if="med.prescribedBy"
-                                        class="mt-2 text-sm font-bold text-gray-600"
-                                    >
-                                        Prescribed By:
-                                        <span class="text-gray-900">{{
-                                            med.prescribedBy
-                                        }}</span>
-                                    </p>
-
-                                    <!-- Start Date (if available) -->
-                                    <p
-                                        v-if="med.startDate"
-                                        class="text-sm font-bold text-gray-600"
-                                    >
-                                        Started:
-                                        <span class="text-gray-900">{{
-                                            formatDate(med.startDate)
-                                        }}</span>
-                                    </p>
-
-                                    <!-- End Date (if available) -->
-                                    <p
-                                        v-if="med.endDate"
-                                        class="text-sm font-bold text-gray-600"
-                                    >
-                                        Ends:
-                                        <span class="text-gray-900">{{
-                                            formatDate(med.endDate)
-                                        }}</span>
-                                    </p>
-
-                                    <!-- Instructions (if available) -->
-                                    <div
-                                        v-if="med.instructions"
-                                        class="mt-3 border-t border-blue-100 pt-3"
-                                    >
-                                        <p
-                                            class="text-sm font-bold text-gray-600"
-                                        >
-                                            Instructions:
-                                        </p>
-                                        <p class="mt-1 text-sm text-gray-700">
-                                            {{ sanitizeText(med.instructions) }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-else-if="medicationWarnings.length === 0" class="py-16 text-center">
-                                <p class="text-lg font-bold text-gray-500">
-                                    No active medications.
-                                </p>
-                                <p class="mt-1 text-sm text-gray-400">
-                                    Your doctor will prescribe medications here
-                                    after your consultation.
-                                </p>
-                            </div>
-                            <div v-else class="hidden"></div>
-                        </div>
-
                         <!-- ── MEDICATION HISTORY ─────────────────────── -->
                         <div
                             class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
@@ -1876,8 +1729,14 @@ interface AdherenceMed {
 }
 
 const { success: showSuccess, error: showError } = useToast();
-const { isOpen, isMobileOpen, toggleDesktop, toggle, closeMobile } =
-    useSidebar('patient');
+const {
+    isOpen,
+    isMobileOpen,
+    isSidebarOpen,
+    toggleDesktop,
+    toggle,
+    closeMobile,
+} = useSidebar('patient');
 
 const props = defineProps<{
     user: User;

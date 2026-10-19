@@ -180,6 +180,7 @@
             >
                 <div class="flex items-center gap-3">
                     <button
+                        v-if="!isSidebarOpen"
                         type="button"
                         class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                         @click="toggle"
@@ -1699,8 +1700,14 @@ import LogoutButton from '@/components/LogoutButton.vue';
 import { computed, ref } from 'vue';
 import { useSidebar } from '@/composables/useSidebar';
 
-const { isOpen, isMobileOpen, toggleDesktop, toggle, closeMobile } =
-    useSidebar('doctor');
+const {
+    isOpen,
+    isMobileOpen,
+    isSidebarOpen,
+    toggleDesktop,
+    toggle,
+    closeMobile,
+} = useSidebar('doctor');
 
 // Type definitions
 interface Stats {

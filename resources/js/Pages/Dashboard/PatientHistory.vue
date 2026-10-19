@@ -178,6 +178,7 @@
             >
                 <div class="flex items-center gap-4">
                     <button
+                        v-if="!isSidebarOpen"
                         type="button"
                         class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                         @click="toggle"
@@ -439,7 +440,7 @@
                                         </div>
                                     </div>
                                     <p
-                                        v-else-if="activePrescriptions.length === 0"
+                                        v-else-if="latestPrescriptions.length === 0"
                                         class="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm font-medium text-gray-400 italic"
                                     >
                                         No active medications.
@@ -2849,8 +2850,14 @@ const props = defineProps<{
 const ocrHistory = computed<OcrDocument[]>(() => props.ocrHistory ?? []);
 
 const { success: showSuccess, error: showError } = useToast();
-const { isOpen, isMobileOpen, toggleDesktop, toggle, closeMobile } =
-    useSidebar('doctor');
+const {
+    isOpen,
+    isMobileOpen,
+    isSidebarOpen,
+    toggleDesktop,
+    toggle,
+    closeMobile,
+} = useSidebar('doctor');
 
 const flashSuccess = computed(() => {
     const flash = usePage().props.flash as { success?: string } | undefined;

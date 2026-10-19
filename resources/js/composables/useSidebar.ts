@@ -1,4 +1,4 @@
-import { ref, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 
 interface SidebarState {
     isOpen: Ref<boolean>;
@@ -6,6 +6,17 @@ interface SidebarState {
 }
 
 const states = new Map<string, SidebarState>();
+
+const isMobile = ref(false);
+
+if (typeof window !== 'undefined') {
+    const media = window.matchMedia('(max-width: 767px)');
+    isMobile.value = media.matches;
+
+    media.addEventListener('change', (event) => {
+        isMobile.value = event.matches;
+    });
+}
 
 function getState(storageKey: string): SidebarState {
     let state = states.get(storageKey);
@@ -40,6 +51,11 @@ function getState(storageKey: string): SidebarState {
 export function useSidebar(storageKey: string = 'cardiocare-sidebar-open') {
     const { isOpen, isMobileOpen } = getState(storageKey);
 
+    /** Whether the sidebar is currently on-screen for the active viewport. */
+    const isSidebarOpen = computed<boolean>(() =>
+        isMobile.value ? isMobileOpen.value : isOpen.value,
+    );
+
     function toggleDesktop(): void {
         isOpen.value = !isOpen.value;
     }
@@ -53,19 +69,18 @@ export function useSidebar(storageKey: string = 'cardiocare-sidebar-open') {
     }
 
     function toggle(): void {
-        if (
-            typeof window !== 'undefined' &&
-            window.matchMedia('(min-width: 768px)').matches
-        ) {
-            toggleDesktop();
-        } else {
+        if (isMobile.value) {
             toggleMobile();
+        } else {
+            toggleDesktop();
         }
     }
 
     return {
         isOpen,
         isMobileOpen,
+        isMobile,
+        isSidebarOpen,
         toggleDesktop,
         toggleMobile,
         toggle,

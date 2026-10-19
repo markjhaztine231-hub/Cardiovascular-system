@@ -4,6 +4,7 @@
     >
         <div class="flex items-center gap-3">
             <button
+                v-if="!isSidebarOpen"
                 type="button"
                 class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 @click="toggle"
@@ -52,5 +53,5 @@ defineProps<{
     user?: any;
 }>();
 
-const { toggle } = useSidebar('admin');
+const { isSidebarOpen, toggle } = useSidebar('admin');
 </script>
