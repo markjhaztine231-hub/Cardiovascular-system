@@ -13,7 +13,6 @@ use App\Models\Prescription;
 use App\Models\Provider;
 use App\Models\SoapNote;
 use App\Models\TreadmillTest;
-use App\Models\User;
 use App\Models\VitalSign;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -29,6 +28,7 @@ class PatientHistorySeeder extends Seeder
 
         if (! $patient || ! $doctor1 || ! $doctor2) {
             $this->command->error('Required users not found. Run DatabaseSeeder first.');
+
             return;
         }
 
@@ -53,23 +53,23 @@ class PatientHistorySeeder extends Seeder
                 ['name' => 'Losartan',   'dosage' => '50mg',      'frequency' => 'Once daily',           'days' => 30],
             ],
             study: fn (Encounter $encounter) => Echocardiogram::create([
-                'encounter_id'        => $encounter->id,
-                'ivs_mm'              => 10.0,
-                'aortic_root_mm'      => 32.0,
-                'lvpw_mm'             => 10.0,
-                'la_diameter_mm'      => 36.0,
-                'lvef_percent'        => 61.0,
-                'lvfs_percent'        => 30.0,
-                'lv_mass_grams'       => 210.0,
-                'tapse_mm'            => 20.0,
-                'lvidd_mm'            => 54.0,
-                'lvids_mm'            => 38.0,
-                'rv_size'             => 'Normal',
-                'pericardial_effusion'=> false,
-                'valve_findings'      => 'Tricuspid valve normal. Aortic valve tricuspid with calcified leaflets.',
-                'wall_motion'         => 'Concentric LV hypertrophy. Mildly impaired diastolic relaxation (Grade I).',
-                'notes'               => 'No pericardial effusion. Normal systolic function.',
-                'performed_at'        => Carbon::now()->subMonths(2)->subHour(),
+                'encounter_id' => $encounter->id,
+                'ivs_mm' => 10.0,
+                'aortic_root_mm' => 32.0,
+                'lvpw_mm' => 10.0,
+                'la_diameter_mm' => 36.0,
+                'lvef_percent' => 61.0,
+                'lvfs_percent' => 30.0,
+                'lv_mass_grams' => 210.0,
+                'tapse_mm' => 20.0,
+                'lvidd_mm' => 54.0,
+                'lvids_mm' => 38.0,
+                'rv_size' => 'Normal',
+                'pericardial_effusion' => false,
+                'valve_findings' => 'Tricuspid valve normal. Aortic valve tricuspid with calcified leaflets.',
+                'wall_motion' => 'Concentric LV hypertrophy. Mildly impaired diastolic relaxation (Grade I).',
+                'notes' => 'No pericardial effusion. Normal systolic function.',
+                'performed_at' => Carbon::now()->subMonths(2)->subHour(),
             ]),
             subjective: 'Patient reports exertional dyspnea, occasional chest tightness, and bilateral lower extremity edema.',
             assessment: 'Hypertensive heart disease with mild left ventricular diastolic dysfunction. Rule out early dilated cardiomyopathy.',
@@ -97,20 +97,20 @@ class PatientHistorySeeder extends Seeder
                 ['name' => 'Furosemide', 'dosage' => '20mg',  'frequency' => 'Once daily',               'days' => 14],
             ],
             study: fn (Encounter $encounter) => DopplerStudy::create([
-                'encounter_id'          => $encounter->id,
-                'ea_ratio'              => 0.83,
-                'tissue_doppler_e'      => 6.2,
-                'tissue_doppler_a'      => 9.0,
-                'mitral_gradient'       => 1.8,
-                'aortic_gradient'       => 5.8,
-                'tricuspid_gradient'    => null,
-                'pulmonic_gradient'     => 4.0,
-                'mitral_regurgitation'  => 'mild',
-                'aortic_regurgitation'  => 'none',
-                'tricuspid_regurgitation'=> 'trivial',
-                'valve_findings'        => 'E/A 0.83. IVRT 95ms. DT 240ms. E/e\' 11.',
-                'notes'                 => 'Grade I diastolic dysfunction. Mild MR with normal PAP. Repeat in 6 months.',
-                'performed_at'          => Carbon::now()->subWeeks(6)->subHour(),
+                'encounter_id' => $encounter->id,
+                'ea_ratio' => 0.83,
+                'tissue_doppler_e' => 6.2,
+                'tissue_doppler_a' => 9.0,
+                'mitral_gradient' => 1.8,
+                'aortic_gradient' => 5.8,
+                'tricuspid_gradient' => null,
+                'pulmonic_gradient' => 4.0,
+                'mitral_regurgitation' => 'mild',
+                'aortic_regurgitation' => 'none',
+                'tricuspid_regurgitation' => 'trivial',
+                'valve_findings' => 'E/A 0.83. IVRT 95ms. DT 240ms. E/e\' 11.',
+                'notes' => 'Grade I diastolic dysfunction. Mild MR with normal PAP. Repeat in 6 months.',
+                'performed_at' => Carbon::now()->subWeeks(6)->subHour(),
             ]),
             subjective: 'Follow-up for known diastolic dysfunction. Patient denies chest pain. Reports mild exertional fatigue.',
             assessment: 'Grade I diastolic dysfunction confirmed. Normal LV systolic function. Mild mitral regurgitation.',
@@ -136,21 +136,21 @@ class PatientHistorySeeder extends Seeder
                 ['name' => 'Aspirin', 'dosage' => '80mg', 'frequency' => 'Once daily after meals', 'days' => 90],
             ],
             study: fn (Encounter $encounter) => TreadmillTest::create([
-                'encounter_id'             => $encounter->id,
-                'protocol'                 => 'Bruce',
-                'max_stage'                => 4.0,
-                'peak_heart_rate_bpm'      => 154,
-                'peak_bp_systolic'         => 182,
-                'peak_bp_diastolic'        => 96,
-                'mets_achieved'            => 13.5,
-                'exercise_duration_seconds'=> 12 * 60,
-                'recovery_time_minutes'    => 5,
-                'st_segment_changes'       => 'Upsloping 0.5mm, no significant displacement.',
-                'arrhythmias'              => 'None noted during exercise or recovery',
-                'symptoms_during_test'     => 'Mild fatigue at peak exercise only',
-                'reason_for_termination'   => 'Target heart rate achieved (91% PMHR)',
-                'notes'                    => 'Negative ETT. Good functional capacity. Low probability of obstructive CAD.',
-                'performed_at'             => Carbon::now()->subWeeks(3)->subHour(),
+                'encounter_id' => $encounter->id,
+                'protocol' => 'Bruce',
+                'max_stage' => 4.0,
+                'peak_heart_rate_bpm' => 154,
+                'peak_bp_systolic' => 182,
+                'peak_bp_diastolic' => 96,
+                'mets_achieved' => 13.5,
+                'exercise_duration_seconds' => 12 * 60,
+                'recovery_time_minutes' => 5,
+                'st_segment_changes' => 'Upsloping 0.5mm, no significant displacement.',
+                'arrhythmias' => 'None noted during exercise or recovery',
+                'symptoms_during_test' => 'Mild fatigue at peak exercise only',
+                'reason_for_termination' => 'Target heart rate achieved (91% PMHR)',
+                'notes' => 'Negative ETT. Good functional capacity. Low probability of obstructive CAD.',
+                'performed_at' => Carbon::now()->subWeeks(3)->subHour(),
             ]),
             subjective: 'Chest discomfort on exertion. Referred for stress testing to rule out obstructive coronary artery disease.',
             assessment: 'Negative exercise tolerance test. No ST changes or anginal symptoms at peak exercise. Good functional capacity.',
@@ -189,9 +189,9 @@ class PatientHistorySeeder extends Seeder
             foreach (range(1, 3) as $dayOffset) {
                 MedicationLog::create([
                     'prescription_id' => $aspirin->id,
-                    'log_date'        => now()->subDays($dayOffset)->toDateString(),
-                    'scheduled_time'  => '08:00:00',
-                    'taken_at'        => now()->subDays($dayOffset)->setTime(8, 15),
+                    'log_date' => now()->subDays($dayOffset)->toDateString(),
+                    'scheduled_time' => '08:00:00',
+                    'taken_at' => now()->subDays($dayOffset)->setTime(8, 15),
                 ]);
             }
         }
@@ -221,71 +221,71 @@ class PatientHistorySeeder extends Seeder
     ): Encounter {
         $appointment = DB::transaction(function () use ($patient, $provider, $date, $time, $serviceType, $encounterType, $objective, $vitals, $diagnoses, $prescriptions, $study, $subjective, $assessment, $plan) {
             $appointment = Appointment::create([
-                'patient_id'     => $patient->id,
-                'provider_id'    => $provider->id,
+                'patient_id' => $patient->id,
+                'provider_id' => $provider->id,
                 'scheduled_date' => $date->toDateString(),
                 'scheduled_time' => $time.':00',
-                'service_type'   => $serviceType,
-                'status'         => 'Completed',
+                'service_type' => $serviceType,
+                'status' => 'Completed',
                 'reason_for_visit' => $subjective,
             ]);
 
             $encounter = Encounter::create([
-                'appointment_id'  => $appointment->id,
-                'patient_id'      => $patient->id,
-                'provider_id'     => $provider->id,
-                'encounter_type'  => $encounterType,
-                'status'          => 'completed',
+                'appointment_id' => $appointment->id,
+                'patient_id' => $patient->id,
+                'provider_id' => $provider->id,
+                'encounter_type' => $encounterType,
+                'status' => 'completed',
                 'chief_complaint' => $subjective,
-                'started_at'      => $date->setTimeFromTimeString($time.':00'),
-                'ended_at'        => $date->setTimeFromTimeString($time.':30'),
+                'started_at' => $date->setTimeFromTimeString($time.':00'),
+                'ended_at' => $date->setTimeFromTimeString($time.':30'),
             ]);
 
             SoapNote::create([
                 'encounter_id' => $encounter->id,
-                'subjective'   => $subjective,
-                'objective'    => $objective,
-                'assessment'   => $assessment,
-                'plan'         => $plan,
-                'ai_summary'   => mb_substr($assessment, 0, 180),
+                'subjective' => $subjective,
+                'objective' => $objective,
+                'assessment' => $assessment,
+                'plan' => $plan,
+                'ai_summary' => mb_substr($assessment, 0, 180),
             ]);
 
             VitalSign::create([
-                'encounter_id'                 => $encounter->id,
-                'blood_pressure_systolic'      => $vitals[0],
-                'blood_pressure_diastolic'     => $vitals[1],
-                'heart_rate_bpm'               => $vitals[2],
-                'respiratory_rate'             => $vitals[3],
-                'oxygen_saturation_percent'    => $vitals[4],
-                'temperature_celsius'          => 36.6,
-                'weight_kg'                    => 78.0,
-                'height_cm'                    => 168.0,
-                'bmi'                          => 27.6,
-                'recorded_at'                  => $date,
+                'encounter_id' => $encounter->id,
+                'blood_pressure_systolic' => $vitals[0],
+                'blood_pressure_diastolic' => $vitals[1],
+                'heart_rate_bpm' => $vitals[2],
+                'respiratory_rate' => $vitals[3],
+                'oxygen_saturation_percent' => $vitals[4],
+                'temperature_celsius' => 36.6,
+                'weight_kg' => 78.0,
+                'height_cm' => 168.0,
+                'bmi' => 27.6,
+                'recorded_at' => $date,
             ]);
 
             foreach ($diagnoses as $dx) {
                 Diagnosis::create([
                     'encounter_id' => $encounter->id,
-                    'icd_code'     => $dx['icd_code'],
-                    'description'  => $dx['description'],
-                    'is_primary'   => $dx['is_primary'],
+                    'icd_code' => $dx['icd_code'],
+                    'description' => $dx['description'],
+                    'is_primary' => $dx['is_primary'],
                     'diagnosed_at' => $date,
                 ]);
             }
 
             foreach ($prescriptions as $rx) {
                 Prescription::create([
-                    'encounter_id'    => $encounter->id,
-                    'patient_id'      => $patient->id,
-                    'provider_id'     => $provider->id,
+                    'encounter_id' => $encounter->id,
+                    'patient_id' => $patient->id,
+                    'provider_id' => $provider->id,
                     'medication_name' => $rx['name'],
-                    'dosage'          => $rx['dosage'],
-                    'frequency'       => $rx['frequency'],
-                    'duration_days'   => $rx['days'],
-                    'start_date'      => $date->toDateString(),
-                    'end_date'        => $date->copy()->addDays($rx['days'])->toDateString(),
-                    'status'          => 'active',
+                    'dosage' => $rx['dosage'],
+                    'frequency' => $rx['frequency'],
+                    'duration_days' => $rx['days'],
+                    'start_date' => $date->toDateString(),
+                    'end_date' => $date->copy()->addDays($rx['days'])->toDateString(),
+                    'status' => 'active',
                 ]);
             }
 

@@ -14,11 +14,11 @@ class ProviderFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id'         => User::factory()->doctor(),
-            'npi'             => fake()->unique()->numerify('############'),
-            'license_number'  => 'PRC-' . fake()->unique()->numerify('#######'),
-            'specialty'       => fake()->randomElement(['Cardiology', 'Interventional Cardiology', 'Cardiothoracic Surgery']),
-            'credentials'     => fake()->randomElement(['MD', 'DO']),
+            'user_id' => User::factory()->doctor(),
+            'npi' => fake()->unique()->numerify('############'),
+            'license_number' => 'PRC-'.fake()->unique()->numerify('#######'),
+            'specialty' => fake()->randomElement(['Cardiology', 'Interventional Cardiology', 'Cardiothoracic Surgery']),
+            'credentials' => fake()->randomElement(['MD', 'DO']),
         ];
     }
 }

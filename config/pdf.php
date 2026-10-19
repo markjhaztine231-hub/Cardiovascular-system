@@ -21,12 +21,12 @@ return [
      */
     'dompdf' => [
         'options' => [
-            'defaultFont'            => 'Arial',
-            'enable_remote'          => false,
-            'isRemoteEnabled'        => false,
-            'isHtml5ParserEnabled'   => true,
-            'enable_css_float'       => true,
-            'enable_html5_parser'    => true,
+            'defaultFont' => 'Arial',
+            'enable_remote' => false,
+            'isRemoteEnabled' => false,
+            'isHtml5ParserEnabled' => true,
+            'enable_css_float' => true,
+            'enable_html5_parser' => true,
         ],
     ],
 ];
