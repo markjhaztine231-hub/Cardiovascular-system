@@ -5,9 +5,21 @@
         <Toast />
 
         <!-- SIDEBAR -->
+        <!-- Mobile backdrop -->
+        <div
+            v-if="isMobileOpen"
+            class="fixed inset-0 z-40 bg-black/50 md:hidden"
+            @click="closeMobile"
+        ></div>
+
         <aside
-            class="z-20 hidden w-64 shrink-0 flex-col bg-[#146b8a] text-white shadow-xl md:flex"
+            class="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col bg-[#146b8a] text-white shadow-xl transition-[width,transform] duration-300 md:static md:z-20 md:flex"
+            :class="[
+                isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+                isOpen ? 'md:w-64' : 'md:w-0 md:overflow-hidden',
+            ]"
         >
+            <div class="flex h-full w-64 shrink-0 flex-col">
             <div
                 class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
             >
@@ -16,7 +28,7 @@
                 >
                     ♥
                 </div>
-                <div>
+                <div class="flex-1">
                     <h1 class="text-lg leading-tight font-bold tracking-wide">
                         CardioCare
                     </h1>
@@ -26,8 +38,17 @@
                         Healthcare Portal
                     </p>
                 </div>
+                <button
+                    type="button"
+                    class="ml-2 hidden rounded-md p-1.5 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white md:inline-flex"
+                    @click="toggleDesktop"
+                    aria-label="Toggle sidebar"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
             </div>
-
             <nav class="flex-1 overflow-y-auto py-6">
                 <div
                     class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
@@ -39,6 +60,7 @@
                         <Link
                             href="/doctor/dashboard"
                             class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                            @click="closeMobile"
                         >
                             <svg
                                 class="mr-3 h-5 w-5"
@@ -60,6 +82,7 @@
                         <Link
                             href="/doctor/emr"
                             class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
+                            @click="closeMobile"
                         >
                             <svg
                                 class="mr-3 h-5 w-5"
@@ -81,6 +104,7 @@
                         <Link
                             href="/doctor/reports/monthly"
                             class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                            @click="closeMobile"
                         >
                             <svg
                                 class="mr-3 h-5 w-5"
@@ -105,6 +129,7 @@
                 <Link
                     href="/profile"
                     class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                    @click="closeMobile"
                 >
                     <svg
                         class="mr-3 h-5 w-5"
@@ -143,14 +168,25 @@
                     </button>
                 </LogoutButton>
             </div>
+            </div>
         </aside>
 
         <!-- MAIN CONTENT -->
         <main class="flex h-screen flex-1 flex-col overflow-hidden">
             <header
-                class="z-10 flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-8 shadow-sm"
+                class="z-10 flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8"
             >
                 <div class="flex items-center gap-4">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
+                        @click="toggleMobile"
+                        aria-label="Open sidebar"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
                     <Link
                         href="/doctor/emr"
                         class="rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-400 transition-colors hover:text-[#146b8a]"
@@ -2707,6 +2743,7 @@ import { computed, ref, onMounted } from 'vue';
 import AnalyticsPanel from '@/components/AnalyticsPanel.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
+import { useSidebar } from '@/composables/useSidebar';
 import type {
     Appointment,
     EchoData,
@@ -2812,6 +2849,8 @@ const props = defineProps<{
 const ocrHistory = computed<OcrDocument[]>(() => props.ocrHistory ?? []);
 
 const { success: showSuccess, error: showError } = useToast();
+const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+    useSidebar('doctor');
 
 const flashSuccess = computed(() => {
     const flash = usePage().props.flash as { success?: string } | undefined;

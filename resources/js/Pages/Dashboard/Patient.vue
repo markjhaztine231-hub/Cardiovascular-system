@@ -4,74 +4,86 @@
     >
         <!-- Toast Notifications -->
         <Toast />
+        <!-- Mobile backdrop -->
+        <div
+            v-if="isMobileOpen"
+            class="fixed inset-0 z-40 bg-black/50 md:hidden"
+            @click="closeMobile"
+        ></div>
+
         <!-- PATIENT SIDEBAR -->
         <aside
-            class="z-20 hidden w-64 shrink-0 flex-col bg-[#003366] text-white shadow-xl md:flex"
+            class="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col bg-[#003366] text-white shadow-xl transition-[width,transform] duration-300 md:static md:z-20 md:flex"
+            :class="[
+                isMobileOpen
+                    ? 'translate-x-0'
+                    : '-translate-x-full md:translate-x-0',
+                isOpen ? 'md:w-64' : 'md:w-0 md:overflow-hidden',
+            ]"
         >
-            <div
-                class="flex h-20 items-center border-b border-[#004080] bg-[#002244] px-6"
-            >
+            <div class="flex h-full w-64 shrink-0 flex-col">
                 <div
-                    class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#003366] shadow-md"
+                    class="flex h-20 items-center border-b border-[#004080] bg-[#002244] px-6"
                 >
-                    ♥
-                </div>
-                <div>
-                    <h1 class="text-lg leading-tight font-bold tracking-wide">
-                        CardioCare
-                    </h1>
-                    <p
-                        class="text-[10px] tracking-widest text-blue-200 uppercase"
+                    <div
+                        class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#003366] shadow-md"
                     >
-                        Patient Portal
-                    </p>
+                        ♥
+                    </div>
+                    <div class="flex-1">
+                        <h1
+                            class="text-lg leading-tight font-bold tracking-wide"
+                        >
+                            CardioCare
+                        </h1>
+                        <p
+                            class="text-[10px] tracking-widest text-blue-200 uppercase"
+                        >
+                            Patient Portal
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="ml-2 hidden rounded-md p-1.5 text-blue-200 transition-colors hover:bg-[#004080] hover:text-white md:inline-flex"
+                        @click="toggleDesktop"
+                        aria-label="Toggle sidebar"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
+                        </svg>
+                    </button>
                 </div>
-            </div>
 
-            <nav class="flex-1 overflow-y-auto py-6">
-                <div
-                    class="mb-2 px-6 text-xs font-semibold tracking-wider text-blue-300 uppercase"
-                >
-                    My Health
-                </div>
-                <ul class="space-y-1">
-                    <li>
-                        <button
-                            @click="activeTab = 'dashboard'"
-                            class="flex w-full items-center px-6 py-3 text-left transition-colors"
-                            :class="
-                                activeTab === 'dashboard'
-                                    ? 'border-l-4 border-white bg-[#004080] font-medium text-white shadow-inner'
-                                    : 'border-l-4 border-transparent text-blue-100 hover:bg-[#004080]'
-                            "
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                <nav class="flex-1 overflow-y-auto py-6">
+                    <div
+                        class="mb-2 px-6 text-xs font-semibold tracking-wider text-blue-300 uppercase"
+                    >
+                        My Health
+                    </div>
+                    <ul class="space-y-1">
+                        <li>
+                            <button
+                                @click="
+                                    activeTab = 'dashboard';
+                                    closeMobile();
+                                "
+                                class="flex w-full items-center px-6 py-3 text-left transition-colors"
+                                :class="
+                                    activeTab === 'dashboard'
+                                        ? 'border-l-4 border-white bg-[#004080] font-medium text-white shadow-inner'
+                                        : 'border-l-4 border-transparent text-blue-100 hover:bg-[#004080]'
+                                "
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                                />
-                            </svg>
-                            Home Dashboard
-                        </button>
-                    </li>
-                    <li>
-                        <button
-                            @click="activeTab = 'medications'"
-                            class="flex w-full items-center justify-between px-6 py-3 text-left transition-colors"
-                            :class="
-                                activeTab === 'medications'
-                                    ? 'border-l-4 border-white bg-[#004080] font-medium text-white shadow-inner'
-                                    : 'border-l-4 border-transparent text-blue-100 hover:bg-[#004080]'
-                            "
-                        >
-                            <div class="flex items-center">
                                 <svg
                                     class="mr-3 h-5 w-5"
                                     fill="none"
@@ -82,88 +94,102 @@
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         stroke-width="2"
-                                        d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
                                     />
                                 </svg>
-                                My Medications
-                            </div>
-                            <span
-                                v-if="unreadCount > 0"
-                                class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                                Home Dashboard
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                @click="
+                                    activeTab = 'medications';
+                                    closeMobile();
+                                "
+                                class="flex w-full items-center justify-between px-6 py-3 text-left transition-colors"
+                                :class="
+                                    activeTab === 'medications'
+                                        ? 'border-l-4 border-white bg-[#004080] font-medium text-white shadow-inner'
+                                        : 'border-l-4 border-transparent text-blue-100 hover:bg-[#004080]'
+                                "
                             >
-                                {{ unreadCount }}
-                            </span>
-                            <span
-                                v-else-if="pendingDosesCount > 0"
-                                class="flex h-5 w-5 items-center justify-center"
-                            >
-                                <span class="relative flex h-3 w-3">
-                                    <span
-                                        class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"
-                                    ></span>
-                                    <span
-                                        class="relative inline-flex h-3 w-3 rounded-full bg-emerald-500"
-                                    ></span>
+                                <div class="flex items-center">
+                                    <svg
+                                        class="mr-3 h-5 w-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                                        />
+                                    </svg>
+                                    My Medications
+                                </div>
+                                <span
+                                    v-if="unreadCount > 0"
+                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                                >
+                                    {{ unreadCount }}
                                 </span>
-                            </span>
-                        </button>
-                    </li>
-                    <li>
-                        <button
-                            @click="activeTab = 'records'"
-                            class="flex w-full items-center px-6 py-3 text-left transition-colors"
-                            :class="
-                                activeTab === 'records'
-                                    ? 'border-l-4 border-white bg-[#004080] font-medium text-white shadow-inner'
-                                    : 'border-l-4 border-transparent text-blue-100 hover:bg-[#004080]'
-                            "
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                <span
+                                    v-else-if="pendingDosesCount > 0"
+                                    class="flex h-5 w-5 items-center justify-center"
+                                >
+                                    <span class="relative flex h-3 w-3">
+                                        <span
+                                            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"
+                                        ></span>
+                                        <span
+                                            class="relative inline-flex h-3 w-3 rounded-full bg-emerald-500"
+                                        ></span>
+                                    </span>
+                                </span>
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                @click="
+                                    activeTab = 'records';
+                                    closeMobile();
+                                "
+                                class="flex w-full items-center px-6 py-3 text-left transition-colors"
+                                :class="
+                                    activeTab === 'records'
+                                        ? 'border-l-4 border-white bg-[#004080] font-medium text-white shadow-inner'
+                                        : 'border-l-4 border-transparent text-blue-100 hover:bg-[#004080]'
+                                "
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Medical Records
-                        </button>
-                    </li>
-                </ul>
-            </nav>
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Medical Records
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
 
-            <div class="space-y-1 border-t border-[#004080] p-4">
-                <Link
-                    href="/profile"
-                    class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-blue-200 transition-colors hover:bg-[#004080] hover:text-white"
-                >
-                    <svg
-                        class="mr-3 h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                    </svg>
-                    My Profile
-                </Link>
-                <LogoutButton>
-                    <button
-                        type="button"
+                <div class="space-y-1 border-t border-[#004080] p-4">
+                    <Link
+                        href="/profile"
                         class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-blue-200 transition-colors hover:bg-[#004080] hover:text-white"
+                        @click="closeMobile"
                     >
                         <svg
-                            class="mr-3 h-5 w-5 rotate-180"
+                            class="mr-3 h-5 w-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -172,17 +198,72 @@
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                             />
                         </svg>
-                        Sign Out
-                    </button>
-                </LogoutButton>
+                        My Profile
+                    </Link>
+                    <LogoutButton>
+                        <button
+                            type="button"
+                            class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-blue-200 transition-colors hover:bg-[#004080] hover:text-white"
+                        >
+                            <svg
+                                class="mr-3 h-5 w-5 rotate-180"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                />
+                            </svg>
+                            Sign Out
+                        </button>
+                    </LogoutButton>
+                </div>
             </div>
         </aside>
 
         <!-- MAIN CONTENT -->
         <main class="relative flex h-screen flex-1 flex-col overflow-hidden">
+            <div
+                class="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 shadow-sm md:hidden"
+            >
+                <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    @click="toggleMobile"
+                    aria-label="Open sidebar"
+                >
+                    <svg
+                        class="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"
+                        />
+                    </svg>
+                </button>
+                <div class="flex items-center gap-2">
+                    <div
+                        class="rounded-lg bg-[#003366] p-1.5 text-sm font-bold text-white"
+                    >
+                        ♥
+                    </div>
+                    <span class="text-sm font-bold text-[#003366]"
+                        >CardioCare - Patient</span
+                    >
+                </div>
+            </div>
             <!-- Toast Notification -->
             <div
                 v-if="showToast"
@@ -908,7 +989,9 @@
                                                 class="font-mono text-xs font-bold"
                                                 >{{ d.scheduled_time }}</span
                                             >
-                                            <span class="text-[10px] opacity-75">
+                                            <span
+                                                class="text-[10px] opacity-75"
+                                            >
                                                 {{
                                                     d.status === 'TAKEN'
                                                         ? d.adherence_flag ===
@@ -984,10 +1067,10 @@
                                     informational adherence aid and is not a
                                     substitute for your cardiologist's
                                     instructions. Always follow your
-                                    prescription exactly as written. If you
-                                    miss a dose or feel unwell, contact your
-                                    care team before making any adjustments to
-                                    your medication.
+                                    prescription exactly as written. If you miss
+                                    a dose or feel unwell, contact your care
+                                    team before making any adjustments to your
+                                    medication.
                                 </div>
                             </div>
                         </div>
@@ -1010,7 +1093,9 @@
                                     :key="part.key"
                                     class="rounded-xl border border-slate-200"
                                 >
-                                    <div class="rounded-t-xl bg-slate-50 px-3 py-2">
+                                    <div
+                                        class="rounded-t-xl bg-slate-50 px-3 py-2"
+                                    >
                                         <p
                                             class="text-xs font-extrabold tracking-wide text-slate-600 uppercase"
                                         >
@@ -1040,14 +1125,18 @@
                                                     : undefined
                                             "
                                         >
-                                            <span class="font-bold capitalize">{{
-                                                displayMedicineName(
-                                                    med.medicine,
-                                                )
-                                            }}</span>
-                                            <span class="font-mono font-extrabold">{{
-                                                dose.scheduled_time
-                                            }}</span>
+                                            <span
+                                                class="font-bold capitalize"
+                                                >{{
+                                                    displayMedicineName(
+                                                        med.medicine,
+                                                    )
+                                                }}</span
+                                            >
+                                            <span
+                                                class="font-mono font-extrabold"
+                                                >{{ dose.scheduled_time }}</span
+                                            >
                                         </button>
                                     </div>
                                 </div>
@@ -1083,10 +1172,21 @@
                                 class="mb-4 flex items-center gap-4 rounded-xl bg-slate-50 px-4 py-3"
                             >
                                 <div>
-                                    <p class="text-2xl leading-none font-black" :class="adherenceTrend.average >= 80 ? 'text-emerald-600' : adherenceTrend.average >= 50 ? 'text-amber-600' : 'text-red-600'">
+                                    <p
+                                        class="text-2xl leading-none font-black"
+                                        :class="
+                                            adherenceTrend.average >= 80
+                                                ? 'text-emerald-600'
+                                                : adherenceTrend.average >= 50
+                                                  ? 'text-amber-600'
+                                                  : 'text-red-600'
+                                        "
+                                    >
                                         {{ adherenceTrend.average }}%
                                     </p>
-                                    <p class="text-[11px] font-semibold tracking-wide text-slate-500">
+                                    <p
+                                        class="text-[11px] font-semibold tracking-wide text-slate-500"
+                                    >
                                         OVERALL 7-DAY
                                     </p>
                                 </div>
@@ -1096,19 +1196,29 @@
                                     :class="
                                         adherenceTrend.direction === 'up'
                                             ? 'text-emerald-600'
-                                            : adherenceTrend.direction === 'down'
+                                            : adherenceTrend.direction ===
+                                                'down'
                                               ? 'text-red-600'
                                               : 'text-slate-500'
                                     "
                                 >
-                                    <span v-if="adherenceTrend.direction === 'up'">&uarr;</span>
-                                    <span v-else-if="adherenceTrend.direction === 'down'">&darr;</span>
+                                    <span
+                                        v-if="adherenceTrend.direction === 'up'"
+                                        >&uarr;</span
+                                    >
+                                    <span
+                                        v-else-if="
+                                            adherenceTrend.direction === 'down'
+                                        "
+                                        >&darr;</span
+                                    >
                                     <span v-else>&rarr;</span>
                                     <span>
                                         {{
                                             adherenceTrend.direction === 'up'
                                                 ? `Improving (+${adherenceTrend.delta}%)`
-                                                : adherenceTrend.direction === 'down'
+                                                : adherenceTrend.direction ===
+                                                    'down'
                                                   ? `Declining (${adherenceTrend.delta}%)`
                                                   : 'Steady'
                                         }}
@@ -1160,7 +1270,9 @@
                                         <div class="relative w-full">
                                             <div
                                                 class="w-full rounded-t transition-all"
-                                                :style="{ height: day.pct + '%' }"
+                                                :style="{
+                                                    height: day.pct + '%',
+                                                }"
                                                 :class="
                                                     day.pct >= 80
                                                         ? 'bg-emerald-500'
@@ -1176,7 +1288,8 @@
                                             >
                                                 <span
                                                     class="text-[10px] font-bold text-red-600 opacity-70"
-                                                >✕</span>
+                                                    >✕</span
+                                                >
                                             </div>
                                         </div>
                                         <span
@@ -1587,7 +1700,7 @@
                                                 : slotsLoading
                                                   ? 'Loading slots...'
                                                   : rescheduleTimeSlots.length ===
-                                                    0
+                                                      0
                                                     ? 'No slots available'
                                                     : 'Select Time'
                                         }}
@@ -1642,6 +1755,7 @@ import LogoutButton from '@/components/LogoutButton.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
+import { useSidebar } from '@/composables/useSidebar';
 import { getEcho } from '@/echo';
 import {
     sanitizeText,
@@ -1761,6 +1875,8 @@ interface AdherenceMed {
 }
 
 const { success: showSuccess, error: showError } = useToast();
+const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+    useSidebar('patient');
 
 const props = defineProps<{
     user: User;
@@ -1809,9 +1925,8 @@ const doseLoading = ref<Record<string, boolean>>({});
 const doseToggling = ref<Record<string, boolean>>({});
 const pendingDosesCount = computed(
     () =>
-        todayMeds.value.filter((m) =>
-            (m.doses ?? []).some((d) => d.can_take),
-        ).length,
+        todayMeds.value.filter((m) => (m.doses ?? []).some((d) => d.can_take))
+            .length,
 );
 
 // Today's doses grouped by part of day, so the patient can glance at the
@@ -1846,7 +1961,10 @@ const dayParts = computed(() => {
 
     for (const med of todayMeds.value) {
         for (const dose of med.doses ?? []) {
-            const hour = parseInt((dose.scheduled_time ?? '').split(':')[0], 10);
+            const hour = parseInt(
+                (dose.scheduled_time ?? '').split(':')[0],
+                10,
+            );
             const idx = Number.isNaN(hour)
                 ? 0
                 : hour < 12
@@ -2644,9 +2762,7 @@ const formatTime = (timeString: string): string => {
     });
 };
 
-const formatDateTime = (
-    iso: string | null | undefined,
-): string => {
+const formatDateTime = (iso: string | null | undefined): string => {
     if (!iso) {
         return '—';
     }

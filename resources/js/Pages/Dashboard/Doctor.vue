@@ -4,132 +4,52 @@
     >
         <!-- Toast Notifications -->
         <Toast />
+        <!-- Mobile backdrop -->
+        <div
+            v-if="isMobileOpen"
+            class="fixed inset-0 z-40 bg-black/50 md:hidden"
+            @click="closeMobile"
+        ></div>
+
         <!-- SIDEBAR -->
         <aside
-            class="z-20 hidden w-64 shrink-0 flex-col bg-[#146b8a] text-white shadow-xl md:flex"
+            class="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col bg-[#146b8a] text-white shadow-xl transition-[width,transform] duration-300 md:static md:z-20 md:flex"
+            :class="[
+                isMobileOpen
+                    ? 'translate-x-0'
+                    : '-translate-x-full md:translate-x-0',
+                isOpen ? 'md:w-64' : 'md:w-0 md:overflow-hidden',
+            ]"
         >
-            <div
-                class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
-            >
+            <div class="flex h-full w-64 shrink-0 flex-col">
                 <div
-                    class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#146b8a] shadow-md"
+                    class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
                 >
-                    ♥
-                </div>
-                <div>
-                    <h1 class="text-lg leading-tight font-bold tracking-wide">
-                        CardioCare
-                    </h1>
-                    <p
-                        class="text-[10px] tracking-widest text-teal-100 uppercase"
+                    <div
+                        class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#146b8a] shadow-md"
                     >
-                        Healthcare Portal
-                    </p>
-                </div>
-            </div>
-            <nav class="flex-1 overflow-y-auto py-6">
-                <div
-                    class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
-                >
-                    Clinical Workflow
-                </div>
-                <ul class="space-y-1">
-                    <li>
-                        <Link
-                            href="/doctor/dashboard"
-                            class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
+                        ♥
+                    </div>
+                    <div class="flex-1">
+                        <h1
+                            class="text-lg leading-tight font-bold tracking-wide"
                         >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                />
-                            </svg>
-                            Consultation Dashboard
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/doctor/emr"
-                            class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                            CardioCare
+                        </h1>
+                        <p
+                            class="text-[10px] tracking-widest text-teal-100 uppercase"
                         >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Patient Records (EMR)
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/doctor/reports/monthly"
-                            class="flex items-center px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                            :class="{
-                                'border-l-4 border-white bg-[#11888a] font-medium text-white shadow-inner':
-                                    $page.url === '/doctor/reports/monthly',
-                            }"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Monthly Narrative Report
-                        </Link>
-                    </li>
-                </ul>
-            </nav>
-            <div class="space-y-1 border-t border-[#1b7f9e] p-4">
-                <Link
-                    href="/profile"
-                    class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                >
-                    <svg
-                        class="mr-3 h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                    </svg>
-                    My Profile
-                </Link>
-                <LogoutButton>
+                            Healthcare Portal
+                        </p>
+                    </div>
                     <button
                         type="button"
-                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        class="ml-2 hidden rounded-md p-1.5 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white md:inline-flex"
+                        @click="toggleDesktop"
+                        aria-label="Toggle sidebar"
                     >
                         <svg
-                            class="mr-3 h-5 w-5 rotate-180"
+                            class="h-5 w-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -138,23 +58,166 @@
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                d="M4 6h16M4 12h16M4 18h16"
                             />
                         </svg>
-                        Sign Out
                     </button>
-                </LogoutButton>
+                </div>
+                <nav class="flex-1 overflow-y-auto py-6">
+                    <div
+                        class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
+                    >
+                        Clinical Workflow
+                    </div>
+                    <ul class="space-y-1">
+                        <li>
+                            <Link
+                                href="/doctor/dashboard"
+                                class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                    />
+                                </svg>
+                                Consultation Dashboard
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/doctor/emr"
+                                class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Patient Records (EMR)
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/doctor/reports/monthly"
+                                class="flex items-center px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                                :class="{
+                                    'border-l-4 border-white bg-[#11888a] font-medium text-white shadow-inner':
+                                        $page.url === '/doctor/reports/monthly',
+                                }"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Monthly Narrative Report
+                            </Link>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="space-y-1 border-t border-[#1b7f9e] p-4">
+                    <Link
+                        href="/profile"
+                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        @click="closeMobile"
+                    >
+                        <svg
+                            class="mr-3 h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                        </svg>
+                        My Profile
+                    </Link>
+                    <LogoutButton>
+                        <button
+                            type="button"
+                            class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        >
+                            <svg
+                                class="mr-3 h-5 w-5 rotate-180"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                />
+                            </svg>
+                            Sign Out
+                        </button>
+                    </LogoutButton>
+                </div>
             </div>
         </aside>
 
         <!-- MAIN CONTENT -->
         <main class="flex h-screen flex-1 flex-col overflow-hidden">
             <header
-                class="z-10 flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-8 shadow-sm"
+                class="z-10 flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8"
             >
-                <h2 class="text-xl font-bold text-gray-800">
-                    Physician Dashboard
-                </h2>
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
+                        @click="toggleMobile"
+                        aria-label="Open sidebar"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
+                        </svg>
+                    </button>
+                    <h2 class="text-xl font-bold text-gray-800">
+                        Physician Dashboard
+                    </h2>
+                </div>
                 <div class="flex items-center gap-6">
                     <!-- Notification Bell -->
                     <div class="relative">
@@ -666,9 +729,7 @@
                                                 >PDF</a
                                             >
                                             <a
-                                                v-if="
-                                                    record.manual_draft_data
-                                                "
+                                                v-if="record.manual_draft_data"
                                                 :href="`/doctor/pdf/${record.id}/manual_draft`"
                                                 target="_blank"
                                                 @click.stop
@@ -729,7 +790,9 @@
                     </div>
 
                     <!-- RIGHT COLUMN: SOAP & FORM -->
-                    <div class="relative min-w-0 flex-1 overflow-y-auto bg-white p-8">
+                    <div
+                        class="relative min-w-0 flex-1 overflow-y-auto bg-white p-8"
+                    >
                         <form @submit.prevent="saveConsultation">
                             <div
                                 class="mb-6 flex items-center justify-between border-b border-gray-100 pb-4"
@@ -749,13 +812,24 @@
                                 v-if="prefilledByReception"
                                 class="mb-6 flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3"
                             >
-                                <svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <svg
+                                    class="mt-0.5 h-5 w-5 shrink-0 text-teal-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
                                 </svg>
                                 <p class="text-sm font-semibold text-teal-800">
-                                    Study measurements recorded by the receptionist have been
-                                    pre-filled into the Echo / TMT / Doppler forms. Review them
-                                    and confirm before saving the consultation.
+                                    Study measurements recorded by the
+                                    receptionist have been pre-filled into the
+                                    Echo / TMT / Doppler forms. Review them and
+                                    confirm before saving the consultation.
                                 </p>
                             </div>
 
@@ -782,34 +856,99 @@
                                         >
                                         <div class="grid grid-cols-3 gap-2">
                                             <div>
-                                                <label class="mb-0.5 block text-[10px] font-semibold text-gray-500">BP Sys</label>
-                                                <input type="number" v-model.number="vitalsForm.bp_sys" placeholder="120" min="60" max="250"
-                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]" />
+                                                <label
+                                                    class="mb-0.5 block text-[10px] font-semibold text-gray-500"
+                                                    >BP Sys</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    v-model.number="
+                                                        vitalsForm.bp_sys
+                                                    "
+                                                    placeholder="120"
+                                                    min="60"
+                                                    max="250"
+                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                />
                                             </div>
                                             <div>
-                                                <label class="mb-0.5 block text-[10px] font-semibold text-gray-500">BP Dia</label>
-                                                <input type="number" v-model.number="vitalsForm.bp_dia" placeholder="80" min="30" max="180"
-                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]" />
+                                                <label
+                                                    class="mb-0.5 block text-[10px] font-semibold text-gray-500"
+                                                    >BP Dia</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    v-model.number="
+                                                        vitalsForm.bp_dia
+                                                    "
+                                                    placeholder="80"
+                                                    min="30"
+                                                    max="180"
+                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                />
                                             </div>
                                             <div>
-                                                <label class="mb-0.5 block text-[10px] font-semibold text-gray-500">Heart Rate</label>
-                                                <input type="number" v-model.number="vitalsForm.hr" placeholder="72" min="30" max="250"
-                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]" />
+                                                <label
+                                                    class="mb-0.5 block text-[10px] font-semibold text-gray-500"
+                                                    >Heart Rate</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    v-model.number="
+                                                        vitalsForm.hr
+                                                    "
+                                                    placeholder="72"
+                                                    min="30"
+                                                    max="250"
+                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                />
                                             </div>
                                             <div>
-                                                <label class="mb-0.5 block text-[10px] font-semibold text-gray-500">Resp. Rate</label>
-                                                <input type="number" v-model.number="vitalsForm.rr" placeholder="18" min="6" max="60"
-                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]" />
+                                                <label
+                                                    class="mb-0.5 block text-[10px] font-semibold text-gray-500"
+                                                    >Resp. Rate</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    v-model.number="
+                                                        vitalsForm.rr
+                                                    "
+                                                    placeholder="18"
+                                                    min="6"
+                                                    max="60"
+                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                />
                                             </div>
                                             <div>
-                                                <label class="mb-0.5 block text-[10px] font-semibold text-gray-500">Temp (°C)</label>
-                                                <input type="number" v-model="vitalsForm.temp" placeholder="36.5" min="34" max="42" step="0.1"
-                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]" />
+                                                <label
+                                                    class="mb-0.5 block text-[10px] font-semibold text-gray-500"
+                                                    >Temp (°C)</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    v-model="vitalsForm.temp"
+                                                    placeholder="36.5"
+                                                    min="34"
+                                                    max="42"
+                                                    step="0.1"
+                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                />
                                             </div>
                                             <div>
-                                                <label class="mb-0.5 block text-[10px] font-semibold text-gray-500">SpO₂ (%)</label>
-                                                <input type="number" v-model.number="vitalsForm.spo2" placeholder="97" min="50" max="100"
-                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]" />
+                                                <label
+                                                    class="mb-0.5 block text-[10px] font-semibold text-gray-500"
+                                                    >SpO₂ (%)</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    v-model.number="
+                                                        vitalsForm.spo2
+                                                    "
+                                                    placeholder="97"
+                                                    min="50"
+                                                    max="100"
+                                                    class="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -1261,7 +1400,9 @@
                             <p class="text-xs font-bold text-gray-500">
                                 No scans uploaded
                             </p>
-                            <p class="mt-1 text-[11px] leading-relaxed text-gray-400">
+                            <p
+                                class="mt-1 text-[11px] leading-relaxed text-gray-400"
+                            >
                                 Reception can attach a prescription photo from
                                 the front desk. Converted text appears here.
                             </p>
@@ -1292,11 +1433,7 @@
                                             <span
                                                 class="block truncate text-xs font-bold text-gray-800"
                                             >
-                                                {{
-                                                    scanTypeLabel(
-                                                        scan.type,
-                                                    )
-                                                }}
+                                                {{ scanTypeLabel(scan.type) }}
                                             </span>
                                             <span
                                                 class="block truncate text-[10px] text-gray-400"
@@ -1319,8 +1456,7 @@
                                             "
                                         >
                                             {{
-                                                scan.ocr_status ===
-                                                'completed'
+                                                scan.ocr_status === 'completed'
                                                     ? confidenceLabel(
                                                           scan.ocr_confidence,
                                                       )
@@ -1339,8 +1475,7 @@
                                 <div
                                     v-if="
                                         selectedScan.ocr_status === 'pending' ||
-                                        selectedScan.ocr_status ===
-                                            'processing'
+                                        selectedScan.ocr_status === 'processing'
                                     "
                                     class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center"
                                 >
@@ -1371,16 +1506,16 @@
                                                 : 'Converting to text…'
                                         }}
                                     </p>
-                                    <p
-                                        class="mt-1 text-[11px] text-blue-600"
-                                    >
+                                    <p class="mt-1 text-[11px] text-blue-600">
                                         This panel refreshes automatically.
                                     </p>
                                 </div>
 
                                 <!-- Failed -->
                                 <div
-                                    v-else-if="selectedScan.ocr_status === 'failed'"
+                                    v-else-if="
+                                        selectedScan.ocr_status === 'failed'
+                                    "
                                     class="rounded-lg border border-red-200 bg-red-50 p-4"
                                 >
                                     <p class="text-xs font-bold text-red-800">
@@ -1392,9 +1527,7 @@
                                     >
                                         {{ selectedScan.ocr_error }}
                                     </p>
-                                    <p
-                                        class="mt-2 text-[11px] text-red-500"
-                                    >
+                                    <p class="mt-2 text-[11px] text-red-500">
                                         Ask reception to re-upload a clearer
                                         photo.
                                     </p>
@@ -1426,7 +1559,9 @@
                                         />
                                     </a>
 
-                                    <div class="flex flex-wrap items-center gap-2">
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
+                                    >
                                         <span
                                             class="rounded-md border px-2 py-0.5 text-[10px] font-bold"
                                             :class="
@@ -1439,7 +1574,8 @@
                                                 confidenceLabel(
                                                     selectedScan.ocr_confidence,
                                                 )
-                                            }} confidence
+                                            }}
+                                            confidence
                                         </span>
                                         <span
                                             v-if="selectedScan.engine"
@@ -1448,27 +1584,20 @@
                                             {{ selectedScan.engine }}
                                         </span>
                                         <span
-                                            v-if="
-                                                selectedScan.uploaded_by
-                                            "
+                                            v-if="selectedScan.uploaded_by"
                                             class="text-[10px] text-gray-400"
                                         >
                                             by
-                                            {{
-                                                selectedScan.uploaded_by
-                                            }}
+                                            {{ selectedScan.uploaded_by }}
                                         </span>
                                     </div>
 
                                     <div
-                                        v-if="
-                                            selectedScan.requires_review
-                                        "
+                                        v-if="selectedScan.requires_review"
                                         class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800"
                                     >
                                         {{
-                                            selectedScan.ocr_confidence ===
-                                            null
+                                            selectedScan.ocr_confidence === null
                                                 ? 'The hosted OCR service reports no confidence score — verify against the image before prescribing.'
                                                 : 'Low confidence — verify against the image before prescribing.'
                                         }}
@@ -1476,9 +1605,7 @@
 
                                     <!-- Recognised medications -->
                                     <div
-                                        v-if="
-                                            selectedScan.medications?.length
-                                        "
+                                        v-if="selectedScan.medications?.length"
                                     >
                                         <div
                                             class="mb-2 flex items-center justify-between"
@@ -1486,8 +1613,7 @@
                                             <h4
                                                 class="text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
                                             >
-                                                Recognised
-                                                medications
+                                                Recognised medications
                                             </h4>
                                             <span
                                                 v-if="
@@ -1504,8 +1630,7 @@
                                         <ul class="space-y-1.5">
                                             <li
                                                 v-for="(
-                                                    med,
-                                                    medIdx
+                                                    med, medIdx
                                                 ) in selectedScan.medications"
                                                 :key="medIdx"
                                                 class="rounded-lg border border-gray-200 bg-white p-2.5"
@@ -1553,15 +1678,11 @@
                                         </ul>
 
                                         <p
-                                            v-if="
-                                                selectedScan.warnings?.length
-                                            "
+                                            v-if="selectedScan.warnings?.length"
                                             class="mt-2 text-[10px] text-amber-600"
                                         >
                                             {{
-                                                selectedScan.warnings.join(
-                                                    ' ',
-                                                )
+                                                selectedScan.warnings.join(' ')
                                             }}
                                         </p>
                                     </div>
@@ -1575,11 +1696,11 @@
                                         </h4>
                                         <pre
                                             class="max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-gray-700"
->{{
-                                            selectedScan.ocr_text ||
-                                            'No text recognised.'
-                                        }}</pre
-                                    >
+                                            >{{
+                                                selectedScan.ocr_text ||
+                                                'No text recognised.'
+                                            }}</pre
+                                        >
                                     </div>
 
                                     <!-- Layout and non-text marks detected on the page -->
@@ -1619,8 +1740,7 @@
                                         >
                                             <li
                                                 v-for="(
-                                                    visual,
-                                                    index
+                                                    visual, index
                                                 ) in selectedScan.visuals"
                                                 :key="index"
                                                 class="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[10px]"
@@ -1631,8 +1751,7 @@
                                                     {{
                                                         VISUAL_LABELS[
                                                             visual.kind
-                                                        ] ??
-                                                        visual.kind
+                                                        ] ?? visual.kind
                                                     }}
                                                 </span>
                                                 <span
@@ -1651,17 +1770,12 @@
                                                 class="cursor-pointer text-[10px] font-bold text-[#146b8a]"
                                             >
                                                 Reading order —
-                                                {{
-                                                    selectedScan.layout.length
-                                                }}
+                                                {{ selectedScan.layout.length }}
                                                 regions
                                             </summary>
-                                            <ol
-                                                class="mt-1.5 space-y-1"
-                                            >
+                                            <ol class="mt-1.5 space-y-1">
                                                 <li
-                                                    v-for="region in selectedScan
-                                                        .layout"
+                                                    v-for="region in selectedScan.layout"
                                                     :key="
                                                         region.order ??
                                                         region.bbox?.[0]
@@ -1680,10 +1794,7 @@
                                                     <span
                                                         class="min-w-0 flex-1 truncate text-gray-600"
                                                     >
-                                                        {{
-                                                            region.text ||
-                                                            '—'
-                                                        }}
+                                                        {{ region.text || '—' }}
                                                     </span>
                                                 </li>
                                             </ol>
@@ -1811,7 +1922,11 @@ import AbpmForm from '@/components/Clinical/AbpmForm.vue';
 import StressEchoForm from '@/components/Clinical/StressEchoForm.vue';
 import Toast from '@/components/Toast.vue';
 import { useToast } from '@/composables/useToast';
+import { useSidebar } from '@/composables/useSidebar';
 import { getEcho } from '@/echo';
+
+const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+    useSidebar('doctor');
 import type { ConsultForm, Appointment } from '@/types/appointment';
 import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
 import {
@@ -1863,8 +1978,8 @@ onUnmounted(() => {
         const echo = getEcho();
 
         if (echo) {
-echo.leave(`doctor.${props.user.id}`);
-}
+            echo.leave(`doctor.${props.user.id}`);
+        }
 
         echoChannel = null;
     }
@@ -2405,7 +2520,8 @@ const visualChips = computed(() => {
 
 function visualDetail(visual: any): string {
     if (visual?.value) return String(visual.value);
-    if (visual?.interior_lines) return `${visual.interior_lines} text lines inside`;
+    if (visual?.interior_lines)
+        return `${visual.interior_lines} text lines inside`;
     if (visual?.aspect_ratio) return `aspect ${visual.aspect_ratio}`;
 
     const bbox = visual?.bbox;
@@ -2512,7 +2628,9 @@ function applyServerPrefill(prefill: any): void {
 
         const form = consultForm[target] as Record<string, any>;
 
-        for (const [field, value] of Object.entries(source as Record<string, unknown>)) {
+        for (const [field, value] of Object.entries(
+            source as Record<string, unknown>,
+        )) {
             if (!(field in form)) continue;
 
             const current = form[field];
@@ -2521,7 +2639,9 @@ function applyServerPrefill(prefill: any): void {
 
             if (
                 isBlank &&
-                (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+                (typeof value === 'string' ||
+                    typeof value === 'number' ||
+                    typeof value === 'boolean') &&
                 value !== ''
             ) {
                 form[field] = value;
@@ -2601,7 +2721,8 @@ function confidenceClass(value: number | null): string {
         return 'border-gray-200 bg-gray-50 text-gray-500';
     }
 
-    if (value >= 0.9) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (value >= 0.9)
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
     if (value >= 0.7) return 'border-amber-200 bg-amber-50 text-amber-700';
 
     return 'border-red-200 bg-red-50 text-red-700';
@@ -2683,8 +2804,8 @@ function saveDraft() {
     const key = draftKey();
 
     if (!key) {
-return;
-}
+        return;
+    }
 
     const payload = consultForm.data();
     const vitalFields = { ...vitalsForm };
@@ -2692,30 +2813,32 @@ return;
 
     try {
         localStorage.setItem(key, JSON.stringify(draft));
-    } catch { /* storage full — silently ignore */ }
+    } catch {
+        /* storage full — silently ignore */
+    }
 }
 
 function clearDraft() {
     const key = draftKey();
 
     if (key) {
-localStorage.removeItem(key);
-}
+        localStorage.removeItem(key);
+    }
 }
 
 function loadDraft() {
     const key = draftKey();
 
     if (!key) {
-return;
-}
+        return;
+    }
 
     try {
         const raw = localStorage.getItem(key);
 
         if (!raw) {
-return;
-}
+            return;
+        }
 
         const draft = JSON.parse(raw);
 
@@ -2731,8 +2854,8 @@ return;
             Object.assign(vitalsForm, draft.vitalFields);
         }
     } catch {
- clearDraft(); 
-}
+        clearDraft();
+    }
 }
 
 // Auto-save on form changes while modal is open (debounced ~2s)
@@ -2741,12 +2864,12 @@ watch(
     [consultForm, vitalsForm, isModalOpen],
     () => {
         if (!isModalOpen.value) {
-return;
-}
+            return;
+        }
 
         if (draftTimer) {
-clearTimeout(draftTimer);
-}
+            clearTimeout(draftTimer);
+        }
 
         draftTimer = setTimeout(saveDraft, 2000);
     },
@@ -2809,10 +2932,10 @@ const saveConsultation = async () => {
     const appt = activeAppt.value;
 
     if (!appt) {
- showError('No active appointment selected.');
+        showError('No active appointment selected.');
 
- return; 
-}
+        return;
+    }
 
     // 1. Sanitize and validate form data
     const sanitizedForm = {
@@ -2870,10 +2993,7 @@ const saveConsultation = async () => {
     if (
         selectedTypes.includes('Type 4') &&
         !hasClinicalData(
-            consultForm.manual_draft_data as unknown as Record<
-                string,
-                unknown
-            >,
+            consultForm.manual_draft_data as unknown as Record<string, unknown>,
         )
     ) {
         emptyTypes.push('Manual Draft (Type 4)');
@@ -2882,10 +3002,7 @@ const saveConsultation = async () => {
     if (
         selectedTypes.includes('Type 5') &&
         !hasClinicalData(
-            consultForm.stress_echo_data as unknown as Record<
-                string,
-                unknown
-            >,
+            consultForm.stress_echo_data as unknown as Record<string, unknown>,
         )
     ) {
         emptyTypes.push('Stress Echo (Type 5)');
@@ -2915,11 +3032,15 @@ const saveConsultation = async () => {
             closeConsultModal();
             const formPayload = consultForm.data();
             await savePendingConsultation(appt.id, formPayload);
-            showSuccess('Saved offline — will sync automatically when connected.');
+            showSuccess(
+                'Saved offline — will sync automatically when connected.',
+            );
 
             return;
         } catch (idbErr) {
-            showError('Could not save consultation offline. Please try again when connected.');
+            showError(
+                'Could not save consultation offline. Please try again when connected.',
+            );
             console.error('IndexedDB save error:', idbErr);
 
             return;
@@ -3065,8 +3186,7 @@ const saveConsultation = async () => {
         closeConsultModal();
     } catch (error: any) {
         const msg =
-            error?.response?.data?.message ||
-            error?.response?.data?.errors
+            error?.response?.data?.message || error?.response?.data?.errors
                 ? Object.values(error.response.data.errors).flat().join(', ')
                 : 'Failed to save consultation. Please try again.';
         showError(msg);

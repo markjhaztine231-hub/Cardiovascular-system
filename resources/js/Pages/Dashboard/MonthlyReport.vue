@@ -3,118 +3,42 @@
         class="flex h-screen bg-[#f4f7fa] font-sans selection:bg-[#15818c] selection:text-white"
     >
         <!-- SIDEBAR -->
+        <!-- Mobile backdrop -->
+        <div
+            v-if="isMobileOpen"
+            class="fixed inset-0 z-40 bg-black/50 md:hidden"
+            @click="closeMobile"
+        ></div>
+
         <aside
-            class="z-20 hidden w-64 shrink-0 flex-col bg-[#146b8a] text-white shadow-xl md:flex"
+            class="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col bg-[#146b8a] text-white shadow-xl transition-[width,transform] duration-300 md:static md:z-20 md:flex"
+            :class="[
+                isMobileOpen
+                    ? 'translate-x-0'
+                    : '-translate-x-full md:translate-x-0',
+                isOpen ? 'md:w-64' : 'md:w-0 md:overflow-hidden',
+            ]"
         >
-            <div
-                class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
-            >
+            <div class="flex h-full w-64 shrink-0 flex-col">
                 <div
-                    class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#146b8a] shadow-md"
+                    class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
                 >
-                    ♥
-                </div>
-                <h1 class="text-lg leading-tight font-bold">CardioCare</h1>
-            </div>
-            <nav class="flex-1 overflow-y-auto py-6">
-                <div
-                    class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
-                >
-                    Clinical Workflow
-                </div>
-                <ul class="space-y-1">
-                    <li>
-                        <Link
-                            href="/doctor/dashboard"
-                            class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                />
-                            </svg>
-                            Consultation Dashboard
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/doctor/emr"
-                            class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Patient Records (EMR)
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/doctor/reports/monthly"
-                            class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Monthly Narrative Report
-                        </Link>
-                    </li>
-                </ul>
-            </nav>
-            <div class="space-y-1 border-t border-[#1b7f9e] p-4">
-                <Link
-                    href="/profile"
-                    class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                >
-                    <svg
-                        class="mr-3 h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    <div
+                        class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#146b8a] shadow-md"
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                    </svg>
-                    My Profile
-                </Link>
-                <LogoutButton>
+                        ♥
+                    </div>
+                    <h1 class="flex-1 text-lg leading-tight font-bold">
+                        CardioCare
+                    </h1>
                     <button
                         type="button"
-                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        class="ml-2 hidden rounded-md p-1.5 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white md:inline-flex"
+                        @click="toggleDesktop"
+                        aria-label="Toggle sidebar"
                     >
                         <svg
-                            class="mr-3 h-5 w-5 rotate-180"
+                            class="h-5 w-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -123,23 +47,162 @@
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                d="M4 6h16M4 12h16M4 18h16"
                             />
                         </svg>
-                        Sign Out
                     </button>
-                </LogoutButton>
+                </div>
+                <nav class="flex-1 overflow-y-auto py-6">
+                    <div
+                        class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
+                    >
+                        Clinical Workflow
+                    </div>
+                    <ul class="space-y-1">
+                        <li>
+                            <Link
+                                href="/doctor/dashboard"
+                                class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                    />
+                                </svg>
+                                Consultation Dashboard
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/doctor/emr"
+                                class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Patient Records (EMR)
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/doctor/reports/monthly"
+                                class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Monthly Narrative Report
+                            </Link>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="space-y-1 border-t border-[#1b7f9e] p-4">
+                    <Link
+                        href="/profile"
+                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        @click="closeMobile"
+                    >
+                        <svg
+                            class="mr-3 h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                        </svg>
+                        My Profile
+                    </Link>
+                    <LogoutButton>
+                        <button
+                            type="button"
+                            class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        >
+                            <svg
+                                class="mr-3 h-5 w-5 rotate-180"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                />
+                            </svg>
+                            Sign Out
+                        </button>
+                    </LogoutButton>
+                </div>
             </div>
         </aside>
 
         <!-- MAIN -->
         <main class="flex h-screen flex-1 flex-col overflow-hidden">
             <header
-                class="z-10 flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-8 shadow-sm"
+                class="z-10 flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8"
             >
-                <h2 class="text-xl font-bold text-gray-800">
-                    Monthly Narrative Report
-                </h2>
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
+                        @click="toggleMobile"
+                        aria-label="Open sidebar"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
+                        </svg>
+                    </button>
+                    <h2 class="text-xl font-bold text-gray-800">
+                        Monthly Narrative Report
+                    </h2>
+                </div>
                 <div class="flex items-center gap-3">
                     <div class="text-right">
                         <p class="text-sm font-bold text-gray-900">
@@ -203,11 +266,15 @@
                             />
                             <button
                                 type="submit"
-                                :disabled="generateForm.processing || isGenerating"
+                                :disabled="
+                                    generateForm.processing || isGenerating
+                                "
                                 class="flex w-full items-center justify-center rounded-xl bg-[#146b8a] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#0e5c78] disabled:opacity-50 md:w-auto"
                             >
                                 <svg
-                                    v-if="generateForm.processing || isGenerating"
+                                    v-if="
+                                        generateForm.processing || isGenerating
+                                    "
                                     class="mr-2 -ml-1 h-4 w-4 animate-spin text-white"
                                     fill="none"
                                     viewBox="0 0 24 24"
@@ -385,8 +452,11 @@
                                 >
                                     Completed
                                 </p>
-                                <p class="mt-1 text-2xl font-black text-gray-800">
-                                    {{ stats.completed }} of {{ stats.total }} appointments
+                                <p
+                                    class="mt-1 text-2xl font-black text-gray-800"
+                                >
+                                    {{ stats.completed }} of
+                                    {{ stats.total }} appointments
                                 </p>
                             </div>
                             <div class="rounded-xl bg-red-50 p-4">
@@ -395,7 +465,9 @@
                                 >
                                     No-Shows
                                 </p>
-                                <p class="mt-1 text-2xl font-black text-gray-800">
+                                <p
+                                    class="mt-1 text-2xl font-black text-gray-800"
+                                >
                                     {{ stats.no_shows }} patients
                                 </p>
                             </div>
@@ -446,7 +518,9 @@
                                 >
                                     {{ stats.demographics.avg_age
                                     }}<span
-                                        v-if="stats.demographics.avg_age !== 'N/A'"
+                                        v-if="
+                                            stats.demographics.avg_age !== 'N/A'
+                                        "
                                         class="ml-1 text-sm font-bold text-gray-400"
                                         >yrs</span
                                     >
@@ -499,11 +573,15 @@
                                 <span class="text-blue-600"
                                     >&#9632; Male &nbsp;{{
                                         stats.demographics.male_count
-                                    }} patients</span
+                                    }}
+                                    patients</span
                                 >
                                 <span class="text-pink-500"
                                     >&#9632; Female
-                                    {{ stats.demographics.female_count }} patients</span
+                                    {{
+                                        stats.demographics.female_count
+                                    }}
+                                    patients</span
                                 >
                                 <span
                                     v-if="stats.demographics.other_count > 0"
@@ -622,17 +700,20 @@
                                 <span class="text-[#146b8a]"
                                     >&#9632; Echo &nbsp;{{
                                         stats.procedures.echocardiogram
-                                    }} procedures</span
+                                    }}
+                                    procedures</span
                                 >
                                 <span class="text-amber-600"
                                     >&#9632; TMT &nbsp;{{
                                         stats.procedures.treadmill_tmt
-                                    }} procedures</span
+                                    }}
+                                    procedures</span
                                 >
                                 <span class="text-indigo-600"
                                     >&#9632; Doppler &nbsp;{{
                                         stats.procedures.color_doppler
-                                    }} procedures</span
+                                    }}
+                                    procedures</span
                                 >
                             </div>
                         </div>
@@ -640,7 +721,11 @@
 
                     <!-- ─── NO-SHOW PATTERNS ──────────────────────────────── -->
                     <div
-                        v-if="Object.keys(stats.no_show_by_day || {}).length > 0 || Object.keys(stats.no_show_by_time || {}).length > 0"
+                        v-if="
+                            Object.keys(stats.no_show_by_day || {}).length >
+                                0 ||
+                            Object.keys(stats.no_show_by_time || {}).length > 0
+                        "
                         class="rounded-2xl border border-orange-200 bg-white p-6 shadow-sm"
                     >
                         <h3
@@ -653,45 +738,79 @@
                             No-Show Pattern Analysis
                         </h3>
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div v-if="Object.keys(stats.no_show_by_day || {}).length > 0">
-                                <p class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                            <div
+                                v-if="
+                                    Object.keys(stats.no_show_by_day || {})
+                                        .length > 0
+                                "
+                            >
+                                <p
+                                    class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                                >
                                     By Day of Week
                                 </p>
                                 <div class="space-y-1.5">
                                     <div
-                                        v-for="(count, day) in stats.no_show_by_day"
+                                        v-for="(
+                                            count, day
+                                        ) in stats.no_show_by_day"
                                         :key="day"
                                         class="flex items-center gap-2"
                                     >
-                                        <span class="w-24 text-xs font-semibold text-gray-600">{{ day }}</span>
-                                        <div class="flex-1 rounded-full bg-orange-100 h-2.5">
+                                        <span
+                                            class="w-24 text-xs font-semibold text-gray-600"
+                                            >{{ day }}</span
+                                        >
+                                        <div
+                                            class="h-2.5 flex-1 rounded-full bg-orange-100"
+                                        >
                                             <div
                                                 class="h-2.5 rounded-full bg-orange-500"
                                                 :style="`width:${(count / Math.max(...Object.values(stats.no_show_by_day))) * 100}%`"
                                             ></div>
                                         </div>
-                                        <span class="w-8 text-right text-xs font-bold text-orange-700">{{ count }}</span>
+                                        <span
+                                            class="w-8 text-right text-xs font-bold text-orange-700"
+                                            >{{ count }}</span
+                                        >
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="Object.keys(stats.no_show_by_time || {}).length > 0">
-                                <p class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                            <div
+                                v-if="
+                                    Object.keys(stats.no_show_by_time || {})
+                                        .length > 0
+                                "
+                            >
+                                <p
+                                    class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                                >
                                     By Time of Day
                                 </p>
                                 <div class="space-y-1.5">
                                     <div
-                                        v-for="(count, period) in stats.no_show_by_time"
+                                        v-for="(
+                                            count, period
+                                        ) in stats.no_show_by_time"
                                         :key="period"
                                         class="flex items-center gap-2"
                                     >
-                                        <span class="w-24 text-xs font-semibold text-gray-600 capitalize">{{ period }}</span>
-                                        <div class="flex-1 rounded-full bg-orange-100 h-2.5">
+                                        <span
+                                            class="w-24 text-xs font-semibold text-gray-600 capitalize"
+                                            >{{ period }}</span
+                                        >
+                                        <div
+                                            class="h-2.5 flex-1 rounded-full bg-orange-100"
+                                        >
                                             <div
                                                 class="h-2.5 rounded-full bg-orange-500"
                                                 :style="`width:${(count / Math.max(...Object.values(stats.no_show_by_time))) * 100}%`"
                                             ></div>
                                         </div>
-                                        <span class="w-8 text-right text-xs font-bold text-orange-700">{{ count }}</span>
+                                        <span
+                                            class="w-8 text-right text-xs font-bold text-orange-700"
+                                            >{{ count }}</span
+                                        >
                                     </div>
                                 </div>
                             </div>
@@ -746,21 +865,34 @@
 
                             <!-- Diagnosis Trends (month-over-month) -->
                             <div
-                                v-if="stats.diagnosis_trends && stats.diagnosis_trends.length > 0"
+                                v-if="
+                                    stats.diagnosis_trends &&
+                                    stats.diagnosis_trends.length > 0
+                                "
                                 class="mt-4 border-t border-gray-100 pt-4"
                             >
-                                <p class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                <p
+                                    class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                                >
                                     vs Previous Month
                                 </p>
                                 <div class="space-y-2">
                                     <div
-                                        v-for="(trend, i) in stats.diagnosis_trends"
+                                        v-for="(
+                                            trend, i
+                                        ) in stats.diagnosis_trends"
                                         :key="i"
                                         class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2"
                                     >
-                                        <span class="flex-1 text-xs font-semibold text-gray-700">{{ trend.name }}</span>
-                                        <span class="text-[10px] font-medium text-gray-500">
-                                            {{ trend.previous_count }} → {{ trend.current_count }}
+                                        <span
+                                            class="flex-1 text-xs font-semibold text-gray-700"
+                                            >{{ trend.name }}</span
+                                        >
+                                        <span
+                                            class="text-[10px] font-medium text-gray-500"
+                                        >
+                                            {{ trend.previous_count }} →
+                                            {{ trend.current_count }}
                                         </span>
                                         <span
                                             class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold"
@@ -768,13 +900,22 @@
                                                 trend.change > 0
                                                     ? 'bg-red-100 text-red-700'
                                                     : trend.change < 0
-                                                        ? 'bg-emerald-100 text-emerald-700'
-                                                        : 'bg-gray-100 text-gray-500'
+                                                      ? 'bg-emerald-100 text-emerald-700'
+                                                      : 'bg-gray-100 text-gray-500'
                                             "
                                         >
-                                            <template v-if="trend.change > 0">↑</template>
-                                            <template v-else-if="trend.change < 0">↓</template>
-                                            {{ Math.abs(trend.change) }} case{{ Math.abs(trend.change) !== 1 ? 's' : '' }}
+                                            <template v-if="trend.change > 0"
+                                                >↑</template
+                                            >
+                                            <template
+                                                v-else-if="trend.change < 0"
+                                                >↓</template
+                                            >
+                                            {{ Math.abs(trend.change) }} case{{
+                                                Math.abs(trend.change) !== 1
+                                                    ? 's'
+                                                    : ''
+                                            }}
                                         </span>
                                     </div>
                                 </div>
@@ -839,24 +980,44 @@
 
                             <!-- Histogram -->
                             <div v-if="knownAgePatients > 0">
-                                <p class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
-                                    Age distribution ({{ knownAgePatients }} patient{{ knownAgePatients !== 1 ? 's' : '' }} with a recorded date of birth)
+                                <p
+                                    class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                                >
+                                    Age distribution ({{
+                                        knownAgePatients
+                                    }}
+                                    patient{{
+                                        knownAgePatients !== 1 ? 's' : ''
+                                    }}
+                                    with a recorded date of birth)
                                 </p>
                                 <div class="space-y-2">
                                     <div
-                                        v-for="band in stats.age_distribution ?? []"
+                                        v-for="band in stats.age_distribution ??
+                                        []"
                                         :key="band.band"
                                         class="flex items-center gap-3"
                                     >
-                                        <span class="w-20 shrink-0 text-xs font-semibold text-gray-600">{{ band.label }}</span>
-                                        <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                        <span
+                                            class="w-20 shrink-0 text-xs font-semibold text-gray-600"
+                                            >{{ band.label }}</span
+                                        >
+                                        <div
+                                            class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100"
+                                        >
                                             <div
                                                 class="h-full rounded-full"
-                                                :class="band.band === 'unknown' ? 'bg-gray-300' : 'bg-[#146b8a]'"
+                                                :class="
+                                                    band.band === 'unknown'
+                                                        ? 'bg-gray-300'
+                                                        : 'bg-[#146b8a]'
+                                                "
                                                 :style="`width:${(band.count / maxAgeBandCount) * 100}%`"
                                             ></div>
                                         </div>
-                                        <span class="w-20 shrink-0 text-right text-[11px] font-bold text-gray-500">
+                                        <span
+                                            class="w-20 shrink-0 text-right text-[11px] font-bold text-gray-500"
+                                        >
                                             {{ band.count }} · {{ band.pct }}%
                                         </span>
                                     </div>
@@ -871,7 +1032,9 @@
                                 v-if="ageDxRows.length"
                                 class="mt-5 border-t border-gray-100 pt-4"
                             >
-                                <p class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                <p
+                                    class="mb-2 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                                >
                                     Diagnoses by age band
                                 </p>
                                 <div class="space-y-2">
@@ -880,16 +1043,26 @@
                                         :key="row.code ?? row.name"
                                         class="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
                                     >
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <span class="flex-1 text-sm font-semibold text-gray-700">{{ row.name }}</span>
+                                        <div
+                                            class="flex flex-wrap items-center gap-2"
+                                        >
+                                            <span
+                                                class="flex-1 text-sm font-semibold text-gray-700"
+                                                >{{ row.name }}</span
+                                            >
                                             <span
                                                 v-if="row.code"
                                                 class="rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-500 ring-1 ring-gray-200 ring-inset"
                                                 >{{ row.code }}</span
                                             >
-                                            <span class="rounded-md bg-[#146b8a] px-2 py-0.5 text-[10px] font-black text-white">{{ row.total }} total</span>
+                                            <span
+                                                class="rounded-md bg-[#146b8a] px-2 py-0.5 text-[10px] font-black text-white"
+                                                >{{ row.total }} total</span
+                                            >
                                         </div>
-                                        <div class="mt-2 flex flex-wrap gap-1.5">
+                                        <div
+                                            class="mt-2 flex flex-wrap gap-1.5"
+                                        >
                                             <span
                                                 v-for="p in row.populated"
                                                 :key="p.band"
@@ -899,15 +1072,19 @@
                                                         ? 'bg-amber-100 text-amber-800'
                                                         : 'bg-white text-gray-600 ring-1 ring-gray-200 ring-inset'
                                                 "
-                                                >{{ p.label }}: {{ p.count }}</span
+                                                >{{ p.label }}:
+                                                {{ p.count }}</span
                                             >
                                         </div>
                                         <p
                                             v-if="row.youngCount > 0"
                                             class="mt-2 text-[11px] font-bold text-amber-700"
                                         >
-                                            ⚠ {{ row.youngCount }} case{{ row.youngCount !== 1 ? 's' : '' }} in a patient aged
-                                            under 30 — unusual for this diagnosis
+                                            ⚠ {{ row.youngCount }} case{{
+                                                row.youngCount !== 1 ? 's' : ''
+                                            }}
+                                            in a patient aged under 30 — unusual
+                                            for this diagnosis
                                         </p>
                                     </div>
                                 </div>
@@ -917,7 +1094,10 @@
 
                     <!-- ─── MEDICATION ADHERENCE ───────────────────────────── -->
                     <div
-                        v-if="stats.medication_adherence && stats.medication_adherence.total_expected_doses > 0"
+                        v-if="
+                            stats.medication_adherence &&
+                            stats.medication_adherence.total_expected_doses > 0
+                        "
                         class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
                     >
                         <h3
@@ -931,21 +1111,41 @@
                         </h3>
 
                         <div class="mb-4 rounded-xl bg-gray-50 p-4">
-                            <p class="text-[10px] font-extrabold tracking-widest text-gray-500 uppercase">
+                            <p
+                                class="text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                            >
                                 Total Doses Taken
                             </p>
                             <p class="mt-1 text-3xl font-black text-gray-800">
-                                {{ stats.medication_adherence.total_taken_doses }} of {{ stats.medication_adherence.total_expected_doses }}
+                                {{
+                                    stats.medication_adherence.total_taken_doses
+                                }}
+                                of
+                                {{
+                                    stats.medication_adherence
+                                        .total_expected_doses
+                                }}
                             </p>
-                            <p class="text-xs font-medium text-gray-400">expected doses</p>
+                            <p class="text-xs font-medium text-gray-400">
+                                expected doses
+                            </p>
                         </div>
 
-                        <div v-if="stats.medication_adherence.medications.length > 0" class="space-y-2">
-                            <p class="text-xs font-bold tracking-wider text-gray-500 uppercase">
+                        <div
+                            v-if="
+                                stats.medication_adherence.medications.length >
+                                0
+                            "
+                            class="space-y-2"
+                        >
+                            <p
+                                class="text-xs font-bold tracking-wider text-gray-500 uppercase"
+                            >
                                 Per Medication
                             </p>
                             <div
-                                v-for="(med, i) in stats.medication_adherence.medications"
+                                v-for="(med, i) in stats.medication_adherence
+                                    .medications"
                                 :key="i"
                                 class="flex items-center gap-3 rounded-lg border px-4 py-3"
                                 :class="
@@ -954,23 +1154,40 @@
                                         : 'border-gray-100 bg-gray-50'
                                 "
                             >
-                                <span class="flex-1 text-sm font-semibold text-gray-700">{{ med.medicine }}</span>
+                                <span
+                                    class="flex-1 text-sm font-semibold text-gray-700"
+                                    >{{ med.medicine }}</span
+                                >
                                 <span class="text-xs font-bold text-gray-600">
-                                    {{ med.taken_doses }} of {{ med.expected_doses }} doses
+                                    {{ med.taken_doses }} of
+                                    {{ med.expected_doses }} doses
                                 </span>
                             </div>
                         </div>
 
                         <div
-                            v-if="stats.medication_adherence.declining_medications.length > 0"
+                            v-if="
+                                stats.medication_adherence.declining_medications
+                                    .length > 0
+                            "
                             class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
                         >
-                            <p class="text-xs font-bold tracking-wider text-amber-800 uppercase">
+                            <p
+                                class="text-xs font-bold tracking-wider text-amber-800 uppercase"
+                            >
                                 ⚠ Requires Intervention
                             </p>
                             <p class="mt-1 text-xs font-medium text-amber-700">
-                                {{ stats.medication_adherence.declining_medications.map(m => `${m.medicine} (${m.taken_doses} of ${m.expected_doses} doses)`).join(', ') }}
-                                — low adherence. Consider patient education or regimen review.
+                                {{
+                                    stats.medication_adherence.declining_medications
+                                        .map(
+                                            (m) =>
+                                                `${m.medicine} (${m.taken_doses} of ${m.expected_doses} doses)`,
+                                        )
+                                        .join(', ')
+                                }}
+                                — low adherence. Consider patient education or
+                                regimen review.
                             </p>
                         </div>
                     </div>
@@ -1213,8 +1430,6 @@
                                 <div class="flex items-center gap-2">
                                     <!-- Copy narrative to clipboard -->
 
-
-
                                     <!-- Download full PDF -->
                                     <button
                                         @click="() => downloadPdf()"
@@ -1329,14 +1544,19 @@
                             </svg>
                         </button>
 
-                        <div v-show="historyOpen" class="border-t border-gray-100 px-6 pb-4 pt-2">
+                        <div
+                            v-show="historyOpen"
+                            class="border-t border-gray-100 px-6 pt-2 pb-4"
+                        >
                             <div
-                                v-for="(reports, monthLabel) in historyGroupedByMonth"
+                                v-for="(
+                                    reports, monthLabel
+                                ) in historyGroupedByMonth"
                                 :key="monthLabel"
                                 class="mb-3 last:mb-0"
                             >
                                 <p
-                                    class="mb-2 mt-3 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    class="mt-3 mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                 >
                                     {{ monthLabel }}
                                     <span class="ml-1 font-normal text-gray-300"
@@ -1358,13 +1578,17 @@
                                             <span
                                                 class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black"
                                                 :class="
-                                                    report.id === currentReportId
+                                                    report.id ===
+                                                    currentReportId
                                                         ? 'bg-[#146b8a] text-white'
                                                         : 'bg-gray-200 text-gray-500'
                                                 "
                                             >
                                                 <svg
-                                                    v-if="report.id === currentReportId"
+                                                    v-if="
+                                                        report.id ===
+                                                        currentReportId
+                                                    "
                                                     class="h-3 w-3"
                                                     fill="none"
                                                     stroke="currentColor"
@@ -1378,7 +1602,11 @@
                                                     />
                                                 </svg>
                                                 <template v-else>
-                                                    {{ reports.indexOf(report) + 1 }}
+                                                    {{
+                                                        reports.indexOf(
+                                                            report,
+                                                        ) + 1
+                                                    }}
                                                 </template>
                                             </span>
                                             <div>
@@ -1398,9 +1626,7 @@
                                                     <span>{{
                                                         report.report_text
                                                             ? report.report_text
-                                                                  .split(
-                                                                      /\s+/,
-                                                                  )
+                                                                  .split(/\s+/)
                                                                   .filter(
                                                                       Boolean,
                                                                   ).length +
@@ -1422,9 +1648,7 @@
                                                 View
                                             </button>
                                             <button
-                                                @click="
-                                                    downloadPdf(report.id)
-                                                "
+                                                @click="downloadPdf(report.id)"
                                                 class="rounded-md border border-gray-200 bg-white px-3 py-1 text-[10px] font-bold text-gray-600 transition-colors hover:border-[#146b8a] hover:text-[#146b8a]"
                                                 title="Download PDF of this version"
                                             >
@@ -1473,6 +1697,10 @@
 import { Link, useForm } from '@inertiajs/vue3';
 import LogoutButton from '@/components/LogoutButton.vue';
 import { computed, ref } from 'vue';
+import { useSidebar } from '@/composables/useSidebar';
+
+const { isOpen, isMobileOpen, toggleDesktop, toggleMobile, closeMobile } =
+    useSidebar('doctor');
 
 // Type definitions
 interface Stats {
@@ -1594,7 +1822,8 @@ const generatedAt = new Date().toLocaleDateString('en-US', {
 const YOUNG_BANDS = ['0-17', '18-29'];
 
 /** Resolves a band key ('18-29') to its label using the histogram the API sends. */
-const bandLabel = (band: string): string => props.stats?.age_distribution?.find((b) => b.band === band)?.label ?? band;
+const bandLabel = (band: string): string =>
+    props.stats?.age_distribution?.find((b) => b.band === band)?.label ?? band;
 
 interface AgeDxRow {
     name: string;
@@ -1616,17 +1845,23 @@ const ageDxRows = computed((): AgeDxRow[] =>
             code: d.code,
             total: d.total,
             populated,
-            youngCount: populated.filter((p) => YOUNG_BANDS.includes(p.band)).reduce((sum, p) => sum + p.count, 0),
+            youngCount: populated
+                .filter((p) => YOUNG_BANDS.includes(p.band))
+                .reduce((sum, p) => sum + p.count, 0),
         };
     }),
 );
 
 /** Patients with a usable DOB — the denominator for the histogram percentages. */
 const knownAgePatients = computed((): number =>
-    (props.stats?.age_distribution ?? []).filter((b) => b.band !== 'unknown').reduce((sum, b) => sum + b.count, 0),
+    (props.stats?.age_distribution ?? [])
+        .filter((b) => b.band !== 'unknown')
+        .reduce((sum, b) => sum + b.count, 0),
 );
 
-const maxAgeBandCount = computed((): number => Math.max(1, ...(props.stats?.age_distribution ?? []).map((b) => b.count)));
+const maxAgeBandCount = computed((): number =>
+    Math.max(1, ...(props.stats?.age_distribution ?? []).map((b) => b.count)),
+);
 
 /**
  * Splits the AI narrative into individual paragraphs for clean rendering.
@@ -1656,8 +1891,8 @@ const isGenerating = ref(false);
 
 const generateReport = (): void => {
     if (isGenerating.value || generateForm.processing) {
-return;
-}
+        return;
+    }
 
     isGenerating.value = true;
     generateForm.post('/doctor/reports/monthly', {
@@ -1677,12 +1912,12 @@ let pdfDebounceTimer: ReturnType<typeof setTimeout> | null = null;
  */
 const downloadPdf = (reportId?: number): void => {
     if (!generateForm.month) {
-return;
-}
+        return;
+    }
 
     if (pdfDebounceTimer) {
-return;
-}
+        return;
+    }
 
     const id = reportId ?? props.currentReportId;
     const params = new URLSearchParams();
@@ -1692,10 +1927,7 @@ return;
         params.set('report', String(id));
     }
 
-    window.open(
-        `/doctor/reports/monthly/pdf?${params.toString()}`,
-        '_blank',
-    );
+    window.open(`/doctor/reports/monthly/pdf?${params.toString()}`, '_blank');
 
     pdfDebounceTimer = setTimeout(() => {
         pdfDebounceTimer = null;
@@ -1757,11 +1989,14 @@ const historyGroupedByMonth = computed(() => {
 
     for (const item of props.reportHistory ?? []) {
         const d = new Date(item.month + '-01');
-        const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const label = d.toLocaleString('default', {
+            month: 'long',
+            year: 'numeric',
+        });
 
         if (!groups[label]) {
-groups[label] = [];
-}
+            groups[label] = [];
+        }
 
         groups[label].push(item);
     }
@@ -1788,7 +2023,6 @@ function formatDate(dateStr: string): string {
         minute: '2-digit',
     });
 }
-
 </script>
 
 <style scoped>

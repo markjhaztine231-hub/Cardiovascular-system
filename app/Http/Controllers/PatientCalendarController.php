@@ -46,11 +46,16 @@ class PatientCalendarController extends Controller
     private function calendarResponse(Patient $patient, bool $inline)
     {
         $ics = $this->build($patient);
+        $filename = 'cardiocare-calendar.ics';
+        $disposition = ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"; filename*=UTF-8\'\''.$filename;
 
         return response($ics, 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename="cardiocare-calendar.ics"',
-            'Cache-Control' => 'no-store, max-age=0',
+            'Content-Disposition' => $disposition,
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 
