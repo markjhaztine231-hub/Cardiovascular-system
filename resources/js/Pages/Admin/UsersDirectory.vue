@@ -3,15 +3,7 @@
         <AdminSidebar />
 
         <main class="flex h-screen flex-1 flex-col overflow-hidden">
-            <header class="flex h-20 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-8 shadow-sm">
-                <h2 class="text-xl font-black tracking-tight text-slate-800">Users Directory</h2>
-                <div class="flex items-center gap-4">
-                    <span class="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-extrabold tracking-widest text-indigo-700 uppercase">Super Admin</span>
-                    <Link href="/profile" class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 font-bold text-white shadow-md transition-colors hover:bg-indigo-700" :title="user.name">
-                        {{ user.name.charAt(0) }}
-                    </Link>
-                </div>
-            </header>
+            <AdminHeader title="Users Directory" :user="user" />
 
             <div class="relative flex-1 overflow-y-auto p-8">
                 <div class="mx-auto max-w-7xl space-y-6">
@@ -154,6 +146,7 @@
 <script setup lang="ts">
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import AdminHeader from '@/components/AdminHeader.vue';
 import AdminSidebar from '@/components/AdminSidebar.vue';
 import PasswordField from '@/components/PasswordField.vue';
 import PasswordRequirements from '@/components/PasswordRequirements.vue';
