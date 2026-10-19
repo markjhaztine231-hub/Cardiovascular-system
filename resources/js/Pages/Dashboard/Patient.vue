@@ -1911,7 +1911,7 @@ async function fetchMedHistory(): Promise<void> {
     }
 }
 
-async function fetchTodayMeds(): Promise<void> {
+async function fetchTodayMeds(showReminderToast = true): Promise<void> {
     try {
         const res = await fetch('/patient/medications/today', {
             credentials: 'same-origin',
@@ -1926,7 +1926,7 @@ async function fetchTodayMeds(): Promise<void> {
             (m.doses ?? []).some((d) => d.can_take),
         );
 
-        if (pending.length > 0) {
+        if (showReminderToast && pending.length > 0) {
             toastType.value = 'reminder';
             toastTitle.value = 'Medication Reminder';
             toastMessage.value = `You have ${pending.length} medication${pending.length > 1 ? 's' : ''} to take today.`;
@@ -2372,7 +2372,9 @@ const unreadCount = computed(
             .length,
 );
 
-onMounted(() => {
+function buildNotifications(): Notification[] {
+    const list: Notification[] = [];
+
     // --- Appointment-based notifications ---
     if (props.nextAppointment) {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -2388,7 +2390,7 @@ onMounted(() => {
         const apptTime = formatTime(props.nextAppointment.time);
 
         if (apptDate === todayStr) {
-            notifications.value.push({
+            list.push({
                 id: 'appt-today',
                 title: 'Appointment Today',
                 message: `You have an appointment today at ${apptTime} with Dr. ${docName}.`,
@@ -2396,7 +2398,7 @@ onMounted(() => {
                 read: false,
             });
         } else if (apptDate === tomorrowStr) {
-            notifications.value.push({
+            list.push({
                 id: 'appt-tomorrow',
                 title: 'Appointment Tomorrow',
                 message: `Reminder: appointment tomorrow at ${apptTime} with Dr. ${docName}.`,
@@ -2406,7 +2408,7 @@ onMounted(() => {
         }
 
         if (props.nextAppointment.status === 'Reschedule Requested') {
-            notifications.value.push({
+            list.push({
                 id: 'reschedule-pending',
                 title: 'Reschedule Pending',
                 message:
@@ -2418,32 +2420,57 @@ onMounted(() => {
     }
 
     // --- Prescription notifications ---
-    if (props.history && props.history.length > 0) {
-        const latestRecord = props.history[0];
+    const latestRecord = props.history?.[0];
 
-        if (
-            latestRecord.prescriptions &&
-            latestRecord.prescriptions.length > 0
-        ) {
-            notifications.value.push({
-                id: latestRecord.id,
-                title: 'New Prescription Added',
-                message: `Dr. ${latestRecord.doctor?.name?.replace('Dr. ', '') || 'Your doctor'} prescribed ${latestRecord.prescriptions.length} new medication(s).`,
-                time: formatDateOnly(latestRecord.date),
-                read: false,
-            });
-
-            if (!showToast.value) {
-                toastType.value = 'prescription';
-                toastTitle.value = 'New Prescription Added';
-                toastMessage.value = `Dr. ${latestRecord.doctor?.name?.replace('Dr. ', '') || 'Your doctor'} prescribed ${latestRecord.prescriptions.length} new medication(s).`;
-                showToast.value = true;
-                setTimeout(() => {
-                    showToast.value = false;
-                }, 6000);
-            }
-        }
+    if (latestRecord?.prescriptions?.length) {
+        list.push({
+            id: latestRecord.id,
+            title: 'New Prescription Added',
+            message: `Dr. ${latestRecord.doctor?.name?.replace('Dr. ', '') || 'Your doctor'} prescribed ${latestRecord.prescriptions.length} new medication(s).`,
+            time: formatDateOnly(latestRecord.date),
+            read: false,
+        });
     }
+
+    return list;
+}
+
+function syncNotifications(announceNewPrescription = false): void {
+    const previouslyRead = new Map<string, boolean>();
+    const previousIds = new Set<string>();
+
+    notifications.value.forEach((n: Notification): void => {
+        previouslyRead.set(String(n.id), n.read);
+        previousIds.add(String(n.id));
+    });
+
+    notifications.value = buildNotifications().map(
+        (n: Notification): Notification => ({
+            ...n,
+            read: previouslyRead.get(String(n.id)) ?? false,
+        }),
+    );
+
+    const latestRecord = props.history?.[0];
+
+    if (
+        announceNewPrescription &&
+        latestRecord?.prescriptions?.length &&
+        !previousIds.has(String(latestRecord.id)) &&
+        !showToast.value
+    ) {
+        toastType.value = 'prescription';
+        toastTitle.value = 'New Prescription Added';
+        toastMessage.value = `Dr. ${latestRecord.doctor?.name?.replace('Dr. ', '') || 'Your doctor'} prescribed ${latestRecord.prescriptions.length} new medication(s).`;
+        showToast.value = true;
+        setTimeout(() => {
+            showToast.value = false;
+        }, 6000);
+    }
+}
+
+onMounted(() => {
+    syncNotifications(true);
 
     // --- Medication Adherence ---
     fetchTodayMeds();
@@ -2469,7 +2496,15 @@ onMounted(() => {
     if (echo && props.user?.id) {
         echoChannel = echo.channel(`patient.${props.user.id}`);
         echoChannel.listen('ConsultationCompleted', () => {
-            router.reload({ only: ['nextAppointment', 'history'] });
+            router.reload({
+                only: ['nextAppointment', 'history'],
+                onSuccess: () => {
+                    syncNotifications(true);
+                    fetchTodayMeds(false);
+                    fetchAdherenceData();
+                    fetchMedHistory();
+                },
+            });
         });
 
         echoChannel.listen('AppointmentRescheduled', (e: any) => {
