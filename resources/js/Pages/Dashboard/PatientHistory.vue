@@ -439,7 +439,7 @@
                                         </div>
                                     </div>
                                     <p
-                                        v-else
+                                        v-else-if="activePrescriptions.length === 0"
                                         class="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm font-medium text-gray-400 italic"
                                     >
                                         No active medications.

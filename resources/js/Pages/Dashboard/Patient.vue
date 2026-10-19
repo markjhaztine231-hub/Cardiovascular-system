@@ -1450,7 +1450,7 @@
                                 </div>
                             </div>
 
-                            <div v-else class="py-16 text-center">
+                            <div v-else-if="medicationWarnings.length === 0" class="py-16 text-center">
                                 <p class="text-lg font-bold text-gray-500">
                                     No active medications.
                                 </p>
@@ -1459,6 +1459,7 @@
                                     after your consultation.
                                 </p>
                             </div>
+                            <div v-else class="hidden"></div>
                         </div>
 
                         <!-- ── MEDICATION HISTORY ─────────────────────── -->
