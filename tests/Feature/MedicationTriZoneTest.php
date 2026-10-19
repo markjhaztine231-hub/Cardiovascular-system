@@ -182,4 +182,154 @@ class MedicationTriZoneTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_today_meds_index_stays_aligned_when_a_prn_is_listed_first()
+    {
+        Carbon::setTestNow('2026-09-21 08:30:00');
+
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'status' => 'Completed',
+        ]);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now(),
+            'ended_at' => Carbon::now(),
+        ]);
+
+        // The PRN is created first, so it owns index 0 on the server even
+        // though the tracker does not show it as a scheduled dose.
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Nitroglycerin',
+            'dosage' => '0.4 mg',
+            'frequency' => 'As needed',
+            'status' => 'active',
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Metoprolol',
+            'dosage' => '25 mg',
+            'frequency' => '1x a day',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($patient->user)->getJson('/patient/medications/today');
+        $response->assertOk();
+
+        $med = collect($response->json())->firstWhere('medicine', 'Metoprolol');
+        $this->assertNotNull($med);
+        $this->assertSame(1, $med['prescription_index']);
+
+        $log = $this->actingAs($patient->user)->postJson(
+            '/medications/'.$appointment->id.'/log-dose',
+            [
+                'prescription_index' => $med['prescription_index'],
+                'medicine' => 'Metoprolol',
+                'scheduled_time' => '08:00',
+            ]
+        );
+
+        $log->assertOk()->assertJsonFragment(['status' => 'TAKEN']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_today_meds_index_is_scoped_to_each_appointment()
+    {
+        Carbon::setTestNow('2026-09-21 08:30:00');
+
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+
+        $older = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->subDays(7)->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'status' => 'Completed',
+        ]);
+
+        $olderEncounter = Encounter::create([
+            'appointment_id' => $older->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now()->subDays(7),
+            'ended_at' => Carbon::now()->subDays(7),
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $olderEncounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Aspirin',
+            'dosage' => '80 mg',
+            'frequency' => '1x a day',
+            'status' => 'active',
+        ]);
+
+        $newer = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'status' => 'Completed',
+        ]);
+
+        $newerEncounter = Encounter::create([
+            'appointment_id' => $newer->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now(),
+            'ended_at' => Carbon::now(),
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $newerEncounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Metoprolol',
+            'dosage' => '25 mg',
+            'frequency' => '1x a day',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($patient->user)->getJson('/patient/medications/today');
+        $response->assertOk();
+
+        $meds = collect($response->json())->keyBy('medicine');
+        $this->assertSame(0, $meds['Metoprolol']['prescription_index']);
+        $this->assertSame(0, $meds['Aspirin']['prescription_index']);
+
+        // The older appointment's index must resolve against its own list.
+        $log = $this->actingAs($patient->user)->postJson(
+            '/medications/'.$older->id.'/log-dose',
+            [
+                'prescription_index' => $meds['Aspirin']['prescription_index'],
+                'medicine' => 'Aspirin',
+                'scheduled_time' => '08:00',
+            ]
+        );
+
+        $log->assertOk()->assertJsonFragment(['status' => 'TAKEN']);
+
+        Carbon::setTestNow();
+    }
 }

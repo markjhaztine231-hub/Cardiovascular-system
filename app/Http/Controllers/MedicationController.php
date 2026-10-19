@@ -11,6 +11,7 @@ use App\Services\MedicationTriZoneService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class MedicationController extends Controller
 {
@@ -358,11 +359,32 @@ class MedicationController extends Controller
         $now = Carbon::now();
         $date = Carbon::today();
 
+        // "prescription_index" is a zero-based position within the whole,
+        // id-ordered prescription list of one appointment — the same contract
+        // log-dose, toggle-dose, and adherence resolve against. Build that map
+        // up front so a tracker click can never send an index that the server
+        // resolves to a different prescription.
+        $canonicalIndexes = [];
+        $appointmentIds = $encounters->pluck('appointment_id')->filter()->unique()->values();
+
+        if ($appointmentIds->isNotEmpty()) {
+            $rows = DB::table('prescriptions')
+                ->join('encounters', 'encounters.id', '=', 'prescriptions.encounter_id')
+                ->whereIn('encounters.appointment_id', $appointmentIds)
+                ->orderBy('prescriptions.id')
+                ->get(['prescriptions.id as prescription_id', 'encounters.appointment_id as appointment_id']);
+
+            $positions = [];
+            foreach ($rows as $row) {
+                $positions[$row->appointment_id] = ($positions[$row->appointment_id] ?? -1) + 1;
+                $canonicalIndexes[$row->appointment_id][$row->prescription_id] = $positions[$row->appointment_id];
+            }
+        }
+
         $seen = [];
         $meds = [];
-        $idx = 0;
         foreach ($encounters as $encounter) {
-            foreach ($encounter->prescriptions as $p) {
+            foreach ($encounter->prescriptions->sortBy('id')->values() as $localIndex => $p) {
                 $key = strtolower(trim($p->medication_name));
                 if (in_array($key, $seen)) {
                     continue;
@@ -417,7 +439,7 @@ class MedicationController extends Controller
                 }
 
                 $meds[] = [
-                    'prescription_index' => $idx++,
+                    'prescription_index' => $canonicalIndexes[$encounter->appointment_id][$p->id] ?? $localIndex,
                     'prescription_id' => $p->id,
                     'appointment_id' => $encounter->appointment_id,
                     'medicine' => $p->medication_name,
