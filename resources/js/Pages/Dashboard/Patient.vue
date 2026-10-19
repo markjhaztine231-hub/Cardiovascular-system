@@ -25,11 +25,6 @@
                 <div
                     class="flex h-20 items-center border-b border-[#004080] bg-[#002244] px-6"
                 >
-                    <div
-                        class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#003366] shadow-md"
-                    >
-                        ♥
-                    </div>
                     <div class="flex-1">
                         <h1
                             class="text-lg leading-tight font-bold tracking-wide"
@@ -255,11 +250,6 @@
                     </svg>
                 </button>
                 <div class="flex items-center gap-2">
-                    <div
-                        class="rounded-lg bg-[#003366] p-1.5 text-sm font-bold text-white"
-                    >
-                        ♥
-                    </div>
                     <span class="text-sm font-bold text-[#003366]"
                         >CardioCare - Patient</span
                     >

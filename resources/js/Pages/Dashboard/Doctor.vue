@@ -25,11 +25,6 @@
                 <div
                     class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
                 >
-                    <div
-                        class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#146b8a] shadow-md"
-                    >
-                        ♥
-                    </div>
                     <div class="flex-1">
                         <h1
                             class="text-lg leading-tight font-bold tracking-wide"

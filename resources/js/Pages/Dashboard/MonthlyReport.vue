@@ -23,11 +23,6 @@
                 <div
                     class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
                 >
-                    <div
-                        class="mr-3 rounded-lg bg-white p-2 text-xl font-bold text-[#146b8a] shadow-md"
-                    >
-                        ♥
-                    </div>
                     <h1 class="flex-1 text-lg leading-tight font-bold">
                         CardioCare
                     </h1>
