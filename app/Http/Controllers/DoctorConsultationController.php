@@ -60,6 +60,13 @@ class DoctorConsultationController extends Controller
     {
         $this->authorizeDoctor($appointment);
 
+        // A No-Show appointment is closed by the receptionist and must never be
+        // pulled into a consultation — the queue hides it, and a hand-typed URL
+        // must not resurrect it.
+        if ($appointment->status === 'No-Show') {
+            abort(422, 'This appointment was marked as No-Show and can no longer be edited.');
+        }
+
         if ($appointment->status !== self::IN_PROGRESS) {
             $appointment->update([
                 'status' => self::IN_PROGRESS,

@@ -332,7 +332,14 @@
                                     <div
                                         class="flex justify-end gap-2"
                                     >
+                                        <span
+                                            v-if="appt.status === 'No-Show'"
+                                            class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-gray-500"
+                                        >
+                                            No-Show — locked
+                                        </span>
                                         <button
+                                            v-if="appt.status !== 'No-Show'"
                                             @click="openTransfer(appt)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-600 hover:text-white"
                                         >
@@ -352,6 +359,7 @@
                                             Transfer
                                         </button>
                                         <button
+                                            v-if="appt.status !== 'No-Show'"
                                             @click="openQueueReschedule(appt)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
                                         >
@@ -383,6 +391,7 @@
                                             Calendar
                                         </a>
                                         <button
+                                            v-if="appt.status !== 'No-Show'"
                                             @click="openStudyForm(appt)"
                                             class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700 transition-all hover:bg-indigo-600 hover:text-white"
                                         >
@@ -402,6 +411,7 @@
                                             Study Form
                                         </button>
                                         <button
+                                            v-if="appt.status !== 'No-Show'"
                                             @click="openScanModal(appt)"
                                             class="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-[11px] font-bold text-teal-700 transition-all hover:bg-teal-600 hover:text-white"
                                         >
@@ -436,6 +446,7 @@
                                             </span>
                                         </button>
                                         <button
+                                            v-if="appt.status !== 'No-Show'"
                                             @click="markNoShow(appt.id)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-600 hover:text-white"
                                         >

@@ -7,8 +7,8 @@ use App\Events\AppointmentStatusChanged;
 use App\Events\ConsultationCompleted;
 use App\Events\QueueUpdated;
 use App\Events\RescheduleRequested;
-use App\Models\Appointment;
 use App\Models\AmbulatoryBloodPressureMonitoring;
+use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\Diagnosis;
 use App\Models\DoctorSchedule;
@@ -38,6 +38,20 @@ use Illuminate\Validation\ValidationException;
 class AppointmentController extends Controller
 {
     public function __construct(protected GoogleCalendarService $calendar) {}
+
+    /**
+     * A No-Show is terminal. Once the receptionist records that the patient did
+     * not arrive, the appointment can no longer be edited, transferred, or
+     * rescheduled by anyone — it can only be superseded by a new booking.
+     */
+    private function assertNotNoShow(Appointment $appointment): void
+    {
+        if ($appointment->status === 'No-Show') {
+            throw ValidationException::withMessages([
+                'error' => 'This appointment was marked as No-Show and can no longer be edited.',
+            ]);
+        }
+    }
 
     // 1. Patient books a new appointment (max 2 per day enforced)
     public function store(Request $request)
@@ -208,6 +222,8 @@ class AppointmentController extends Controller
     // 2. Doctor/Receptionist updates the status
     public function updateStatus(Request $request, Appointment $appointment)
     {
+        $this->assertNotNoShow($appointment);
+
         $validated = $request->validate([
             'status' => 'required|string|in:Scheduled,Pending,Approved,Cancelled,No-Show,Completed,In Progress,Reschedule Requested',
         ]);
@@ -440,6 +456,8 @@ class AppointmentController extends Controller
         if (! $appointment->provider || $appointment->provider->user_id !== Auth::id()) {
             abort(403, 'Only the assigned doctor may complete this consultation.');
         }
+
+        $this->assertNotNoShow($appointment);
 
         // Comprehensive validation with required fields and constraints
         $validated = $request->validate([
@@ -1301,6 +1319,8 @@ class AppointmentController extends Controller
     // 8. Transfer patient to a different doctor
     public function transfer(Request $request, Appointment $appointment)
     {
+        $this->assertNotNoShow($appointment);
+
         $request->validate(['doctor_id' => 'required|exists:providers,id']);
 
         $appointment->update(['provider_id' => $request->doctor_id]);
@@ -1453,6 +1473,8 @@ class AppointmentController extends Controller
             abort(403);
         }
 
+        $this->assertNotNoShow($appointment);
+
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required',
@@ -1479,6 +1501,8 @@ class AppointmentController extends Controller
     // 13c. Receptionist approves a reschedule request
     public function approveReschedule(Appointment $appointment)
     {
+        $this->assertNotNoShow($appointment);
+
         if (! $appointment->reschedule_requested_date) {
             return back()->withErrors(['error' => 'No pending reschedule request found.']);
         }
@@ -1538,6 +1562,8 @@ class AppointmentController extends Controller
     // 13d. Receptionist edits and approves a reschedule request directly
     public function editReschedule(Request $request, Appointment $appointment)
     {
+        $this->assertNotNoShow($appointment);
+
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
             'time' => 'required',
@@ -1608,6 +1634,8 @@ class AppointmentController extends Controller
     // 13e. Receptionist denies a reschedule request
     public function denyReschedule(Appointment $appointment)
     {
+        $this->assertNotNoShow($appointment);
+
         $appointment->update([
             'status' => 'Scheduled',
             'reschedule_requested_date' => null,
@@ -1684,6 +1712,8 @@ class AppointmentController extends Controller
         if (! Auth::user()->patient || $appointment->patient_id !== Auth::user()->patient->id) {
             abort(403);
         }
+
+        $this->assertNotNoShow($appointment);
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
