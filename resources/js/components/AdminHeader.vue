@@ -28,31 +28,6 @@
             </h2>
         </div>
         <div class="flex items-center gap-4">
-            <Link
-                href="/admin/audit-log"
-                class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-extrabold tracking-widest uppercase transition-colors"
-                :class="
-                    isActive
-                        ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700'
-                "
-                title="Audit Log"
-            >
-                <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                </svg>
-                <span class="hidden sm:inline">Audit Log</span>
-            </Link>
             <span
                 class="hidden rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-extrabold tracking-widest text-indigo-700 uppercase sm:inline-flex"
                 >Super Admin</span
@@ -70,7 +45,6 @@
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import { useSidebar } from '@/composables/useSidebar';
 
 defineProps<{
@@ -79,10 +53,4 @@ defineProps<{
 }>();
 
 const { toggle } = useSidebar('admin');
-
-const isActive = computed(
-    () =>
-        typeof window !== 'undefined' &&
-        window.location.pathname === '/admin/audit-log',
-);
 </script>
