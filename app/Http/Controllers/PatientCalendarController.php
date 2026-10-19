@@ -7,10 +7,12 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\User;
 use App\Services\MedicationTriZoneService;
-use App\Support\IcsBuilder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Spatie\IcalendarGenerator\Components\Calendar;
+use Spatie\IcalendarGenerator\Components\Event;
+use Spatie\IcalendarGenerator\Properties\TextProperty;
 
 class PatientCalendarController extends Controller
 {
@@ -59,17 +61,29 @@ class PatientCalendarController extends Controller
         ]);
     }
 
+    /**
+     * Times are emitted as floating local time (no TZID / trailing Z) because
+     * the clinic stores wall-clock appointment and dosing times; calendar
+     * clients then render them in the device's own timezone, which is what a
+     * patient expects. `withoutTimezone()` is what keeps the wall-clock intact.
+     */
     private function build(Patient $patient): string
     {
-        $builder = new IcsBuilder('CardioCare - My Health Calendar');
+        $calendar = Calendar::create('CardioCare - My Health Calendar')
+            ->productIdentifier('-//Cardiovascular Care Center//CardioCare Patient Calendar//EN')
+            ->refreshInterval(60)
+            ->withoutTimezone();
 
-        $this->addAppointments($builder, $patient);
-        $this->addMedications($builder, $patient);
+        $this->addAppointments($calendar, $patient);
+        $this->addMedications($calendar, $patient);
 
-        return $builder->toString();
+        $calendar->appendProperty(TextProperty::create('CALSCALE', 'GREGORIAN'));
+        $calendar->appendProperty(TextProperty::create('METHOD', 'PUBLISH'));
+
+        return $calendar->get();
     }
 
-    private function addAppointments(IcsBuilder $builder, Patient $patient): void
+    private function addAppointments(Calendar $calendar, Patient $patient): void
     {
         $appointments = $patient->appointments()
             ->with('provider.user:id,name')
@@ -79,6 +93,8 @@ class PatientCalendarController extends Controller
             ->orderBy('scheduled_time')
             ->get();
 
+        $events = [];
+
         foreach ($appointments as $appointment) {
             $summary = $appointment->service_type ?: 'Appointment';
             $doctor = $appointment->provider?->user?->name;
@@ -86,17 +102,21 @@ class PatientCalendarController extends Controller
                 $summary .= ' with '.$doctor;
             }
 
-            $builder->addEvent([
-                'uid' => 'appt-'.$appointment->id.'@cardiocare',
-                'start' => $this->appointmentStart($appointment),
-                'durationMinutes' => $appointment->duration_minutes ?: 30,
-                'summary' => $summary,
-                'description' => 'Status: '.$appointment->status
-                    .'. Please arrive 15 minutes early and bring a valid ID.',
-                'location' => 'Cardiovascular Care Center',
-                'categories' => 'Appointment',
-            ]);
+            $start = $this->appointmentStart($appointment);
+
+            $event = Event::create($summary)
+                ->uniqueIdentifier('appt-'.$appointment->id.'@cardiocare')
+                ->startsAt($start)
+                ->endsAt($start->copy()->addMinutes($appointment->duration_minutes ?: 30))
+                ->address('Cardiovascular Care Center')
+                ->description('Status: '.$appointment->status
+                    .'. Please arrive 15 minutes early and bring a valid ID.');
+            $event->appendProperty(TextProperty::create('CATEGORIES', 'Appointment'));
+
+            $events[] = $event;
         }
+
+        $calendar->event($events);
     }
 
     private function appointmentStart(Appointment $appointment): Carbon
@@ -107,26 +127,29 @@ class PatientCalendarController extends Controller
         return Carbon::parse($date.' '.$time);
     }
 
-    private function addMedications(IcsBuilder $builder, Patient $patient): void
+    private function addMedications(Calendar $calendar, Patient $patient): void
     {
         $prescriptions = $patient->prescriptions()
             ->where('status', 'active')
             ->with('encounter.appointment:id,scheduled_date')
             ->get();
 
+        $events = [];
+
         foreach ($prescriptions as $prescription) {
             $startDate = $this->prescriptionStart($prescription);
             $times = $this->triZone->scheduledTimes($prescription->frequency);
 
             if (empty($times)) {
-                $builder->addEvent([
-                    'uid' => 'rx-'.$prescription->id.'-prn@cardiocare',
-                    'start' => $startDate,
-                    'allDay' => true,
-                    'summary' => 'As needed: '.$this->medicationLabel($prescription),
-                    'description' => trim('Take only when needed. '.$prescription->instructions),
-                    'categories' => 'Medication',
-                ]);
+                $event = Event::create('As needed: '.$this->medicationLabel($prescription))
+                    ->uniqueIdentifier('rx-'.$prescription->id.'-prn@cardiocare')
+                    ->fullDay()
+                    ->startsAt($startDate)
+                    ->endsAt($startDate->copy()->addDay())
+                    ->description(trim('Take only when needed. '.$prescription->instructions));
+                $event->appendProperty(TextProperty::create('CATEGORIES', 'Medication'));
+
+                $events[] = $event;
 
                 continue;
             }
@@ -134,17 +157,21 @@ class PatientCalendarController extends Controller
             $days = $this->prescriptionDays($prescription, $startDate);
 
             foreach ($times as $time) {
-                $builder->addEvent([
-                    'uid' => 'rx-'.$prescription->id.'-'.str_replace(':', '', $time).'@cardiocare',
-                    'start' => $startDate->copy()->setTimeFromTimeString($time),
-                    'durationMinutes' => 5,
-                    'rrule' => 'FREQ=DAILY;COUNT='.$days,
-                    'summary' => 'Take '.$this->medicationLabel($prescription),
-                    'description' => trim($prescription->frequency.' '.$prescription->route.' '.$prescription->instructions),
-                    'categories' => 'Medication',
-                ]);
+                $start = $startDate->copy()->setTimeFromTimeString($time);
+
+                $event = Event::create('Take '.$this->medicationLabel($prescription))
+                    ->uniqueIdentifier('rx-'.$prescription->id.'-'.str_replace(':', '', $time).'@cardiocare')
+                    ->startsAt($start)
+                    ->endsAt($start->copy()->addMinutes(5))
+                    ->rruleAsString('FREQ=DAILY;COUNT='.$days)
+                    ->description(trim($prescription->frequency.' '.$prescription->route.' '.$prescription->instructions));
+                $event->appendProperty(TextProperty::create('CATEGORIES', 'Medication'));
+
+                $events[] = $event;
             }
         }
+
+        $calendar->event($events);
     }
 
     private function prescriptionStart(Prescription $prescription): Carbon

@@ -128,4 +128,76 @@ class PatientCalendarTest extends TestCase
 
         $this->assertStringNotContainsString('CancelledCheckup', $body);
     }
+
+    public function test_calendar_uses_floating_local_time_without_timezones(): void
+    {
+        [$patient] = $this->makePatientWithData();
+
+        $body = $this->actingAs($patient->user)
+            ->get(route('patient.calendar.download'))
+            ->getContent();
+
+        $date = Carbon::today()->addDays(3)->format('Ymd');
+
+        // 09:30 appointment, floating wall-clock time (no trailing Z, no TZID).
+        $this->assertStringContainsString('DTSTART:'.$date.'T093000', $body);
+        $this->assertStringContainsString('DTEND:'.$date.'T100000', $body);
+        $this->assertStringNotContainsString($date.'T093000Z', $body);
+        $this->assertStringNotContainsString('TZID', $body);
+        $this->assertStringNotContainsString('VTIMEZONE', $body);
+
+        // 2x/day dosing slots.
+        $this->assertStringContainsString('DTSTART:'.$date.'T080000', $body);
+        $this->assertStringContainsString('DTSTART:'.$date.'T200000', $body);
+
+        $this->assertStringContainsString('LOCATION:Cardiovascular Care Center', $body);
+        $this->assertStringContainsString('CATEGORIES:Appointment', $body);
+        $this->assertStringContainsString('CATEGORIES:Medication', $body);
+        $this->assertStringContainsString('CALSCALE:GREGORIAN', $body);
+        $this->assertStringContainsString('METHOD:PUBLISH', $body);
+        $this->assertStringContainsString('X-WR-CALNAME:CardioCare - My Health Calendar', $body);
+    }
+
+    public function test_as_needed_prescription_is_an_all_day_event(): void
+    {
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->toDateString(),
+            'scheduled_time' => '10:00:00',
+            'status' => 'Scheduled',
+            'service_type' => 'Consultation',
+        ]);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now(),
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Nitroglycerin',
+            'dosage' => '0.4 mg',
+            'frequency' => 'As needed',
+            'instructions' => 'For chest pain',
+            'route' => 'sublingual',
+            'status' => 'active',
+        ]);
+
+        $body = $this->actingAs($patient->user)
+            ->get(route('patient.calendar.download'))
+            ->getContent();
+
+        $this->assertStringContainsString('As needed: Nitroglycerin 0.4 mg', $body);
+        $this->assertStringContainsString('DTSTART;VALUE=DATE:'.$appointment->scheduled_date->format('Ymd'), $body);
+        $this->assertStringContainsString('CATEGORIES:Medication', $body);
+    }
 }

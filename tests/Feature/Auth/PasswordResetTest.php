@@ -27,7 +27,7 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.email'), ['email' => $user->email]);
 
-        Mail::assertQueued(ForgotPasswordMail::class);
+        Mail::assertSent(ForgotPasswordMail::class);
     }
 
     public function test_reset_password_screen_can_be_rendered()
@@ -38,13 +38,49 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.email'), ['email' => $user->email]);
 
-        Mail::assertQueued(ForgotPasswordMail::class, function ($notification) {
+        Mail::assertSent(ForgotPasswordMail::class, function ($notification) {
             $response = $this->get(route('password.reset', $notification->token));
 
             $response->assertOk();
 
             return true;
         });
+    }
+
+    public function test_reset_password_screen_receives_the_account_email()
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+
+        $this->post(route('password.email'), ['email' => $user->email]);
+
+        Mail::assertSent(ForgotPasswordMail::class, function ($notification) use ($user) {
+            $this->get(route('password.reset', [
+                'token' => $notification->token,
+                'email' => $user->email,
+            ]))->assertInertia(fn ($page) => $page
+                ->component('Auth/ResetPassword')
+                ->where('token', $notification->token)
+                ->where('email', $user->email));
+
+            return true;
+        });
+    }
+
+    public function test_reset_email_links_to_the_registered_reset_route()
+    {
+        $user = User::factory()->create();
+        $token = 'known-test-token-123';
+
+        $html = (new ForgotPasswordMail($user, $token))->render();
+
+        // The link must be a path-based URL (reset-password/{token}) that
+        // matches routes/web.php, not the old query-string form that 404'd.
+        $this->assertStringContainsString(
+            '/reset-password/'.$token.'?email='.urlencode($user->email),
+            $html,
+        );
     }
 
     public function test_password_can_be_reset_with_valid_token()
@@ -55,7 +91,7 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.email'), ['email' => $user->email]);
 
-        Mail::assertQueued(ForgotPasswordMail::class, function ($notification) use ($user) {
+        Mail::assertSent(ForgotPasswordMail::class, function ($notification) use ($user) {
             $response = $this->post(route('password.update'), [
                 'token' => $notification->token,
                 'email' => $user->email,

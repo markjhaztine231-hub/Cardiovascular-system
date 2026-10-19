@@ -19,6 +19,7 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
+        "spatie/icalendar-generator": "^3.3",
         "spatie/laravel-google-calendar": "^3.8",
         "spatie/laravel-pdf": "^1.4"
     },

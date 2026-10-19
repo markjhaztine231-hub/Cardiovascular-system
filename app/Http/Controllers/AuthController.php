@@ -203,9 +203,12 @@ class AuthController extends Controller
     }
 
     // 🔒 SECURITY FIX: Show Password Reset Form
-    public function showResetForm($token)
+    public function showResetForm(Request $request, $token)
     {
-        return inertia('Auth/ResetPassword', ['token' => $token]);
+        return inertia('Auth/ResetPassword', [
+            'token' => $token,
+            'email' => $request->query('email'),
+        ]);
     }
 
     // 🔒 SECURITY FIX: Handle Password Reset Request
@@ -226,11 +229,13 @@ class AuthController extends Controller
                 ]
             );
 
-            // Send the password reset email (queued, won't block the request)
+            // Send the password reset email synchronously. The app runs on
+            // Elastic Beanstalk with QUEUE_CONNECTION=database and no queue
+            // worker, so a queued mail would never be delivered.
             try {
-                Mail::to($user->email)->queue(new ForgotPasswordMail($user, $token));
+                Mail::to($user->email)->send(new ForgotPasswordMail($user, $token));
             } catch (\Throwable $e) {
-                Log::warning('Failed to queue password reset email: '.$e->getMessage());
+                Log::warning('Failed to send password reset email: '.$e->getMessage());
             }
 
             AuditLog::create([
@@ -274,8 +279,10 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['token' => 'Invalid or expired reset token.']);
         }
 
-        // Check token expiry (2 hours)
-        if (Carbon::parse($resetRecord->created_at)->addHours(2)->isPast()) {
+        // Check token expiry against the configured password-reset window
+        // (config/auth.php), which the reset email also advertises.
+        $expireMinutes = (int) config('auth.passwords.users.expire', 60);
+        if (Carbon::parse($resetRecord->created_at)->addMinutes($expireMinutes)->isPast()) {
             DB::table('password_reset_tokens')
                 ->whereEmail($validated['email'])->delete();
             throw ValidationException::withMessages(['token' => 'Reset token has expired.']);
