@@ -23,13 +23,19 @@ class PatientCalendarController extends Controller
     /** Session-authenticated download of the patient's own calendar file. */
     public function download(Request $request)
     {
+        $scope = $request->query('scope');
+
+        if (! in_array($scope, [null, 'appointments', 'medications'], true)) {
+            abort(404);
+        }
+
         $user = Auth::user();
 
         if ($user->role !== 'patient' || ! $user->patient) {
             abort(403);
         }
 
-        return $this->calendarResponse($user->patient, inline: false);
+        return $this->calendarResponse($user->patient, inline: false, scope: $scope);
     }
 
     /**
@@ -45,10 +51,17 @@ class PatientCalendarController extends Controller
         return $this->calendarResponse($user->patient, inline: true);
     }
 
-    private function calendarResponse(Patient $patient, bool $inline)
-    {
-        $ics = $this->build($patient);
-        $filename = 'cardiocare-calendar.ics';
+    private function calendarResponse(
+        Patient $patient,
+        bool $inline,
+        ?string $scope = null,
+    ) {
+        $ics = $this->build($patient, $scope);
+        $filename = match ($scope) {
+            'appointments' => 'cardiocare-appointments.ics',
+            'medications' => 'cardiocare-medications.ics',
+            default => 'cardiocare-calendar.ics',
+        };
         $disposition = ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"; filename*=UTF-8\'\''.$filename;
 
         return response($ics, 200, [
@@ -67,15 +80,26 @@ class PatientCalendarController extends Controller
      * clients then render them in the device's own timezone, which is what a
      * patient expects. `withoutTimezone()` is what keeps the wall-clock intact.
      */
-    private function build(Patient $patient): string
+    private function build(Patient $patient, ?string $scope = null): string
     {
-        $calendar = Calendar::create('CardioCare - My Health Calendar')
+        $name = match ($scope) {
+            'appointments' => 'CardioCare - My Appointments',
+            'medications' => 'CardioCare - My Medications',
+            default => 'CardioCare - My Health Calendar',
+        };
+
+        $calendar = Calendar::create($name)
             ->productIdentifier('-//Cardiovascular Care Center//CardioCare Patient Calendar//EN')
             ->refreshInterval(60)
             ->withoutTimezone();
 
-        $this->addAppointments($calendar, $patient);
-        $this->addMedications($calendar, $patient);
+        if ($scope !== 'medications') {
+            $this->addAppointments($calendar, $patient);
+        }
+
+        if ($scope !== 'appointments') {
+            $this->addMedications($calendar, $patient);
+        }
 
         $calendar->appendProperty(TextProperty::create('CALSCALE', 'GREGORIAN'));
         $calendar->appendProperty(TextProperty::create('METHOD', 'PUBLISH'));

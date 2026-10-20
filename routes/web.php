@@ -175,6 +175,9 @@ Route::middleware('auth')->group(function () {
             'nextAppointment' => $nextAppt ? $shape($nextAppt) : null,
             'history' => $history->map($shape)->values(),
             'calendarDownloadUrl' => URL::route('patient.calendar.download'),
+            'calendarAppointmentDownloadUrl' => URL::route('patient.calendar.download', ['scope' => 'appointments']),
+            'calendarMedicationDownloadUrl' => URL::route('patient.calendar.download', ['scope' => 'medications']),
+            'hasActiveMedications' => Prescription::where('patient_id', $patientId)->where('status', 'active')->exists(),
             'calendarFeedUrl' => URL::signedRoute('patient.calendar.feed', ['user' => Auth::id()]),
         ]);
     })->name('patient.dashboard');

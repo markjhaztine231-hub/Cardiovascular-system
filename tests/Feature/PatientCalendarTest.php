@@ -200,4 +200,53 @@ class PatientCalendarTest extends TestCase
         $this->assertStringContainsString('DTSTART;VALUE=DATE:'.$appointment->scheduled_date->format('Ymd'), $body);
         $this->assertStringContainsString('CATEGORIES:Medication', $body);
     }
+
+    public function test_appointments_scope_excludes_medication_events(): void
+    {
+        [$patient] = $this->makePatientWithData();
+
+        $response = $this->actingAs($patient->user)
+            ->get(route('patient.calendar.download', ['scope' => 'appointments']));
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'cardiocare-appointments.ics',
+            $response->headers->get('Content-Disposition'),
+        );
+
+        $body = $response->getContent();
+        $this->assertStringContainsString('Consultation', $body);
+        $this->assertStringContainsString('CATEGORIES:Appointment', $body);
+        $this->assertStringNotContainsString('Metoprolol', $body);
+        $this->assertStringNotContainsString('CATEGORIES:Medication', $body);
+    }
+
+    public function test_medications_scope_excludes_appointment_events(): void
+    {
+        [$patient] = $this->makePatientWithData();
+
+        $response = $this->actingAs($patient->user)
+            ->get(route('patient.calendar.download', ['scope' => 'medications']));
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'cardiocare-medications.ics',
+            $response->headers->get('Content-Disposition'),
+        );
+
+        $body = $response->getContent();
+        $this->assertStringContainsString('Metoprolol', $body);
+        $this->assertStringContainsString('CATEGORIES:Medication', $body);
+        $this->assertStringNotContainsString('Consultation', $body);
+        $this->assertStringNotContainsString('CATEGORIES:Appointment', $body);
+    }
+
+    public function test_invalid_calendar_scope_is_rejected(): void
+    {
+        [$patient] = $this->makePatientWithData();
+
+        $this->actingAs($patient->user)
+            ->get(route('patient.calendar.download', ['scope' => 'everything']))
+            ->assertNotFound();
+    }
 }

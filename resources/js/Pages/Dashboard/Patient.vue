@@ -225,9 +225,7 @@
 
         <!-- MAIN CONTENT -->
         <main class="relative flex h-screen flex-1 flex-col overflow-hidden">
-            <div
-
-            >
+            <div>
                 <button
                     v-if="!isSidebarOpen"
                     type="button"
@@ -671,6 +669,18 @@
                                                     Download .ics
                                                 </button>
                                                 <button
+                                                    v-if="
+                                                        props.calendarAppointmentDownloadUrl
+                                                    "
+                                                    type="button"
+                                                    @click="
+                                                        downloadAppointmentCalendar
+                                                    "
+                                                    class="rounded-lg border border-[#005bb5] bg-white px-4 py-2 text-xs font-bold text-[#005bb5] transition duration-200 hover:bg-blue-50"
+                                                >
+                                                    Appointment only (.ics)
+                                                </button>
+                                                <button
                                                     type="button"
                                                     @click="copyCalendarFeed"
                                                     class="rounded-lg border border-[#005bb5] px-4 py-2 text-xs font-bold text-[#005bb5] transition duration-200 hover:bg-white"
@@ -858,6 +868,31 @@
                         v-if="activeTab === 'medications'"
                         class="animate-fade-in-up space-y-6"
                     >
+                        <div
+                            v-if="
+                                props.hasActiveMedications &&
+                                props.calendarMedicationDownloadUrl
+                            "
+                            class="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div>
+                                <p class="text-sm font-black text-emerald-800">
+                                    Medication reminders
+                                </p>
+                                <p class="text-xs text-emerald-700">
+                                    Download an .ics with your active medication
+                                    times and import it into any calendar app.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="downloadMedicationCalendar"
+                                class="shrink-0 rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white transition duration-200 hover:bg-emerald-800"
+                            >
+                                Download medication .ics
+                            </button>
+                        </div>
+
                         <!-- ── TODAY'S MEDICATION REMINDER ───────────── -->
                         <div
                             class="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm"
@@ -1852,15 +1887,30 @@ const props = defineProps<{
     nextAppointment?: Appointment | null;
     history: ConsultationRecord[];
     calendarDownloadUrl?: string;
+    calendarAppointmentDownloadUrl?: string;
+    calendarMedicationDownloadUrl?: string;
+    hasActiveMedications?: boolean;
     calendarFeedUrl?: string;
 }>();
 
 const calendarLinkCopied = ref(false);
 
-function downloadCalendar() {
-    if (props.calendarDownloadUrl) {
-        window.location.href = props.calendarDownloadUrl;
+function downloadCalendarUrl(url?: string) {
+    if (url) {
+        window.location.href = url;
     }
+}
+
+function downloadCalendar() {
+    downloadCalendarUrl(props.calendarDownloadUrl);
+}
+
+function downloadAppointmentCalendar() {
+    downloadCalendarUrl(props.calendarAppointmentDownloadUrl);
+}
+
+function downloadMedicationCalendar() {
+    downloadCalendarUrl(props.calendarMedicationDownloadUrl);
 }
 
 function copyCalendarFeed() {
