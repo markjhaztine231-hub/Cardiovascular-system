@@ -226,7 +226,7 @@
         <!-- MAIN CONTENT -->
         <main class="relative flex h-screen flex-1 flex-col overflow-hidden">
             <div
-                class="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 shadow-sm"
+
             >
                 <button
                     v-if="!isSidebarOpen"
