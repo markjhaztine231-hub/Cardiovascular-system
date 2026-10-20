@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useModalA11y } from '@/composables/useModalA11y';
 
 type ScanStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
@@ -23,6 +24,11 @@ const emit = defineEmits<{
     (e: 'uploaded'): void;
 }>();
 
+const uploadDialogOpen = computed(() => props.open);
+const { container: uploadDialog } = useModalA11y(uploadDialogOpen, () =>
+    close(),
+);
+
 const ACCEPTED = [
     'image/jpeg',
     'image/png',
@@ -38,7 +44,11 @@ const DOC_TYPES = [
     { value: 'echo', label: 'Echo', hint: 'Echocardiogram report' },
     { value: 'tmt', label: 'TMT', hint: 'Stress test report' },
     { value: 'doppler', label: 'Doppler', hint: 'Doppler study report' },
-    { value: 'stress_echo', label: 'Stress Echo', hint: 'Exercise stress echo report' },
+    {
+        value: 'stress_echo',
+        label: 'Stress Echo',
+        hint: 'Exercise stress echo report',
+    },
     { value: 'abpm', label: 'Ambulatory BP', hint: '24-hour ABPM report' },
     { value: 'lab_result', label: 'Lab Result', hint: 'Bloodwork / reports' },
     { value: 'referral', label: 'Referral', hint: 'Referral letter' },
@@ -80,7 +90,9 @@ const liveScans = computed<ScanSummary[]>(() => {
 
 const busyScanIds = computed(() =>
     liveScans.value
-        .filter((s) => s.ocr_status === 'pending' || s.ocr_status === 'processing')
+        .filter(
+            (s) => s.ocr_status === 'pending' || s.ocr_status === 'processing',
+        )
         .map((s) => s.id),
 );
 
@@ -93,14 +105,18 @@ const completedCount = computed(
 );
 
 /** Scans the OCR service never finished, which the receptionist can re-queue. */
-const failedScans = computed(() => liveScans.value.filter((s) => s.ocr_status === 'failed'));
+const failedScans = computed(() =>
+    liveScans.value.filter((s) => s.ocr_status === 'failed'),
+);
 
 /**
  * The image is already stored, so a retry only re-queues OCR. This is the
  * escape hatch for a scan that failed because the OCR service was down.
  */
 async function retryScan(scan: ScanSummary): Promise<void> {
-    if (retryingId.value !== null) return;
+    if (retryingId.value !== null) {
+        return;
+    }
 
     retryingId.value = scan.id;
     retryError.value = null;
@@ -130,9 +146,13 @@ async function retryAllFailed(): Promise<void> {
 }
 
 function humanSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
 
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(0)} KB`;
+    }
 
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -218,7 +238,9 @@ async function upload(): Promise<void> {
             { headers: { 'Content-Type': 'multipart/form-data' } },
         );
 
-        const created = data?.document as { id: number; type: string; ocr_status: ScanStatus } | undefined;
+        const created = data?.document as
+            | { id: number; type: string; ocr_status: ScanStatus }
+            | undefined;
 
         if (created) {
             localScans.value = {
@@ -257,14 +279,21 @@ function schedulePoll(delay = 2000): void {
     }
 
     pollTimer = setTimeout(async () => {
-        if (!props.open || props.appointmentId === null) return;
+        if (!props.open || props.appointmentId === null) {
+            return;
+        }
 
         for (const id of busyScanIds.value) {
             try {
                 const { data } = await axios.get(`/documents/${id}`);
 
                 const doc = data?.document as
-                    | { id: number; type: string; ocr_status: ScanStatus; ocr_error?: string | null }
+                    | {
+                          id: number;
+                          type: string;
+                          ocr_status: ScanStatus;
+                          ocr_error?: string | null;
+                      }
                     | undefined;
 
                 if (doc) {
@@ -342,10 +371,11 @@ onBeforeUnmount(() => {
                 aria-modal="true"
                 aria-label="Upload prescription image"
                 @click.self="close"
-                @keydown.esc="close"
             >
                 <div
-                    class="animate-fade-in-up flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                    ref="uploadDialog"
+                    tabindex="-1"
+                    class="animate-fade-in-up flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl outline-none"
                 >
                     <!-- Header -->
                     <div
@@ -462,11 +492,14 @@ onBeforeUnmount(() => {
                                         class="h-24 w-24 shrink-0 rounded-lg border border-gray-200 object-cover"
                                     />
                                     <div class="min-w-0 flex-1">
-                                        <p class="truncate text-sm font-bold text-gray-800">
+                                        <p
+                                            class="truncate text-sm font-bold text-gray-800"
+                                        >
                                             {{ file.name }}
                                         </p>
                                         <p class="mt-1 text-xs text-gray-500">
-                                            {{ humanSize(file.size) }} · ready to scan
+                                            {{ humanSize(file.size) }} · ready
+                                            to scan
                                         </p>
                                         <button
                                             type="button"
@@ -518,7 +551,9 @@ onBeforeUnmount(() => {
                                     >
                                         {{ option.label }}
                                     </span>
-                                    <span class="block text-[10px] text-gray-500">
+                                    <span
+                                        class="block text-[10px] text-gray-500"
+                                    >
                                         {{ option.hint }}
                                     </span>
                                 </button>
@@ -533,7 +568,9 @@ onBeforeUnmount(() => {
                                 >
                                     Scans for this appointment
                                 </h3>
-                                <span class="text-[11px] font-bold text-gray-500">
+                                <span
+                                    class="text-[11px] font-bold text-gray-500"
+                                >
                                     {{ completedCount }} ready ·
                                     {{ failedCount }} failed
                                 </span>
@@ -545,8 +582,12 @@ onBeforeUnmount(() => {
                                     :key="scan.id"
                                     class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2.5"
                                 >
-                                    <div class="flex min-w-0 items-center gap-2">
-                                        <span class="text-xs font-bold text-gray-800">
+                                    <div
+                                        class="flex min-w-0 items-center gap-2"
+                                    >
+                                        <span
+                                            class="text-xs font-bold text-gray-800"
+                                        >
                                             {{ typeLabel(scan.type) }}
                                         </span>
                                         <span class="text-[10px] text-gray-400">
@@ -554,21 +595,26 @@ onBeforeUnmount(() => {
                                         </span>
                                     </div>
 
-                                    <div class="flex shrink-0 items-center gap-2">
+                                    <div
+                                        class="flex shrink-0 items-center gap-2"
+                                    >
                                         <span
                                             class="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase"
                                             :class="
                                                 scan.ocr_status === 'completed'
                                                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                    : scan.ocr_status === 'failed'
+                                                    : scan.ocr_status ===
+                                                        'failed'
                                                       ? 'border-red-200 bg-red-50 text-red-700'
                                                       : 'border-blue-200 bg-blue-50 text-blue-700'
                                             "
                                         >
                                             <svg
                                                 v-if="
-                                                    scan.ocr_status === 'pending' ||
-                                                    scan.ocr_status === 'processing'
+                                                    scan.ocr_status ===
+                                                        'pending' ||
+                                                    scan.ocr_status ===
+                                                        'processing'
                                                 "
                                                 class="h-3 w-3 animate-spin"
                                                 fill="none"
@@ -631,16 +677,17 @@ onBeforeUnmount(() => {
                                 class="mt-2 text-[11px] text-amber-700"
                             >
                                 OCR usually fails when the local OCR service or
-                                the queue worker is not running. Starting them and
-                                retrying will pick the scan back up.
+                                the queue worker is not running. Starting them
+                                and retrying will pick the scan back up.
                             </p>
 
                             <p
                                 v-if="busyScanIds.length"
                                 class="mt-2 text-[11px] text-gray-500"
                             >
-                                OCR runs in the background — this list updates by
-                                itself. Large, low-contrast photos take longer.
+                                OCR runs in the background — this list updates
+                                by itself. Large, low-contrast photos take
+                                longer.
                             </p>
                         </div>
                     </div>

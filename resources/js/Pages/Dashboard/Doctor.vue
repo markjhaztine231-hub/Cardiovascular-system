@@ -519,6 +519,11 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm transition-opacity"
         >
             <div
+                ref="consultationDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Consultation record"
+                tabindex="-1"
                 class="animate-fade-in-up flex h-[95vh] w-full max-w-[95vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl xl:max-w-7xl"
             >
                 <!-- Modal Header -->
@@ -805,6 +810,44 @@
                             </div>
 
                             <div
+                                v-if="activeAllergies"
+                                class="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+                                role="alert"
+                            >
+                                <svg
+                                    class="mt-0.5 h-5 w-5 shrink-0 text-red-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM10.34 3.94c.657-1.144 2.663-1.144 3.32 0l7.5 13.06c.657 1.144-.163 2.575-1.66 2.575H4.5c-1.497 0-2.317-1.431-1.66-2.575l7.5-13.06z"
+                                    />
+                                </svg>
+                                <div>
+                                    <p
+                                        class="text-xs font-extrabold tracking-widest text-red-700 uppercase"
+                                    >
+                                        Allergies
+                                    </p>
+                                    <p
+                                        class="mt-0.5 text-sm font-bold whitespace-pre-line text-red-800"
+                                    >
+                                        {{ activeAllergies }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div
+                                v-else
+                                class="mb-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500"
+                            >
+                                No known allergies recorded.
+                            </div>
+
+                            <div
                                 v-if="prefilledByReception"
                                 class="mb-6 flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3"
                             >
@@ -827,6 +870,42 @@
                                     Echo / TMT / Doppler forms. Review them and
                                     confirm before saving the consultation.
                                 </p>
+                            </div>
+
+                            <div
+                                v-if="prefillFailed"
+                                class="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+                                role="alert"
+                            >
+                                <svg
+                                    class="mt-0.5 h-5 w-5 shrink-0 text-red-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM10.34 3.94c.657-1.144 2.663-1.144 3.32 0l7.5 13.06c.657 1.144-.163 2.575-1.66 2.575H4.5c-1.497 0-2.317-1.431-1.66-2.575l7.5-13.06z"
+                                    />
+                                </svg>
+                                <p
+                                    class="flex-1 text-sm font-semibold text-red-800"
+                                >
+                                    Existing study data could not be loaded.
+                                    Saving online is blocked until it loads, so
+                                    recorded measurements are not overwritten.
+                                    Offline drafts can still be saved.
+                                </p>
+                                <button
+                                    type="button"
+                                    @click="loadScans"
+                                    :disabled="scansLoading"
+                                    class="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+                                >
+                                    {{ scansLoading ? 'Retrying…' : 'Retry' }}
+                                </button>
                             </div>
 
                             <div class="space-y-6">
@@ -1201,6 +1280,42 @@
                                             Prescriptions
                                         </h3>
                                         <div
+                                            v-if="interactionWarnings.length"
+                                            class="space-y-1 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+                                            role="alert"
+                                        >
+                                            <p
+                                                class="text-xs font-extrabold tracking-widest text-amber-700 uppercase"
+                                            >
+                                                Interaction warnings
+                                            </p>
+                                            <ul
+                                                class="list-disc space-y-0.5 pl-4 text-xs font-semibold text-amber-800"
+                                            >
+                                                <li
+                                                    v-for="(
+                                                        warning, warnIndex
+                                                    ) in interactionWarnings"
+                                                    :key="warnIndex"
+                                                >
+                                                    {{ warning }}
+                                                </li>
+                                            </ul>
+                                            <p
+                                                v-if="currentMedications.length"
+                                                class="pt-1 text-[10px] font-semibold text-amber-600"
+                                            >
+                                                Checked against
+                                                {{ currentMedications.length }}
+                                                current medication{{
+                                                    currentMedications.length !==
+                                                    1
+                                                        ? 's'
+                                                        : ''
+                                                }}.
+                                            </p>
+                                        </div>
+                                        <div
                                             v-for="(
                                                 med, index
                                             ) in consultForm.prescriptions"
@@ -1335,7 +1450,7 @@
 
                     <!-- RIGHT-HAND PANEL: OCR SCANS CAPTURED BY RECEPTION -->
                     <aside
-                        class="flex w-80 shrink-0 flex-col border-l border-gray-200 bg-[#f8fafc] xl:w-[22rem]"
+                        class="flex w-80 shrink-0 flex-col border-l border-gray-200 bg-[#f8fafc] xl:w-88"
                         aria-label="Scanned documents and converted text"
                     >
                         <div
@@ -1519,7 +1634,7 @@
                                     </p>
                                     <p
                                         v-if="selectedScan.ocr_error"
-                                        class="mt-1 text-[11px] break-words text-red-600"
+                                        class="rap-break-word mt-1 text-[11px] text-red-600"
                                     >
                                         {{ selectedScan.ocr_error }}
                                     </p>
@@ -1907,18 +2022,19 @@
 
 <script setup lang="ts">
 import { Link, useForm, router } from '@inertiajs/vue3';
-import LogoutButton from '@/components/LogoutButton.vue';
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+import AbpmForm from '@/components/Clinical/AbpmForm.vue';
 import DopplerForm from '@/components/Clinical/DopplerForm.vue';
 import EchoForm from '@/components/Clinical/EchoForm.vue';
 import ManualDraftForm from '@/components/Clinical/ManualDraftForm.vue';
-import TmtForm from '@/components/Clinical/TmtForm.vue';
-import AbpmForm from '@/components/Clinical/AbpmForm.vue';
 import StressEchoForm from '@/components/Clinical/StressEchoForm.vue';
+import TmtForm from '@/components/Clinical/TmtForm.vue';
+import LogoutButton from '@/components/LogoutButton.vue';
 import Toast from '@/components/Toast.vue';
-import { useToast } from '@/composables/useToast';
+import { useModalA11y } from '@/composables/useModalA11y';
 import { useSidebar } from '@/composables/useSidebar';
+import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
 
 const {
@@ -1934,6 +2050,7 @@ import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
 import {
     validateConsultation,
     sanitizeText,
+    checkMedicationInteractions,
     MEDICATION_FREQUENCIES,
 } from '@/utils/validation';
 
@@ -2028,10 +2145,20 @@ const formattedDate = computed(() => {
 });
 
 const isModalOpen = ref(false);
+const { container: consultationDialog } = useModalA11y(isModalOpen, () =>
+    closeConsultModal(),
+);
 const activeAppt = ref<Appointment | null>(null);
 const isSaving = ref(false);
 // Receptionist-recorded study data was pre-filled into the forms for this visit.
 const prefilledByReception = ref(false);
+// Study prefill could not be loaded (request failed). Saving is blocked so the
+// receptionist's measurements cannot be overwritten with form defaults.
+const prefillFailed = ref(false);
+// Prefill is applied once per modal open; polling re-fetches scans, not data.
+const prefillApplied = ref(false);
+// A save that reached the server (or IndexedDB); only then may the draft go.
+const consultSaved = ref(false);
 
 /**
  * History URL for the appointment currently in the consultation modal.
@@ -2394,6 +2521,33 @@ const consultForm = useForm<ConsultForm>({
     },
 });
 
+// ── Medication safety: allergy banner + interaction warnings ─────────
+const activeAllergies = computed(() => {
+    const allergies = activeAppt.value?.allergies;
+
+    return typeof allergies === 'string' ? allergies.trim() : '';
+});
+
+const currentMedications = computed(
+    () => activeAppt.value?.current_medications ?? [],
+);
+
+const interactionWarnings = computed(() => {
+    const current = currentMedications.value.map((med) => ({
+        medicine: med.medicine,
+        dosage: med.dosage ?? '',
+    }));
+
+    const pending = consultForm.prescriptions
+        .filter((med) => med.medicine && med.medicine.trim() !== '')
+        .map((med) => ({
+            medicine: med.medicine,
+            dosage: med.dosage ?? '',
+        }));
+
+    return checkMedicationInteractions([...current, ...pending]);
+});
+
 const vitalsForm = reactive({
     bp_sys: null as number | null,
     bp_dia: null as number | null,
@@ -2402,6 +2556,98 @@ const vitalsForm = reactive({
     temp: null as number | null,
     spo2: null as number | null,
 });
+
+// Snapshot of the untouched form. Prefill may replace values that still equal
+// these defaults (e.g. the "normal"/"Faint" findings), but never anything the
+// doctor typed or a restored local draft changed.
+const pristineConsultData = JSON.parse(
+    JSON.stringify(consultForm.data()),
+) as Record<string, any>;
+const pristineVitalsData = JSON.parse(JSON.stringify(vitalsForm)) as Record<
+    string,
+    any
+>;
+
+function isPlainRecord(value: unknown): value is Record<string, any> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Leaf paths whose current value differs from the pristine snapshot. */
+function collectDirtyPaths(
+    pristine: any,
+    current: any,
+    prefix: string,
+    out: Set<string>,
+): void {
+    const pristineIsArray = Array.isArray(pristine);
+    const currentIsArray = Array.isArray(current);
+
+    if (pristineIsArray || currentIsArray) {
+        const before = pristineIsArray ? pristine : [];
+        const after = currentIsArray ? current : [];
+        const length = Math.max(before.length, after.length);
+
+        for (let i = 0; i < length; i++) {
+            collectDirtyPaths(before[i], after[i], `${prefix}[${i}]`, out);
+        }
+
+        return;
+    }
+
+    if (isPlainRecord(pristine) || isPlainRecord(current)) {
+        const before = isPlainRecord(pristine) ? pristine : {};
+        const after = isPlainRecord(current) ? current : {};
+        const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+
+        for (const key of keys) {
+            collectDirtyPaths(
+                before[key],
+                after[key],
+                prefix ? `${prefix}.${key}` : key,
+                out,
+            );
+        }
+
+        return;
+    }
+
+    if (pristine !== current) {
+        out.add(prefix);
+    }
+}
+
+/** Fills untouched keys of one prefilled row (e.g. a TMT stage). */
+function mergeUntouchedPrefillRow(
+    target: Record<string, any>,
+    source: Record<string, any>,
+    dirtyPaths: Set<string>,
+    prefix: string,
+): number {
+    let applied = 0;
+
+    for (const [field, value] of Object.entries(source)) {
+        if (!(field in target)) {
+            continue;
+        }
+
+        if (dirtyPaths.has(`${prefix}.${field}`)) {
+            continue;
+        }
+
+        if (typeof value !== 'string' && typeof value !== 'number') {
+            continue;
+        }
+
+        if (value === '' || target[field] === value) {
+            continue;
+        }
+
+        target[field] = value;
+        applied++;
+    }
+
+    return applied;
+}
 
 function composeVitals(): string {
     const parts: string[] = [];
@@ -2447,6 +2693,9 @@ function openConsultModal(appt: Appointment | null) {
     activeAppt.value = appt;
     isModalOpen.value = true;
     stopScanPolling();
+    prefillFailed.value = false;
+    prefillApplied.value = false;
+    consultSaved.value = false;
     loadDraft();
 
     // Polling is owned by the caller: scheduleScanPoll() starts the loop when
@@ -2521,10 +2770,17 @@ const visualChips = computed(() => {
 });
 
 function visualDetail(visual: any): string {
-    if (visual?.value) return String(visual.value);
-    if (visual?.interior_lines)
+    if (visual?.value) {
+        return String(visual.value);
+    }
+
+    if (visual?.interior_lines) {
         return `${visual.interior_lines} text lines inside`;
-    if (visual?.aspect_ratio) return `aspect ${visual.aspect_ratio}`;
+    }
+
+    if (visual?.aspect_ratio) {
+        return `aspect ${visual.aspect_ratio}`;
+    }
 
     const bbox = visual?.bbox;
 
@@ -2545,7 +2801,9 @@ function stopScanPolling(): void {
 async function loadScans(): Promise<void> {
     const appt = activeAppt.value;
 
-    if (!appt) return;
+    if (!appt) {
+        return;
+    }
 
     scansLoading.value = true;
 
@@ -2560,8 +2818,14 @@ async function loadScans(): Promise<void> {
 
         // Reception may already have recorded the Echo/TMT/Doppler measurements
         // for this visit. Pre-fill those into the forms so the doctor confirms
-        // rather than re-types them.
-        applyServerPrefill(data?.prefill ?? null);
+        // rather than re-types them. Applied once per open: scan polling must
+        // not re-run it.
+        if (!prefillApplied.value) {
+            applyServerPrefill(data?.prefill ?? null);
+            prefillApplied.value = true;
+        }
+
+        prefillFailed.value = false;
 
         if (selectedScanId.value === null && scans.value.length) {
             selectedScanId.value = scans.value[0].id;
@@ -2577,6 +2841,10 @@ async function loadScans(): Promise<void> {
     } catch (error: any) {
         // A doctor without a linked provider record gets 403 here; the SOAP form
         // still works, so surface the scans problem without blocking the visit.
+        // Any failure leaves prefill unapplied, so saving stays blocked to
+        // avoid overwriting recorded measurements with defaults. A later poll
+        // failing after a successful prefill must not re-block the save.
+        prefillFailed.value = !prefillApplied.value;
         showError(
             error?.response?.status === 403
                 ? 'Could not load scans: no provider record linked to your account.'
@@ -2607,12 +2875,21 @@ function scheduleScanPoll(delay = 2500): void {
 /**
  * Pre-fills the Echo/TMT/Doppler forms with study data that already exists for
  * this appointment (typically recorded by the receptionist on a draft
- * encounter). Only fields still at their empty/default state are touched, so a
- * value the doctor already typed — or restored from the local draft restore —
- * is never overwritten.
+ * encounter). Values the doctor typed — or restored from a local draft — are
+ * never overwritten; values still equal to the pristine form defaults are,
+ * so an untouched "normal"/"Faint" finding cannot silently replace the
+ * receptionist's measurement on save.
  */
 function applyServerPrefill(prefill: any): void {
-    if (!prefill) return;
+    if (!prefill) {
+        return;
+    }
+
+    const dirtyPaths = new Set<string>();
+    collectDirtyPaths(pristineConsultData, consultForm.data(), '', dirtyPaths);
+
+    const dirtyVitals = new Set<string>();
+    collectDirtyPaths(pristineVitalsData, vitalsForm, '', dirtyVitals);
 
     const targets: Record<string, keyof ConsultForm> = {
         echo_data: 'echo_data',
@@ -2622,72 +2899,131 @@ function applyServerPrefill(prefill: any): void {
         abpm_data: 'abpm_data',
     };
 
+    const typeForStudy: Record<string, string> = {
+        echo_data: 'Type 1',
+        tmt_data: 'Type 2',
+        doppler_data: 'Type 3',
+        stress_echo_data: 'Type 5',
+        abpm_data: 'Type 6',
+    };
+
     let applied = 0;
 
     for (const [key, target] of Object.entries(targets)) {
         const source = prefill[key];
-        if (!source || typeof source !== 'object') continue;
+
+        if (!isPlainRecord(source)) {
+            continue;
+        }
 
         const form = consultForm[target] as Record<string, any>;
 
-        for (const [field, value] of Object.entries(
-            source as Record<string, unknown>,
-        )) {
-            if (!(field in form)) continue;
+        // A study exists for this visit, so its consultation type must stay
+        // selected or saving the consultation would delete the study.
+        const sourceHasData = Object.values(source).some((value) =>
+            Array.isArray(value)
+                ? value.length > 0
+                : value !== '' && value !== null && value !== undefined,
+        );
+        const studyType = typeForStudy[key];
 
+        if (
+            studyType &&
+            sourceHasData &&
+            !consultForm.consultation_type.includes(studyType)
+        ) {
+            consultForm.consultation_type.push(studyType);
+            applied++;
+        }
+
+        for (const [field, value] of Object.entries(source)) {
+            if (!(field in form)) {
+                continue;
+            }
+
+            const path = `${key}.${field}`;
             const current = form[field];
-            const isBlank =
-                current === '' || current === null || current === undefined;
 
             if (
-                isBlank &&
-                (typeof value === 'string' ||
-                    typeof value === 'number' ||
-                    typeof value === 'boolean') &&
-                value !== ''
+                typeof value === 'string' ||
+                typeof value === 'number' ||
+                typeof value === 'boolean'
             ) {
+                if (value === '' || dirtyPaths.has(path) || current === value) {
+                    continue;
+                }
+
                 form[field] = value;
                 applied++;
                 continue;
             }
 
-            // Array fields (e.g. stress-echo exercise stages) prefill when the
-            // doctor's own list is still empty.
+            // Array fields (TMT / stress-echo stage rows) merge row by row so
+            // bench readings reach the doctor even though the doctor's table
+            // already has scaffold rows. Untouched rows are safe to fill.
             if (
                 Array.isArray(value) &&
-                Array.isArray(current) &&
-                current.length === 0 &&
-                value.length > 0
+                value.length > 0 &&
+                Array.isArray(current)
             ) {
-                form[field] = value.map((item) =>
-                    typeof item === 'object' && item !== null
-                        ? { ...(item as Record<string, unknown>) }
-                        : item,
-                );
-                applied++;
+                if (current.length === 0) {
+                    form[field] = value.map((item) =>
+                        isPlainRecord(item) ? { ...item } : item,
+                    );
+                    applied++;
+                    continue;
+                }
+
+                value.forEach((item, i) => {
+                    if (!isPlainRecord(item)) {
+                        return;
+                    }
+
+                    if (i >= current.length) {
+                        current.push({ ...item });
+                        applied++;
+
+                        return;
+                    }
+
+                    if (!isPlainRecord(current[i])) {
+                        return;
+                    }
+
+                    applied += mergeUntouchedPrefillRow(
+                        current[i],
+                        item,
+                        dirtyPaths,
+                        `${path}[${i}]`,
+                    );
+                });
             }
         }
     }
 
     // Objective (Vitals) recorded by the receptionist at the bench. Coerce to
     // numbers because decimals arrive from the API as strings.
-    if (prefill.vitals_data && typeof prefill.vitals_data === 'object') {
+    if (isPlainRecord(prefill.vitals_data)) {
         const vitals = vitalsForm as Record<string, any>;
 
-        for (const [field, value] of Object.entries(
-            prefill.vitals_data as Record<string, unknown>,
-        )) {
-            if (!(field in vitals)) continue;
+        for (const [field, value] of Object.entries(prefill.vitals_data)) {
+            if (!(field in vitals)) {
+                continue;
+            }
 
-            const current = vitals[field];
-            const isBlank =
-                current === '' || current === null || current === undefined;
+            if (dirtyVitals.has(field)) {
+                continue;
+            }
 
-            if (!isBlank) continue;
-            if (value === '' || value === null || value === undefined) continue;
+            if (value === '' || value === null || value === undefined) {
+                continue;
+            }
 
             const numeric = typeof value === 'number' ? value : Number(value);
-            if (Number.isNaN(numeric)) continue;
+
+            if (Number.isNaN(numeric) || vitals[field] === numeric) {
+                continue;
+            }
 
             vitals[field] = numeric;
             applied++;
@@ -2723,9 +3059,13 @@ function confidenceClass(value: number | null): string {
         return 'border-gray-200 bg-gray-50 text-gray-500';
     }
 
-    if (value >= 0.9)
+    if (value >= 0.9) {
         return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (value >= 0.7) return 'border-amber-200 bg-amber-50 text-amber-700';
+    }
+
+    if (value >= 0.7) {
+        return 'border-amber-200 bg-amber-50 text-amber-700';
+    }
 
     return 'border-red-200 bg-red-50 text-red-700';
 }
@@ -2771,7 +3111,9 @@ function onScanDragStart(event: DragEvent, scan: any): void {
  * suggestion — the doctor still edits and submits it like any other entry.
  */
 function applyMedication(doc: any, med: any): void {
-    if (!doc || !med?.medication_name) return;
+    if (!doc || !med?.medication_name) {
+        return;
+    }
 
     consultForm.prescriptions.push({
         medicine: med.medication_name,
@@ -2879,18 +3221,25 @@ watch(
 );
 
 const closeConsultModal = () => {
+    // Keep unsaved work recoverable: an accidental close still leaves the
+    // local draft (cleared only once a save actually succeeded).
+    if (!consultSaved.value && activeAppt.value) {
+        saveDraft();
+    }
+
     isModalOpen.value = false;
     wantsFollowUp.value = false;
     followUpForm.reset();
     consultForm.reset();
     resetVitalsForm();
-    clearDraft();
     stopScanPolling();
     scans.value = [];
     selectedScanId.value = null;
     scansLoading.value = false;
     scannedToPrescription.value = {};
     prefilledByReception.value = false;
+    prefillFailed.value = false;
+    prefillApplied.value = false;
 };
 
 const addMedication = () => {
@@ -2928,6 +3277,47 @@ const hasClinicalData = (data: Record<string, unknown>): boolean => {
 
         return v !== null && v !== undefined && v !== '';
     });
+};
+
+/**
+ * Single source of truth for the payload sent to /complete, shared by the
+ * online save and the offline IndexedDB queue so the two can never diverge.
+ */
+const buildConsultationPayload = (
+    formData?: Record<string, any>,
+): Record<string, any> => {
+    const data = formData ?? consultForm.data();
+
+    return {
+        ...data,
+        // Compose structured vitals inputs into the standard format
+        vitals: composeVitals(),
+        // Ensure duration is always a string (number inputs emit numbers)
+        prescriptions: data.prescriptions?.map((p: any) => ({
+            ...p,
+            duration: String(p.duration ?? ''),
+        })),
+        // Only send clinical data for selected types; null out the rest
+        // so the backend doesn't persist empty JSON objects.
+        echo_data: data.consultation_type.includes('Type 1')
+            ? data.echo_data
+            : null,
+        tmt_data: data.consultation_type.includes('Type 2')
+            ? data.tmt_data
+            : null,
+        doppler_data: data.consultation_type.includes('Type 3')
+            ? data.doppler_data
+            : null,
+        manual_draft_data: data.consultation_type.includes('Type 4')
+            ? data.manual_draft_data
+            : null,
+        stress_echo_data: data.consultation_type.includes('Type 5')
+            ? data.stress_echo_data
+            : null,
+        abpm_data: data.consultation_type.includes('Type 6')
+            ? data.abpm_data
+            : null,
+    };
 };
 
 const saveConsultation = async () => {
@@ -3031,63 +3421,53 @@ const saveConsultation = async () => {
 
     if (!isOnline()) {
         try {
-            closeConsultModal();
-            const formPayload = consultForm.data();
+            // Capture the payload before anything resets the form — saving
+            // offline must never store the blank post-reset defaults.
+            const formPayload = buildConsultationPayload();
             await savePendingConsultation(appt.id, formPayload);
+            consultSaved.value = true;
+            clearDraft();
+            closeConsultModal();
             showSuccess(
                 'Saved offline — will sync automatically when connected.',
             );
-
-            return;
         } catch (idbErr) {
             showError(
                 'Could not save consultation offline. Please try again when connected.',
             );
             console.error('IndexedDB save error:', idbErr);
-
-            return;
         } finally {
             isSaving.value = false;
         }
+
+        return;
+    }
+
+    // Existing study data could not be loaded, so the forms still hold their
+    // defaults. Completing now would delete the receptionist's measurements.
+    // Offline saves skip this guard: they are queued locally and the server
+    // cannot be asked for prefill while the doctor is offline.
+    if (prefillFailed.value) {
+        showError(
+            'Existing study data could not be loaded. Retry loading it before saving so recorded measurements are not overwritten.',
+        );
+
+        return;
     }
 
     try {
         // Save consultation data (backend sets status to 'Completed')
         await new Promise((resolve, reject) => {
             consultForm
-                .transform((data) => ({
-                    ...data,
-                    // Compose structured vitals inputs into the standard format
-                    vitals: composeVitals(),
-                    // Ensure duration is always a string (number inputs emit numbers)
-                    prescriptions: data.prescriptions?.map((p: any) => ({
-                        ...p,
-                        duration: String(p.duration ?? ''),
-                    })),
-                    // Only send clinical data for selected types; null out the rest
-                    // so the backend doesn't persist empty JSON objects.
-                    echo_data: data.consultation_type.includes('Type 1')
-                        ? data.echo_data
-                        : null,
-                    tmt_data: data.consultation_type.includes('Type 2')
-                        ? data.tmt_data
-                        : null,
-                    doppler_data: data.consultation_type.includes('Type 3')
-                        ? data.doppler_data
-                        : null,
-                    manual_draft_data: data.consultation_type.includes('Type 4')
-                        ? data.manual_draft_data
-                        : null,
-                    stress_echo_data: data.consultation_type.includes('Type 5')
-                        ? data.stress_echo_data
-                        : null,
-                    abpm_data: data.consultation_type.includes('Type 6')
-                        ? data.abpm_data
-                        : null,
-                }))
+                .transform((data) =>
+                    buildConsultationPayload(data as Record<string, any>),
+                )
                 .post(`/appointments/${appt.id}/complete`, {
                     preserveScroll: true,
                     onSuccess: () => {
+                        consultSaved.value = true;
+                        clearDraft();
+
                         // Build an informative saved-types message
                         const typeLabels: Record<string, string> = {
                             'Type 1': 'Echo',

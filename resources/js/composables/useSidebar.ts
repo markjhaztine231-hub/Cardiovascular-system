@@ -1,4 +1,5 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import type { Ref } from 'vue';
 
 interface SidebarState {
     isOpen: Ref<boolean>;
@@ -27,6 +28,7 @@ function getState(storageKey: string): SidebarState {
 
         if (typeof window !== 'undefined') {
             const saved = window.localStorage.getItem(storageKey);
+
             if (saved !== null) {
                 isOpen.value = saved !== 'false';
             }

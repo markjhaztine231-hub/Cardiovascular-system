@@ -249,11 +249,6 @@
                         />
                     </svg>
                 </button>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold text-[#003366]"
-                        >CardioCare - Patient</span
-                    >
-                </div>
             </div>
             <!-- Toast Notification -->
             <div
@@ -906,8 +901,16 @@
 
                             <div v-else class="space-y-3">
                                 <div
-                                    v-for="(med, idx) in todayMeds"
-                                    :key="idx"
+                                    v-if="scheduledMeds.length === 0"
+                                    class="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800"
+                                >
+                                    No scheduled doses today — see the as-needed
+                                    medications below.
+                                </div>
+
+                                <div
+                                    v-for="med in scheduledMeds"
+                                    :key="`${med.appointment_id}-${med.prescription_index}`"
                                     class="rounded-xl border p-4 transition-all"
                                     :class="
                                         med.all_taken
@@ -945,6 +948,24 @@
                                                     taken today
                                                 </span>
                                             </p>
+                                            <p
+                                                v-if="
+                                                    med.duration ||
+                                                    med.instructions
+                                                "
+                                                class="mt-0.5 text-[11px] text-gray-500"
+                                            >
+                                                {{ med.duration }}
+                                                <span
+                                                    v-if="
+                                                        med.duration &&
+                                                        med.instructions
+                                                    "
+                                                >
+                                                    &middot;
+                                                </span>
+                                                {{ med.instructions }}
+                                            </p>
                                         </div>
                                         <div
                                             v-if="med.all_taken"
@@ -978,7 +999,9 @@
                                         >
                                             <span
                                                 class="font-mono text-xs font-bold"
-                                                >{{ d.scheduled_time }}</span
+                                                >{{
+                                                    formatTime(d.scheduled_time)
+                                                }}</span
                                             >
                                             <span
                                                 class="text-[10px] opacity-75"
@@ -1044,6 +1067,52 @@
                                                         : 'Record Intake'
                                                 }}
                                             </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="asNeededMeds.length"
+                                    class="rounded-xl border border-sky-200 bg-sky-50 p-4"
+                                >
+                                    <p
+                                        class="mb-2 text-xs font-black tracking-wide text-sky-800 uppercase"
+                                    >
+                                        As-Needed Medications
+                                    </p>
+                                    <div class="space-y-2">
+                                        <div
+                                            v-for="med in asNeededMeds"
+                                            :key="`${med.appointment_id}-${med.prescription_index}`"
+                                            class="rounded-lg border border-sky-100 bg-white px-3 py-2"
+                                        >
+                                            <p
+                                                class="text-sm font-bold text-gray-900 capitalize"
+                                            >
+                                                {{
+                                                    displayMedicineName(
+                                                        med.medicine,
+                                                    )
+                                                }}
+                                                <span
+                                                    class="font-normal text-gray-500"
+                                                >
+                                                    &middot; {{ med.dosage }}
+                                                </span>
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                {{ med.frequency }}
+                                                <span v-if="med.instructions">
+                                                    &middot;
+                                                    {{ med.instructions }}
+                                                </span>
+                                            </p>
+                                            <p
+                                                class="mt-1 text-[11px] font-semibold text-sky-700"
+                                            >
+                                                No fixed schedule — take only as
+                                                directed.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -1126,7 +1195,11 @@
                                             >
                                             <span
                                                 class="font-mono font-extrabold"
-                                                >{{ dose.scheduled_time }}</span
+                                                >{{
+                                                    formatTime(
+                                                        dose.scheduled_time,
+                                                    )
+                                                }}</span
                                             >
                                         </button>
                                     </div>
@@ -1233,9 +1306,12 @@
                                         <span class="text-[10px] text-gray-400">
                                             {{
                                                 med.last7Days.filter(
-                                                    (d) => d.pct < 80,
+                                                    (d) =>
+                                                        d.expected > 0 &&
+                                                        d.pct < 80,
                                                 ).length
-                                            }}/7 days below target
+                                            }}
+                                            days below target
                                         </span>
                                         <span
                                             class="text-xs font-semibold"
@@ -1256,25 +1332,41 @@
                                         v-for="(day, di) in med.last7Days"
                                         :key="di"
                                         class="flex h-full flex-1 cursor-pointer flex-col items-center justify-end"
-                                        @click="toggleDayDose(day)"
+                                        @click="
+                                            day.expected > 0
+                                                ? toggleDayDose(day)
+                                                : undefined
+                                        "
                                     >
                                         <div class="relative w-full">
                                             <div
                                                 class="w-full rounded-t transition-all"
                                                 :style="{
-                                                    height: day.pct + '%',
+                                                    height:
+                                                        (day.expected > 0
+                                                            ? day.pct
+                                                            : 0) + '%',
                                                 }"
                                                 :class="
-                                                    day.pct >= 80
-                                                        ? 'bg-emerald-500'
-                                                        : day.pct >= 50
-                                                          ? 'bg-amber-400'
-                                                          : 'bg-red-400'
+                                                    day.expected === 0
+                                                        ? 'bg-slate-200'
+                                                        : day.pct >= 80
+                                                          ? 'bg-emerald-500'
+                                                          : day.pct >= 50
+                                                            ? 'bg-amber-400'
+                                                            : 'bg-red-400'
                                                 "
-                                                :title="`${day.date}: ${day.taken}/${day.expected} doses (${day.pct}%)`"
+                                                :title="
+                                                    day.expected === 0
+                                                        ? `${day.date}: no doses scheduled`
+                                                        : `${day.date}: ${day.taken}/${day.expected} doses (${day.pct}%)`
+                                                "
                                             ></div>
                                             <div
-                                                v-if="day.taken === 0"
+                                                v-if="
+                                                    day.expected > 0 &&
+                                                    day.taken === 0
+                                                "
                                                 class="absolute inset-0 flex items-start justify-center pt-0.5"
                                             >
                                                 <span
@@ -1290,14 +1382,18 @@
                                         <span
                                             class="text-[8px] font-medium"
                                             :class="
-                                                day.pct >= 80
-                                                    ? 'text-emerald-600'
-                                                    : day.pct >= 50
-                                                      ? 'text-amber-600'
-                                                      : 'text-red-400'
+                                                day.expected === 0
+                                                    ? 'text-slate-400'
+                                                    : day.pct >= 80
+                                                      ? 'text-emerald-600'
+                                                      : day.pct >= 50
+                                                        ? 'text-amber-600'
+                                                        : 'text-red-400'
                                             "
-                                            >{{ day.taken }}/{{
-                                                day.expected
+                                            >{{
+                                                day.expected === 0
+                                                    ? '—'
+                                                    : `${day.taken}/${day.expected}`
                                             }}</span
                                         >
                                     </div>
@@ -1459,7 +1555,18 @@
                                     <div
                                         v-if="record.ai_summary"
                                         class="rounded-lg border border-purple-100 bg-purple-50 p-4"
-                                    ></div>
+                                    >
+                                        <p
+                                            class="text-xs font-black tracking-wide text-purple-700 uppercase"
+                                        >
+                                            AI Summary
+                                        </p>
+                                        <p
+                                            class="mt-2 text-sm leading-relaxed text-gray-700"
+                                        >
+                                            {{ record.ai_summary }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1476,12 +1583,19 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
             <div
+                ref="rescheduleDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="reschedule-modal-title"
+                tabindex="-1"
                 class="animate-fade-in-up w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
             >
                 <div
                     class="flex items-center justify-between bg-[#005bb5] px-6 py-4 text-white"
                 >
-                    <h3 class="text-lg font-bold">Reschedule Appointment</h3>
+                    <h3 id="reschedule-modal-title" class="text-lg font-bold">
+                        Reschedule Appointment
+                    </h3>
                     <button
                         @click="isRescheduleOpen = false"
                         class="text-blue-200 hover:text-white"
@@ -1595,11 +1709,12 @@
 
 <script setup lang="ts">
 import { useForm, Link, router } from '@inertiajs/vue3';
-import LogoutButton from '@/components/LogoutButton.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import LogoutButton from '@/components/LogoutButton.vue';
 import Toast from '@/components/Toast.vue';
-import { useToast } from '@/composables/useToast';
+import { useModalA11y } from '@/composables/useModalA11y';
 import { useSidebar } from '@/composables/useSidebar';
+import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
 import {
     sanitizeText,
@@ -1692,6 +1807,10 @@ interface TodayMed {
     dosage: string;
     frequency: string;
     duration: string;
+    instructions?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    as_needed?: boolean;
     expected_doses: number;
     taken_doses: number;
     all_taken: boolean;
@@ -1770,6 +1889,10 @@ interface MedHistoryEntry {
 }
 
 const todayMeds = ref<TodayMed[]>([]);
+const scheduledMeds = computed(() =>
+    todayMeds.value.filter((m) => !m.as_needed),
+);
+const asNeededMeds = computed(() => todayMeds.value.filter((m) => m.as_needed));
 const adherenceData = ref<AdherenceMed[]>([]);
 const doseLoading = ref<Record<string, boolean>>({});
 const doseToggling = ref<Record<string, boolean>>({});
@@ -1982,37 +2105,49 @@ async function fetchAdherenceData(): Promise<void> {
             }
         }
 
-        adherenceData.value = Object.entries(medMap).map(([medicine, days]) => {
-            const totalExpected = days.reduce((s, d) => s + d.expected, 0);
-            const totalTaken = days.reduce((s, d) => s + d.taken, 0);
-            const average =
-                totalExpected > 0
-                    ? Math.round((totalTaken / totalExpected) * 100)
-                    : 0;
-            const last7Days = last7.map((day: any) => {
-                const m = day.medications.find(
-                    (mm: any) => mm.medicine === medicine,
-                );
-                const expected = m?.expected ?? 0;
-                const taken = m?.taken ?? 0;
-                const date = new Date(day.date + 'T00:00:00');
+        adherenceData.value = Object.entries(medMap)
+            .map(([medicine, days]) => {
+                const totalExpected = days.reduce((s, d) => s + d.expected, 0);
+                const totalTaken = days.reduce((s, d) => s + d.taken, 0);
+                const average =
+                    totalExpected > 0
+                        ? Math.round((totalTaken / totalExpected) * 100)
+                        : 0;
+                const last7Days = last7.map((day: any) => {
+                    const m = day.medications.find(
+                        (mm: any) => mm.medicine === medicine,
+                    );
+                    const expected = m?.expected ?? 0;
+                    const taken = m?.taken ?? 0;
+                    const date = new Date(day.date + 'T00:00:00');
+
+                    return {
+                        date: day.date,
+                        taken,
+                        expected,
+                        prescriptionIndex: m?.index ?? 0,
+                        appointmentId,
+                        label: date
+                            .toLocaleDateString('en-US', { weekday: 'short' })
+                            .slice(0, 2),
+                        pct:
+                            expected > 0
+                                ? Math.round((taken / expected) * 100)
+                                : 0,
+                    };
+                });
 
                 return {
-                    date: day.date,
-                    taken,
-                    expected,
-                    prescriptionIndex: m?.index ?? 0,
-                    appointmentId,
-                    label: date
-                        .toLocaleDateString('en-US', { weekday: 'short' })
-                        .slice(0, 2),
-                    pct:
-                        expected > 0 ? Math.round((taken / expected) * 100) : 0,
+                    medicine,
+                    dosage: '',
+                    frequency: '',
+                    average,
+                    last7Days,
                 };
-            });
-
-            return { medicine, dosage: '', frequency: '', average, last7Days };
-        });
+            })
+            .filter((med: AdherenceMed) =>
+                med.last7Days.some((day) => day.expected > 0),
+            );
     } catch {
         adherenceData.value = [];
     }
@@ -2242,6 +2377,9 @@ const bookingForm = useForm({
 });
 
 const isRescheduleOpen = ref<boolean>(false);
+const { container: rescheduleDialog } = useModalA11y(isRescheduleOpen, () => {
+    isRescheduleOpen.value = false;
+});
 
 const hasActiveAppointment = computed(
     () =>
@@ -2362,6 +2500,36 @@ const unreadCount = computed(
             .length,
 );
 
+// Notification read state lives in localStorage so refreshed/re-opened
+// dashboards do not resurrect alerts the patient already dismissed.
+const notificationStorageKey = (): string =>
+    `cc-notifications-read:${props.user?.id ?? 'guest'}`;
+
+function loadReadNotificationIds(): Set<string> {
+    try {
+        const raw = localStorage.getItem(notificationStorageKey());
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+
+        return new Set<string>(
+            Array.isArray(parsed) ? parsed.map((id) => String(id)) : [],
+        );
+    } catch {
+        return new Set<string>();
+    }
+}
+
+function persistReadNotificationIds(): void {
+    try {
+        const ids = notifications.value
+            .filter((n: Notification): boolean => n.read)
+            .map((n: Notification): string => String(n.id));
+
+        localStorage.setItem(notificationStorageKey(), JSON.stringify(ids));
+    } catch {
+        // Storage can be unavailable (private mode); read state is best effort.
+    }
+}
+
 function buildNotifications(): Notification[] {
     const list: Notification[] = [];
 
@@ -2428,6 +2596,7 @@ function buildNotifications(): Notification[] {
 function syncNotifications(announceNewPrescription = false): void {
     const previouslyRead = new Map<string, boolean>();
     const previousIds = new Set<string>();
+    const storedRead = loadReadNotificationIds();
 
     notifications.value.forEach((n: Notification): void => {
         previouslyRead.set(String(n.id), n.read);
@@ -2437,7 +2606,9 @@ function syncNotifications(announceNewPrescription = false): void {
     notifications.value = buildNotifications().map(
         (n: Notification): Notification => ({
             ...n,
-            read: previouslyRead.get(String(n.id)) ?? false,
+            read:
+                previouslyRead.get(String(n.id)) ??
+                storedRead.has(String(n.id)),
         }),
     );
 
@@ -2498,9 +2669,22 @@ onMounted(() => {
         });
 
         echoChannel.listen('AppointmentRescheduled', (e: any) => {
-            router.reload({ only: ['nextAppointment', 'history'] });
+            router.reload({
+                only: ['nextAppointment', 'history'],
+                onSuccess: () => syncNotifications(),
+            });
             showSuccess(
                 `Your appointment has been rescheduled to ${e.newDate} at ${e.newTime}.`,
+            );
+        });
+
+        echoChannel.listen('RescheduleDenied', (e: any) => {
+            router.reload({
+                only: ['nextAppointment', 'history'],
+                onSuccess: () => syncNotifications(),
+            });
+            showError(
+                `Your reschedule request was declined. Your original appointment on ${e.scheduledDate} at ${e.scheduledTime} is unchanged.`,
             );
         });
     }
@@ -2523,28 +2707,35 @@ onUnmounted(() => {
  * Audit logging: Log medication access for HIPAA compliance
  */
 watch(activePrescriptions, (newPrescriptions: Prescription[]): void => {
-    if (newPrescriptions && newPrescriptions.length > 0) {
-        // Log medication viewing access
-        router.post(
-            '/audit/medication-viewed',
-            {
-                patientId: props.user?.id,
-                medicationCount: newPrescriptions.length,
-                medications: newPrescriptions.map((m: Prescription) => ({
-                    id: m.id,
-                    name: sanitizeText(m.medicine),
-                })),
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-            },
-            {
-                preserveScroll: true,
-                onError: (errors: any): void => {
-                    console.warn('Failed to log medication access:', errors);
-                },
-            },
-        );
+    if (!newPrescriptions || newPrescriptions.length === 0) {
+        return;
     }
+
+    const csrfToken =
+        document
+            .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? '';
+
+    // Fire-and-forget: an audit failure must never interrupt the dashboard.
+    void fetch('/audit/medication-viewed', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({
+            patientId: props.user?.id,
+            medicationCount: newPrescriptions.length,
+            medications: newPrescriptions.map((m: Prescription) => ({
+                id: m.id,
+                name: sanitizeText(m.medicine),
+            })),
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+        }),
+        keepalive: true,
+    }).catch(() => undefined);
 });
 
 const toggleNotifications = (): void => {
@@ -2558,6 +2749,7 @@ const toggleNotifications = (): void => {
                 read: true,
             }),
         );
+        persistReadNotificationIds();
     }
 };
 
@@ -2571,6 +2763,7 @@ const viewMedications = (): void => {
             read: true,
         }),
     );
+    persistReadNotificationIds();
 
     // Show interaction warnings if any detected
     if (medicationWarnings.value.length > 0) {
@@ -2589,17 +2782,6 @@ const displayMedicineName = (medicine: string | undefined): string => {
     }
 
     return sanitizeText(medicine);
-};
-
-/**
- * Safely display dosage with sanitization
- */
-const displayDosage = (dosage: string | undefined): string => {
-    if (!dosage || typeof dosage !== 'string') {
-        return 'Not specified';
-    }
-
-    return sanitizeText(dosage);
 };
 
 // Formatting
@@ -2628,8 +2810,6 @@ const formatDateOnly = (dateString: string): string => {
         day: 'numeric',
     });
 };
-
-const formatDate = (dateString: string): string => formatDateOnly(dateString);
 
 const formatTime = (timeString: string): string => {
     if (!timeString) {

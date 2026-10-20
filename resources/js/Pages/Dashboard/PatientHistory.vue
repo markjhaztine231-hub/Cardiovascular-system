@@ -15,139 +15,36 @@
         <aside
             class="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col bg-[#146b8a] text-white shadow-xl transition-[width,transform] duration-300 md:static md:z-20 md:flex"
             :class="[
-                isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+                isMobileOpen
+                    ? 'translate-x-0'
+                    : '-translate-x-full md:translate-x-0',
                 isOpen ? 'md:w-64' : 'md:w-0 md:overflow-hidden',
             ]"
         >
             <div class="flex h-full w-64 shrink-0 flex-col">
-            <div
-                class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
-            >
-                <div class="flex-1">
-                    <h1 class="text-lg leading-tight font-bold tracking-wide">
-                        CardioCare
-                    </h1>
-                    <p
-                        class="text-[10px] tracking-widest text-teal-100 uppercase"
-                    >
-                        Healthcare Portal
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    class="ml-2 hidden rounded-md p-1.5 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white md:inline-flex"
-                    @click="toggleDesktop"
-                    aria-label="Toggle sidebar"
-                >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-            </div>
-            <nav class="flex-1 overflow-y-auto py-6">
                 <div
-                    class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
+                    class="flex h-20 items-center border-b border-[#1b7f9e] bg-[#0e5c78] px-6"
                 >
-                    Clinical Workflow
-                </div>
-                <ul class="space-y-1">
-                    <li>
-                        <Link
-                            href="/doctor/dashboard"
-                            class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                            @click="closeMobile"
+                    <div class="flex-1">
+                        <h1
+                            class="text-lg leading-tight font-bold tracking-wide"
                         >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                />
-                            </svg>
-                            Consultation Dashboard
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/doctor/emr"
-                            class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
-                            @click="closeMobile"
+                            CardioCare
+                        </h1>
+                        <p
+                            class="text-[10px] tracking-widest text-teal-100 uppercase"
                         >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Patient Records (EMR)
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/doctor/reports/monthly"
-                            class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                            @click="closeMobile"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            Monthly Narrative Report
-                        </Link>
-                    </li>
-                </ul>
-            </nav>
-
-            <div class="border-t border-[#1b7f9e] p-4">
-                <Link
-                    href="/profile"
-                    class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
-                    @click="closeMobile"
-                >
-                    <svg
-                        class="mr-3 h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                    </svg>
-                    My Profile
-                </Link>
-                <LogoutButton>
+                            Healthcare Portal
+                        </p>
+                    </div>
                     <button
                         type="button"
-                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        class="ml-2 hidden rounded-md p-1.5 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white md:inline-flex"
+                        @click="toggleDesktop"
+                        aria-label="Toggle sidebar"
                     >
                         <svg
-                            class="mr-3 h-5 w-5 rotate-180"
+                            class="h-5 w-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -156,13 +53,130 @@
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                d="M4 6h16M4 12h16M4 18h16"
                             />
                         </svg>
-                        Sign Out
                     </button>
-                </LogoutButton>
-            </div>
+                </div>
+                <nav class="flex-1 overflow-y-auto py-6">
+                    <div
+                        class="mb-2 px-6 text-xs font-semibold tracking-wider text-teal-200 uppercase"
+                    >
+                        Clinical Workflow
+                    </div>
+                    <ul class="space-y-1">
+                        <li>
+                            <Link
+                                href="/doctor/dashboard"
+                                class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                    />
+                                </svg>
+                                Consultation Dashboard
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/doctor/emr"
+                                class="flex items-center border-l-4 border-white bg-[#11888a] px-6 py-3 font-medium text-white shadow-inner transition-colors"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Patient Records (EMR)
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/doctor/reports/monthly"
+                                class="flex items-center border-l-4 border-transparent px-6 py-3 text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                                @click="closeMobile"
+                            >
+                                <svg
+                                    class="mr-3 h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                Monthly Narrative Report
+                            </Link>
+                        </li>
+                    </ul>
+                </nav>
+
+                <div class="border-t border-[#1b7f9e] p-4">
+                    <Link
+                        href="/profile"
+                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        @click="closeMobile"
+                    >
+                        <svg
+                            class="mr-3 h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                        </svg>
+                        My Profile
+                    </Link>
+                    <LogoutButton>
+                        <button
+                            type="button"
+                            class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-teal-100 transition-colors hover:bg-[#1a7f9e] hover:text-white"
+                        >
+                            <svg
+                                class="mr-3 h-5 w-5 rotate-180"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                />
+                            </svg>
+                            Sign Out
+                        </button>
+                    </LogoutButton>
+                </div>
             </div>
         </aside>
 
@@ -179,8 +193,18 @@
                         @click="toggle"
                         aria-label="Open sidebar"
                     >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
                         </svg>
                     </button>
                     <Link
@@ -238,6 +262,36 @@
                                     class="mt-1 text-sm font-medium tracking-widest text-teal-100 uppercase"
                                 >
                                     ID: {{ formatPatientId() }}
+                                </p>
+                            </div>
+
+                            <div
+                                v-if="patient.allergies"
+                                class="border-b border-red-100 bg-red-50 px-6 py-3"
+                                role="alert"
+                            >
+                                <p
+                                    class="text-[10px] font-black tracking-widest text-red-700 uppercase"
+                                >
+                                    Allergies
+                                </p>
+                                <p
+                                    class="mt-0.5 text-sm font-bold whitespace-pre-line text-red-800"
+                                >
+                                    {{ patient.allergies }}
+                                </p>
+                            </div>
+                            <div
+                                v-else
+                                class="border-b border-gray-100 bg-gray-50 px-6 py-2"
+                            >
+                                <p
+                                    class="text-[10px] font-bold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Allergies
+                                </p>
+                                <p class="text-xs font-semibold text-gray-500">
+                                    No known allergies recorded.
                                 </p>
                             </div>
 
@@ -328,16 +382,10 @@
                                             {{ flashSuccess }}
                                         </div>
                                         <p
-                                            v-if="
-                                                (abstractForm.errors as Record<string, string>).ai ||
-                                                (abstractForm.errors as Record<string, string>).ai_error
-                                            "
+                                            v-if="abstractError"
                                             class="mb-3 rounded border border-red-100 bg-red-50 p-2 text-xs font-bold text-red-500"
                                         >
-                                            {{
-                                                (abstractForm.errors as Record<string, string>).ai ||
-                                                (abstractForm.errors as Record<string, string>).ai_error
-                                            }}
+                                            {{ abstractError }}
                                         </p>
 
                                         <button
@@ -404,6 +452,29 @@
                                         Active Prescriptions
                                     </h4>
                                     <div
+                                        v-if="prescriptionWarnings.length"
+                                        class="mb-3 space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                                        role="alert"
+                                    >
+                                        <p
+                                            class="text-[10px] font-extrabold tracking-widest text-amber-700 uppercase"
+                                        >
+                                            Potential interactions
+                                        </p>
+                                        <ul
+                                            class="list-disc space-y-0.5 pl-4 text-xs font-semibold text-amber-800"
+                                        >
+                                            <li
+                                                v-for="(
+                                                    warning, warnIndex
+                                                ) in prescriptionWarnings"
+                                                :key="warnIndex"
+                                            >
+                                                {{ warning }}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div
                                         v-if="
                                             latestPrescriptions &&
                                             latestPrescriptions.length > 0
@@ -435,7 +506,9 @@
                                         </div>
                                     </div>
                                     <p
-                                        v-else-if="latestPrescriptions.length === 0"
+                                        v-else-if="
+                                            latestPrescriptions.length === 0
+                                        "
                                         class="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm font-medium text-gray-400 italic"
                                     >
                                         No active medications.
@@ -447,12 +520,25 @@
                                     <h4
                                         class="mb-3 flex items-center text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
                                     >
-                                        <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        <svg
+                                            class="mr-1.5 h-4 w-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                            />
                                         </svg>
                                         Medication Adherence
                                     </h4>
-                                    <div v-if="adherenceLoading" class="py-4 text-center text-xs text-gray-400">
+                                    <div
+                                        v-if="adherenceLoading"
+                                        class="py-4 text-center text-xs text-gray-400"
+                                    >
                                         Loading...
                                     </div>
                                     <div
@@ -463,32 +549,77 @@
                                             v-for="(med, idx) in adherenceMeds"
                                             :key="idx"
                                             class="rounded-lg border p-3"
-                                            :class="med.adherence_rate >= 80 ? 'border-emerald-200 bg-emerald-50' : med.adherence_rate >= 50 ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'"
+                                            :class="
+                                                med.adherence_rate >= 80
+                                                    ? 'border-emerald-200 bg-emerald-50'
+                                                    : med.adherence_rate >= 50
+                                                      ? 'border-amber-200 bg-amber-50'
+                                                      : 'border-red-200 bg-red-50'
+                                            "
                                         >
-                                            <div class="flex items-center justify-between mb-1">
-                                                <p class="text-sm font-bold text-gray-800 capitalize truncate max-w-[140px]">
+                                            <div
+                                                class="mb-1 flex items-center justify-between"
+                                            >
+                                                <p
+                                                    class="max-w-[140px] truncate text-sm font-bold text-gray-800 capitalize"
+                                                >
                                                     {{ med.medicine }}
                                                 </p>
                                                 <span
                                                     class="text-xs font-extrabold"
-                                                    :class="med.adherence_rate >= 80 ? 'text-emerald-700' : med.adherence_rate >= 50 ? 'text-amber-700' : 'text-red-700'"
+                                                    :class="
+                                                        med.adherence_rate >= 80
+                                                            ? 'text-emerald-700'
+                                                            : med.adherence_rate >=
+                                                                50
+                                                              ? 'text-amber-700'
+                                                              : 'text-red-700'
+                                                    "
                                                 >
                                                     {{ med.adherence_rate }}%
                                                 </span>
                                             </div>
-                                            <div class="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                                            <div
+                                                class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200"
+                                            >
                                                 <div
                                                     class="h-full rounded-full transition-all"
-                                                    :class="med.adherence_rate >= 80 ? 'bg-emerald-500' : med.adherence_rate >= 50 ? 'bg-amber-400' : 'bg-red-400'"
-                                                    :style="{ width: med.adherence_rate + '%' }"
+                                                    :class="
+                                                        med.adherence_rate >= 80
+                                                            ? 'bg-emerald-500'
+                                                            : med.adherence_rate >=
+                                                                50
+                                                              ? 'bg-amber-400'
+                                                              : 'bg-red-400'
+                                                    "
+                                                    :style="{
+                                                        width:
+                                                            med.adherence_rate +
+                                                            '%',
+                                                    }"
                                                 ></div>
                                             </div>
-                                            <p class="mt-1 text-[10px] text-gray-400">
-                                                {{ med.total_taken }}/{{ med.total_expected }} doses
+                                            <p
+                                                class="mt-1 text-[10px] text-gray-400"
+                                            >
+                                                {{ med.total_taken }}/{{
+                                                    med.total_expected
+                                                }}
+                                                doses
                                             </p>
-                                            <div v-if="med.daily && med.daily.length > 0" class="mt-2">
-                                                <div class="flex items-start gap-2">
-                                                    <div class="flex flex-col gap-px pt-4 text-[8px] font-medium text-gray-400 leading-3">
+                                            <div
+                                                v-if="
+                                                    med.daily &&
+                                                    med.daily.length > 0
+                                                "
+                                                class="mt-2"
+                                            >
+                                                <div
+                                                    class="flex items-start gap-2"
+                                                >
+                                                    <div
+                                                        class="flex flex-col gap-px pt-4 text-[8px] leading-3 font-medium text-gray-400"
+                                                    >
                                                         <span>Mon</span>
                                                         <span>Tue</span>
                                                         <span>Wed</span>
@@ -497,41 +628,106 @@
                                                         <span>Sat</span>
                                                         <span>Sun</span>
                                                     </div>
-                                                    <div class="flex-1 overflow-x-auto">
-                                                        <div class="flex gap-px">
+                                                    <div
+                                                        class="flex-1 overflow-x-auto"
+                                                    >
+                                                        <div
+                                                            class="flex gap-px"
+                                                        >
                                                             <div
-                                                                v-for="weekIdx in [0,1,2,3]"
+                                                                v-for="weekIdx in [
+                                                                    0, 1, 2, 3,
+                                                                ]"
                                                                 :key="weekIdx"
                                                                 class="flex flex-col gap-px"
                                                             >
                                                                 <div
-                                                                    v-for="dayIdx in [1,2,3,4,5,6,0]"
-                                                                    :key="dayIdx"
-                                                                    class="relative group"
+                                                                    v-for="dayIdx in [
+                                                                        1, 2, 3,
+                                                                        4, 5, 6,
+                                                                        0,
+                                                                    ]"
+                                                                    :key="
+                                                                        dayIdx
+                                                                    "
+                                                                    class="group relative"
                                                                 >
                                                                     <div
-                                                                        v-if="hasDay(med.daily, weekIdx, dayIdx)"
-                                                                        class="w-3 h-3 rounded-sm cursor-default transition-transform hover:scale-125"
-                                                                        :class="adherenceColor(getDay(med.daily, weekIdx, dayIdx).pct)"
-                                                                    >
-                                                                    </div>
-                                                                    <div
-                                                                        v-else
-                                                                        class="w-3 h-3 rounded-sm"
-                                                                        :class="med.daily.length > 0 ? 'bg-gray-100' : ''"
+                                                                        v-if="
+                                                                            hasDay(
+                                                                                med.daily,
+                                                                                weekIdx,
+                                                                                dayIdx,
+                                                                            )
+                                                                        "
+                                                                        class="h-3 w-3 cursor-default rounded-sm transition-transform hover:scale-125"
+                                                                        :class="
+                                                                            adherenceColor(
+                                                                                getDay(
+                                                                                    med.daily,
+                                                                                    weekIdx,
+                                                                                    dayIdx,
+                                                                                )
+                                                                                    .pct,
+                                                                            )
+                                                                        "
                                                                     ></div>
                                                                     <div
-                                                                        class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10"
+                                                                        v-else
+                                                                        class="h-3 w-3 rounded-sm"
+                                                                        :class="
+                                                                            med
+                                                                                .daily
+                                                                                .length >
+                                                                            0
+                                                                                ? 'bg-gray-100'
+                                                                                : ''
+                                                                        "
+                                                                    ></div>
+                                                                    <div
+                                                                        class="absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 group-hover:block"
                                                                     >
                                                                         <div
-                                                                            v-if="hasDay(med.daily, weekIdx, dayIdx)"
-                                                                            class="whitespace-nowrap rounded-md bg-gray-800 px-2 py-1 text-[10px] font-medium text-white shadow-lg"
+                                                                            v-if="
+                                                                                hasDay(
+                                                                                    med.daily,
+                                                                                    weekIdx,
+                                                                                    dayIdx,
+                                                                                )
+                                                                            "
+                                                                            class="rounded-md bg-gray-800 px-2 py-1 text-[10px] font-medium whitespace-nowrap text-white shadow-lg"
                                                                         >
-                                                                            {{ getDay(med.daily, weekIdx, dayIdx).date }}:
-                                                                            {{ getDay(med.daily, weekIdx, dayIdx).taken }}/{{
-                                                                                getDay(med.daily, weekIdx, dayIdx).expected
+                                                                            {{
+                                                                                getDay(
+                                                                                    med.daily,
+                                                                                    weekIdx,
+                                                                                    dayIdx,
+                                                                                )
+                                                                                    .date
+                                                                            }}:
+                                                                            {{
+                                                                                getDay(
+                                                                                    med.daily,
+                                                                                    weekIdx,
+                                                                                    dayIdx,
+                                                                                )
+                                                                                    .taken
+                                                                            }}/{{
+                                                                                getDay(
+                                                                                    med.daily,
+                                                                                    weekIdx,
+                                                                                    dayIdx,
+                                                                                )
+                                                                                    .expected
                                                                             }}
-                                                                            ({{ getDay(med.daily, weekIdx, dayIdx).pct }}%)
+                                                                            ({{
+                                                                                getDay(
+                                                                                    med.daily,
+                                                                                    weekIdx,
+                                                                                    dayIdx,
+                                                                                )
+                                                                                    .pct
+                                                                            }}%)
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -539,13 +735,35 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="mt-1 flex items-center gap-2 text-[9px] text-gray-400">
-                                                    <span class="font-medium">Less</span>
-                                                    <span class="inline-block w-2.5 h-2.5 rounded-sm bg-red-300"></span>
-                                                    <span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-300"></span>
-                                                    <span class="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>
-                                                    <span class="font-medium">More</span>
-                                                    <span class="ml-auto">{{ med.daily.filter(d => d.pct < 80).length }}/{{ med.daily.length }} days below target</span>
+                                                <div
+                                                    class="mt-1 flex items-center gap-2 text-[9px] text-gray-400"
+                                                >
+                                                    <span class="font-medium"
+                                                        >Less</span
+                                                    >
+                                                    <span
+                                                        class="inline-block h-2.5 w-2.5 rounded-sm bg-red-300"
+                                                    ></span>
+                                                    <span
+                                                        class="inline-block h-2.5 w-2.5 rounded-sm bg-amber-300"
+                                                    ></span>
+                                                    <span
+                                                        class="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400"
+                                                    ></span>
+                                                    <span class="font-medium"
+                                                        >More</span
+                                                    >
+                                                    <span class="ml-auto"
+                                                        >{{
+                                                            med.daily.filter(
+                                                                (d) =>
+                                                                    d.pct < 80,
+                                                            ).length
+                                                        }}/{{
+                                                            med.daily.length
+                                                        }}
+                                                        days below target</span
+                                                    >
                                                 </div>
                                             </div>
                                         </div>
@@ -595,7 +813,8 @@
                                 v-if="ocrHistory.length === 0"
                                 class="text-sm text-gray-400"
                             >
-                                No scans have been uploaded for this patient yet.
+                                No scans have been uploaded for this patient
+                                yet.
                             </p>
 
                             <div v-else class="space-y-3">
@@ -607,10 +826,14 @@
                                     <div
                                         class="flex flex-wrap items-start justify-between gap-3"
                                     >
-                                        <div class="flex min-w-0 items-center gap-2">
+                                        <div
+                                            class="flex min-w-0 items-center gap-2"
+                                        >
                                             <span
                                                 class="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase"
-                                                :class="ocrTypeBadgeClass(doc.type)"
+                                                :class="
+                                                    ocrTypeBadgeClass(doc.type)
+                                                "
                                             >
                                                 {{ ocrTypeLabel(doc.type) }}
                                             </span>
@@ -639,11 +862,25 @@
                                         <div
                                             class="shrink-0 text-[11px] font-semibold text-gray-500"
                                         >
-                                            <span v-if="doc.appointment?.scheduled_date">
-                                                {{ doc.appointment.scheduled_date }}
+                                            <span
+                                                v-if="
+                                                    doc.appointment
+                                                        ?.scheduled_date
+                                                "
+                                            >
+                                                {{
+                                                    doc.appointment
+                                                        .scheduled_date
+                                                }}
                                             </span>
-                                            <span v-if="ocrCreatedAt(doc.created_at)"
-                                                >· {{ ocrCreatedAt(doc.created_at) }}</span
+                                            <span
+                                                v-if="
+                                                    ocrCreatedAt(doc.created_at)
+                                                "
+                                                >·
+                                                {{
+                                                    ocrCreatedAt(doc.created_at)
+                                                }}</span
                                             >
                                         </div>
                                     </div>
@@ -653,7 +890,11 @@
                                     >
                                         <span
                                             class="rounded-md px-2 py-0.5"
-                                            :class="ocrStatusBadgeClass(doc.ocr_status)"
+                                            :class="
+                                                ocrStatusBadgeClass(
+                                                    doc.ocr_status,
+                                                )
+                                            "
                                         >
                                             {{ ocrStatusLabel(doc.ocr_status) }}
                                         </span>
@@ -675,7 +916,11 @@
                                             class="rounded-md bg-gray-200 px-2 py-0.5 text-gray-600"
                                         >
                                             Confidence
-                                            {{ ocrConfidenceLabel(doc.ocr_confidence) }}
+                                            {{
+                                                ocrConfidenceLabel(
+                                                    doc.ocr_confidence,
+                                                )
+                                            }}
                                         </span>
                                         <span
                                             v-if="doc.uploaded_by"
@@ -709,8 +954,9 @@
                                         </button>
                                         <pre
                                             v-if="openOcrDocs.has(doc.id)"
-                                            class="mt-2 max-h-48 overflow-auto rounded-lg bg-white p-3 text-xs whitespace-pre-wrap break-words text-gray-700"
-                                        >{{ doc.ocr_text }}</pre>
+                                            class="mt-2 max-h-48 overflow-auto rounded-lg bg-white p-3 text-xs break-words whitespace-pre-wrap text-gray-700"
+                                            >{{ doc.ocr_text }}</pre
+                                        >
                                     </div>
                                 </div>
                             </div>
@@ -739,7 +985,9 @@
                             </h3>
 
                             <div class="mb-6">
-                                <AnalyticsPanel :patient-id="Number(patient.id)" />
+                                <AnalyticsPanel
+                                    :patient-id="Number(patient.id)"
+                                />
                             </div>
 
                             <div
@@ -876,7 +1124,9 @@
                                                         record.manual_draft_data ||
                                                         record.stress_echo_data ||
                                                         record.abpm_data ||
-                                                        parsedPrescriptions(record).length > 0
+                                                        parsedPrescriptions(
+                                                            record,
+                                                        ).length > 0
                                                     "
                                                     class="flex flex-wrap justify-end gap-1.5"
                                                     @click.stop
@@ -1094,8 +1344,9 @@
                                                     <!-- Prescription export group -->
                                                     <template
                                                         v-if="
-                                                            parsedPrescriptions(record)
-                                                                .length > 0
+                                                            parsedPrescriptions(
+                                                                record,
+                                                            ).length > 0
                                                         "
                                                     >
                                                         <span
@@ -1192,7 +1443,12 @@
         <Teleport to="body">
             <div
                 v-if="selectedRecord"
-                class="fixed inset-0 z-50 flex flex-col bg-white"
+                ref="detailDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="record-detail-title"
+                tabindex="-1"
+                class="fixed inset-0 z-50 flex flex-col bg-white outline-none"
                 style="animation: fadeSlideIn 0.25s ease-out both"
             >
                 <!-- Detail Header -->
@@ -1206,7 +1462,10 @@
                             {{ patient.name.charAt(0) }}
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold">
+                            <h2
+                                id="record-detail-title"
+                                class="text-xl font-bold"
+                            >
                                 {{ patient.name }}
                             </h2>
                             <p
@@ -1285,7 +1544,10 @@
                         <button
                             v-if="selectedRecord.manual_draft_data"
                             @click="
-                                downloadServerPdf('manual_draft', selectedRecord)
+                                downloadServerPdf(
+                                    'manual_draft',
+                                    selectedRecord,
+                                )
                             "
                             class="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-700"
                         >
@@ -2143,10 +2405,8 @@
                                     class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
                                 >
                                     <a
-                                        v-for="(
-                                            img, idx
-                                        ) in selectedRecord.manual_draft_data
-                                            .images"
+                                        v-for="(img, idx) in selectedRecord
+                                            .manual_draft_data.images"
                                         :key="idx"
                                         :href="img.url"
                                         target="_blank"
@@ -2317,9 +2577,7 @@
                                 "
                                 class="mb-4 overflow-x-auto rounded-xl border border-gray-200"
                             >
-                                <table
-                                    class="w-full min-w-[640px] text-xs"
-                                >
+                                <table class="w-full min-w-[640px] text-xs">
                                     <thead
                                         class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase"
                                     >
@@ -2339,8 +2597,8 @@
                                         <tr
                                             v-for="(
                                                 stage, idx
-                                            ) in selectedRecord
-                                                .stress_echo_data.stages"
+                                            ) in selectedRecord.stress_echo_data
+                                                .stages"
                                             :key="idx"
                                             class="border-t border-gray-100"
                                         >
@@ -2448,8 +2706,7 @@
                                     class="text-sm font-medium whitespace-pre-wrap text-gray-700"
                                 >
                                     {{
-                                        selectedRecord.stress_echo_data
-                                            .findings
+                                        selectedRecord.stress_echo_data.findings
                                     }}
                                 </p>
                             </div>
@@ -2490,7 +2747,10 @@
                                 </h3>
                                 <button
                                     @click="
-                                        downloadServerPdf('abpm', selectedRecord)
+                                        downloadServerPdf(
+                                            'abpm',
+                                            selectedRecord,
+                                        )
                                     "
                                     class="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
                                 >
@@ -2593,9 +2853,7 @@
                                         </tr>
                                     </thead>
                                     <tbody class="text-center">
-                                        <tr
-                                            class="border-t border-gray-100"
-                                        >
+                                        <tr class="border-t border-gray-100">
                                             <td
                                                 class="px-3 py-2 text-left font-bold"
                                             >
@@ -2620,9 +2878,7 @@
                                                 }}
                                             </td>
                                         </tr>
-                                        <tr
-                                            class="border-t border-gray-100"
-                                        >
+                                        <tr class="border-t border-gray-100">
                                             <td
                                                 class="px-3 py-2 text-left font-bold"
                                             >
@@ -2647,9 +2903,7 @@
                                                 }}
                                             </td>
                                         </tr>
-                                        <tr
-                                            class="border-t border-gray-100"
-                                        >
+                                        <tr class="border-t border-gray-100">
                                             <td
                                                 class="px-3 py-2 text-left font-bold"
                                             >
@@ -2706,8 +2960,7 @@
                                     class="text-sm font-medium whitespace-pre-wrap text-gray-700"
                                 >
                                     {{
-                                        selectedRecord.abpm_data
-                                            .interpretation
+                                        selectedRecord.abpm_data.interpretation
                                     }}
                                 </p>
                             </div>
@@ -2734,12 +2987,13 @@
 
 <script setup lang="ts">
 import { Link, useForm, usePage } from '@inertiajs/vue3';
-import LogoutButton from '@/components/LogoutButton.vue';
 import { computed, ref, onMounted } from 'vue';
 import AnalyticsPanel from '@/components/AnalyticsPanel.vue';
+import LogoutButton from '@/components/LogoutButton.vue';
 import Toast from '@/components/Toast.vue';
-import { useToast } from '@/composables/useToast';
+import { useModalA11y } from '@/composables/useModalA11y';
 import { useSidebar } from '@/composables/useSidebar';
+import { useToast } from '@/composables/useToast';
 import type {
     Appointment,
     EchoData,
@@ -2758,6 +3012,7 @@ import {
     buildStressEchoDocument,
     exportAsDocx,
 } from '@/utils/docExport';
+import { checkMedicationInteractions } from '@/utils/validation';
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -2768,6 +3023,7 @@ interface Patient {
     name: string;
     patient_id: string | number;
     email?: string;
+    allergies?: string | null;
 }
 
 interface ConsultationRecord extends Appointment {
@@ -2942,7 +3198,9 @@ function ocrStatusBadgeClass(status: string): string {
 }
 
 function ocrConfidenceLabel(value: number | null): string {
-    return value === null || value === undefined ? 'N/A' : `${Math.round(value * 100)}%`;
+    return value === null || value === undefined
+        ? 'N/A'
+        : `${Math.round(value * 100)}%`;
 }
 
 function ocrCreatedAt(iso?: string | null): string {
@@ -2991,20 +3249,26 @@ interface AdherenceMed {
 const adherenceMeds = ref<AdherenceMed[]>([]);
 const adherenceLoading = ref(false);
 
-function getDay(daily: AdherenceDay[], week: number, dayIdx: number): AdherenceDay {
+function getDay(
+    daily: AdherenceDay[],
+    week: number,
+    dayIdx: number,
+): AdherenceDay {
     const index = week * 7 + dayIdx;
 
-    return daily[index] || { date: '', taken: 0, expected: 0, label: '', pct: 0 };
+    return (
+        daily[index] || { date: '', taken: 0, expected: 0, label: '', pct: 0 }
+    );
 }
 
 function adherenceColor(pct: number): string {
     if (pct >= 80) {
-return 'bg-emerald-400';
-}
+        return 'bg-emerald-400';
+    }
 
     if (pct >= 50) {
-return 'bg-amber-300';
-}
+        return 'bg-amber-300';
+    }
 
     return 'bg-red-300';
 }
@@ -3017,34 +3281,39 @@ function hasDay(daily: AdherenceDay[], week: number, dayIdx: number): boolean {
 
 async function fetchAdherence(): Promise<void> {
     if (!props.patient?.id) {
-return;
-}
+        return;
+    }
 
     adherenceLoading.value = true;
 
     try {
-        const res = await fetch(`/doctor/patients/${props.patient.id}/medication-adherence`, { credentials: 'same-origin' });
+        const res = await fetch(
+            `/doctor/patients/${props.patient.id}/medication-adherence`,
+            { credentials: 'same-origin' },
+        );
 
         if (!res.ok) {
- adherenceMeds.value = [];
+            adherenceMeds.value = [];
 
- return; 
-}
+            return;
+        }
 
         const data = await res.json();
-        adherenceMeds.value = (data.medications ?? []).map((m: AdherenceMed) => ({
-            ...m,
-            daily: m.daily.slice(-28),
-        }));
+        adherenceMeds.value = (data.medications ?? []).map(
+            (m: AdherenceMed) => ({
+                ...m,
+                daily: m.daily.slice(-28),
+            }),
+        );
     } catch {
- adherenceMeds.value = []; 
-} finally {
- adherenceLoading.value = false; 
-}
+        adherenceMeds.value = [];
+    } finally {
+        adherenceLoading.value = false;
+    }
 }
 
 onMounted(() => {
- fetchAdherence(); 
+    fetchAdherence();
 });
 
 // ─────────────────────────────────────────────────────────────────────
@@ -3060,6 +3329,11 @@ function closeDetailView(): void {
     selectedRecord.value = null;
     document.body.style.overflow = '';
 }
+
+const detailOpen = computed(() => selectedRecord.value !== null);
+const { container: detailDialog } = useModalA11y(detailOpen, () =>
+    closeDetailView(),
+);
 
 // ─────────────────────────────────────────────────────────────────────
 // Computed helpers
@@ -3082,6 +3356,10 @@ const latestPrescriptions = computed(() => {
 
     return [];
 });
+
+const prescriptionWarnings = computed((): string[] =>
+    checkMedicationInteractions(latestPrescriptions.value),
+);
 
 const latestAiSummary = computed(() =>
     props.history.length > 0 && props.history[0].ai_summary
@@ -3347,6 +3625,14 @@ function formatPatientId(): string {
 const abstractForm = useForm({});
 const feedbackForm = useForm({ text: '', feedback: '' });
 
+// Expose the formatted message instead of inline `as Record<...>` casts: the
+// angle brackets in the template expression confuse Prettier's HTML parser.
+const abstractError = computed<string>(() => {
+    const errors = abstractForm.errors as Record<string, string>;
+
+    return errors.ai || errors.ai_error || '';
+});
+
 function generateAiAbstract(): void {
     if (isLoadingAbstract.value) {
         return;
@@ -3443,7 +3729,12 @@ function doExport(
                     return;
                 }
 
-                bodyHtml = buildEchoHTML(record.echo_data as EchoData, name, date, doctor);
+                bodyHtml = buildEchoHTML(
+                    record.echo_data as EchoData,
+                    name,
+                    date,
+                    doctor,
+                );
                 filename = `Echo_${slug}_${date}`;
                 break;
             case 'doppler':

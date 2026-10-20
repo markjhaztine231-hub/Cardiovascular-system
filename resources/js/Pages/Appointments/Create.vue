@@ -379,6 +379,7 @@ const submit = () => {
         if (slotMinutes <= nowMinutes) {
             timeError.value =
                 'That time has already passed — please pick a future time.';
+
             return;
         }
     }

@@ -81,7 +81,7 @@
 
         <!-- Main Hero Section -->
         <main
-            class="group relative flex grow items-center overflow-hidden lg:min-h-[640px]"
+            class="group relative flex grow items-center overflow-hidden lg:min-h-160"
         >
             <!-- Full-bleed building photo as the hero background -->
             <div class="absolute inset-0">
@@ -235,8 +235,8 @@ const isNavigating = ref(false);
 
 const handleNavigation = () => {
     if (isNavigating.value) {
-return;
-}
+        return;
+    }
 
     isNavigating.value = true;
 
@@ -245,12 +245,12 @@ return;
         let dashboardRoute = '/patient/dashboard'; // Fallback
 
         if (props.userRole === 'doctor') {
-dashboardRoute = '/doctor/dashboard';
-}
+            dashboardRoute = '/doctor/dashboard';
+        }
 
         if (props.userRole === 'receptionist' || props.userRole === 'admin') {
-dashboardRoute = '/receptionist/dashboard';
-}
+            dashboardRoute = '/receptionist/dashboard';
+        }
 
         router.get(
             dashboardRoute,

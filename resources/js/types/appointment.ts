@@ -27,6 +27,17 @@ export interface Appointment {
      */
     patient_user_id?: string | number;
     patient?: { id: string | number; user_id?: string | number };
+    allergies?: string | null;
+    /**
+     * Active prescriptions that are within their course window today,
+     * eager-loaded on the doctor queue so the consultation modal can warn
+     * about interactions with newly prescribed medicine.
+     */
+    current_medications?: Array<{
+        medicine: string;
+        dosage?: string | null;
+        frequency?: string | null;
+    }>;
     history?: Array<{
         id?: string | number;
         date: string;

@@ -574,9 +574,7 @@
                                 >
                                 <span class="text-pink-500"
                                     >&#9632; Female
-                                    {{
-                                        stats.demographics.female_count
-                                    }}
+                                    {{ stats.demographics.female_count }}
                                     patients</span
                                 >
                                 <span
@@ -1691,8 +1689,8 @@
 
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3';
-import LogoutButton from '@/components/LogoutButton.vue';
 import { computed, ref } from 'vue';
+import LogoutButton from '@/components/LogoutButton.vue';
 import { useSidebar } from '@/composables/useSidebar';
 
 const {

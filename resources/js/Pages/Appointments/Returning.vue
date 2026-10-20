@@ -365,8 +365,8 @@ const minTime = computed((): string =>
 
 const filteredPatients = computed(() => {
     if (!searchQuery.value.trim()) {
-return [];
-}
+        return [];
+    }
 
     const query = searchQuery.value.toLowerCase();
 
@@ -379,7 +379,10 @@ return [];
 });
 
 const selectedPatient = computed(() => {
-    return props.patients.find((p: Patient) => String(p.id) === form.patient_id) || null;
+    return (
+        props.patients.find((p: Patient) => String(p.id) === form.patient_id) ||
+        null
+    );
 });
 
 const form = useForm({
@@ -405,6 +408,7 @@ const submit = () => {
         if (slotMinutes <= nowMinutes) {
             timeError.value =
                 'That time has already passed — please pick a future time.';
+
             return;
         }
     }

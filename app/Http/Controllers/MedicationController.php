@@ -37,6 +37,27 @@ class MedicationController extends Controller
     }
 
     /**
+     * A prescription is part of the patient's current regimen only while its
+     * course is open. Null dates mean "no bound" for legacy rows.
+     */
+    private function isWithinCourse(Prescription $prescription, Carbon $date): bool
+    {
+        if ($prescription->status !== null && $prescription->status !== 'active') {
+            return false;
+        }
+
+        if ($prescription->start_date && $prescription->start_date->gt($date)) {
+            return false;
+        }
+
+        if ($prescription->end_date && $prescription->end_date->lt($date)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Records a single dose under the Pharmacokinetic Tri-Zone rules:
      *
      *   GREEN · [sched−1h, sched+1h]   → TAKEN / ON_TIME
@@ -62,6 +83,13 @@ class MedicationController extends Controller
         $prescription = $prescriptions[$validated['prescription_index']] ?? null;
         if (! $prescription) {
             return response()->json(['error' => 'Invalid prescription index.'], 422);
+        }
+
+        if (! $this->isWithinCourse($prescription, Carbon::today())) {
+            return response()->json([
+                'error' => 'This prescription is not active today.',
+                'error_code' => 'COURSE_CLOSED',
+            ], 422);
         }
 
         $count = $this->triZone()->dailyDoseCount($prescription->frequency);
@@ -253,26 +281,58 @@ class MedicationController extends Controller
         }
 
         $prescriptions = $this->prescriptions($appointment);
+        $active = $prescriptions->filter(
+            fn (Prescription $p): bool => $p->status === null || $p->status === 'active'
+        );
+
+        $today = Carbon::today();
+        $startDate = $active
+            ->map(fn (Prescription $p) => ($p->start_date ?? Carbon::parse($appointment->scheduled_date))->copy()->startOfDay())
+            ->min();
+
+        if ($active->isEmpty() || ! $startDate || $startDate->gt($today)) {
+            return response()->json(['daily' => [], 'appointment_id' => $appointment->id]);
+        }
+
         $logs = MedicationLog::whereIn('prescription_id', $prescriptions->pluck('id'))
             ->get()
             ->groupBy(fn ($log) => $log->log_date->format('Y-m-d').'_'.$log->prescription_id);
 
-        $startDate = Carbon::parse($appointment->scheduled_date);
-        $days = min($startDate->diffInDays(today()) + 1, 90);
+        // A long-running course must show the most recent 90 days, not the
+        // first 90 days after it started.
+        $rangeStart = $startDate->copy();
+        if ($rangeStart->diffInDays($today) + 1 > 90) {
+            $rangeStart = $today->copy()->subDays(89);
+        }
+
+        $days = min($rangeStart->diffInDays($today) + 1, 90);
 
         $daily = [];
         for ($i = 0; $i < $days; $i++) {
-            $date = $startDate->copy()->addDays($i)->format('Y-m-d');
+            $day = $rangeStart->copy()->addDays($i);
+            $date = $day->format('Y-m-d');
             $dayData = ['date' => $date, 'medications' => []];
 
-            foreach ($prescriptions as $idx => $p) {
+            // $active preserves the canonical keys of $prescriptions, so the
+            // "index" below still matches log-dose/toggle-dose.
+            foreach ($active as $idx => $p) {
+                $courseStart = ($p->start_date?->copy()
+                    ?? Carbon::parse($appointment->scheduled_date))->startOfDay();
+                $courseEnd = ($p->end_date?->copy() ?? $today->copy())->startOfDay();
+
+                if ($day->lt($courseStart) || $day->gt($courseEnd)) {
+                    continue;
+                }
+
                 $expected = $this->triZone()->dailyDoseCount($p->frequency);
                 if ($expected === 0) {
                     continue;
                 }
+
                 $taken = $logs->get($date.'_'.$p->id, collect())
                     ->where('status', MedicationTriZoneService::STATUS_TAKEN)
                     ->count();
+
                 $dayData['medications'][] = [
                     'index' => $idx,
                     'id' => $p->id,
@@ -304,6 +364,21 @@ class MedicationController extends Controller
         $prescription = $prescriptions[$validated['prescription_index']] ?? null;
         if (! $prescription) {
             return response()->json(['error' => 'Invalid prescription index.'], 422);
+        }
+
+        $toggleDate = Carbon::parse($validated['date']);
+        if ($toggleDate->gt(Carbon::today())) {
+            return response()->json([
+                'error' => 'Future doses cannot be recorded.',
+                'error_code' => 'FUTURE_DATE',
+            ], 422);
+        }
+
+        if (! $this->isWithinCourse($prescription, $toggleDate)) {
+            return response()->json([
+                'error' => 'That date is outside this prescription\'s course.',
+                'error_code' => 'COURSE_CLOSED',
+            ], 422);
         }
 
         $expectedDaily = $this->triZone()->dailyDoseCount($prescription->frequency);
@@ -385,13 +460,46 @@ class MedicationController extends Controller
         $meds = [];
         foreach ($encounters as $encounter) {
             foreach ($encounter->prescriptions->sortBy('id')->values() as $localIndex => $p) {
-                $key = strtolower(trim($p->medication_name));
-                if (in_array($key, $seen)) {
+                $key = strtolower(trim((string) $p->medication_name));
+                if ($key !== '' && in_array($key, $seen, true)) {
                     continue;
                 }
-                $seen[] = $key;
+                if (! $this->isWithinCourse($p, $date)) {
+                    continue;
+                }
+                if ($key !== '') {
+                    $seen[] = $key;
+                }
+
                 $expected = $this->triZone()->dailyDoseCount($p->frequency);
                 if ($expected === 0) {
+                    $meds[] = [
+                        'prescription_index' => $canonicalIndexes[$encounter->appointment_id][$p->id] ?? $localIndex,
+                        'prescription_id' => $p->id,
+                        'appointment_id' => $encounter->appointment_id,
+                        'medicine' => $p->medication_name,
+                        'dosage' => $p->dosage ?? '',
+                        'frequency' => $p->frequency ?? '',
+                        'duration' => $p->duration_days
+                            ? $p->duration_days.' days'
+                            : ($p->end_date ? 'Until '.$p->end_date->format('M j, Y') : 'Ongoing'),
+                        'instructions' => $p->instructions,
+                        'start_date' => $p->start_date?->toDateString(),
+                        'end_date' => $p->end_date?->toDateString(),
+                        'as_needed' => true,
+                        'expected_doses' => 0,
+                        'taken_doses' => 0,
+                        'all_taken' => false,
+                        'prescribed_at' => ($encounter->appointment?->scheduled_date
+                            ?? $encounter->started_at?->toDateString()),
+                        'doses' => [],
+                        'cooldown' => [
+                            'active' => false,
+                            'last_taken_at' => null,
+                            'next_available_at' => null,
+                        ],
+                    ];
+
                     continue;
                 }
 
@@ -445,7 +553,13 @@ class MedicationController extends Controller
                     'medicine' => $p->medication_name,
                     'dosage' => $p->dosage ?? '',
                     'frequency' => $p->frequency ?? '',
-                    'duration' => $p->duration_days ? $p->duration_days.' days' : '',
+                    'duration' => $p->duration_days
+                        ? $p->duration_days.' days'
+                        : ($p->end_date ? 'Until '.$p->end_date->format('M j, Y') : 'Ongoing'),
+                    'instructions' => $p->instructions,
+                    'start_date' => $p->start_date?->toDateString(),
+                    'end_date' => $p->end_date?->toDateString(),
+                    'as_needed' => false,
                     'expected_doses' => $expected,
                     'taken_doses' => $takenToday,
                     'all_taken' => $takenToday >= $expected,
@@ -518,32 +632,59 @@ class MedicationController extends Controller
 
         $allLogs = MedicationLog::whereIn('prescription_id', $encounters->flatMap->prescriptions->pluck('id'))->get();
 
+        $today = Carbon::today();
+
         $medications = [];
         foreach ($encounters as $encounter) {
             foreach ($encounter->prescriptions as $p) {
+                if ($p->status !== null && $p->status !== 'active') {
+                    continue;
+                }
+
                 $expectedDaily = $this->triZone()->dailyDoseCount($p->frequency);
                 if ($expectedDaily === 0) {
                     continue;
                 }
 
-                $logs = $allLogs->where('prescription_id', $p->id);
-                $startDate = $encounter->appointment?->scheduled_date
-                    ?? $encounter->started_at?->toDateString();
-                if (! $startDate) {
+                $rawStart = $p->start_date
+                    ?? $encounter->appointment?->scheduled_date
+                    ?? $encounter->started_at;
+                if (! $rawStart) {
                     continue;
                 }
 
-                $totalDays = min(Carbon::parse($startDate)->diffInDays(today()) + 1, 90);
-                $totalExpected = $totalDays * $expectedDaily;
+                $courseStart = Carbon::parse($rawStart)->startOfDay();
+                if ($courseStart->gt($today)) {
+                    continue;
+                }
+
+                $courseEnd = Carbon::parse($p->end_date ?? $today)->startOfDay();
+                if ($courseEnd->lt($courseStart)) {
+                    continue;
+                }
+                if ($courseEnd->gt($today)) {
+                    $courseEnd = $today->copy();
+                }
+
+                $windowStart = $courseStart->copy();
+                if ($windowStart->diffInDays($courseEnd) + 1 > 90) {
+                    $windowStart = $courseEnd->copy()->subDays(89);
+                }
+
+                $totalDays = min($windowStart->diffInDays($courseEnd) + 1, 90);
+
+                $logs = $allLogs->where('prescription_id', $p->id)
+                    ->filter(fn ($log) => $log->log_date->betweenIncluded($windowStart, $courseEnd));
                 $takenLogs = $logs->where('status', MedicationTriZoneService::STATUS_TAKEN);
                 $missedLogs = $logs->where('status', MedicationTriZoneService::STATUS_MISSED);
                 $totalTaken = $takenLogs->count();
 
+                $totalExpected = $totalDays * $expectedDaily;
                 $adherenceRate = $totalExpected > 0 ? round(($totalTaken / $totalExpected) * 100) : 0;
 
                 $dailyData = [];
                 for ($d = 0; $d < $totalDays; $d++) {
-                    $date = Carbon::parse($startDate)->addDays($d)->format('Y-m-d');
+                    $date = $windowStart->copy()->addDays($d)->format('Y-m-d');
                     $dailyData[] = [
                         'date' => $date,
                         'taken' => $takenLogs->filter(fn ($l) => $l->log_date->format('Y-m-d') === $date)->count(),

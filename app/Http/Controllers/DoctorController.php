@@ -36,6 +36,15 @@ class DoctorController extends Controller
                     ->latest('scheduled_date')
                     ->limit(5);  // ✅ Only last 5, not all
             },
+            // Meds the patient is actually taking today: status active and the
+            // course window still open. Feeds the consultation interaction
+            // warnings, so expired/future courses must stay out.
+            'patient.prescriptions' => function ($q) {
+                $q->where('status', 'active')
+                    ->where(fn ($q) => $q->whereNull('start_date')->orWhereDate('start_date', '<=', today()))
+                    ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', today()))
+                    ->orderByDesc('id');
+            },
         ])
             ->whereDate('scheduled_date', today())
             ->where('provider_id', $providerId)
@@ -60,6 +69,14 @@ class DoctorController extends Controller
                     'name' => $appt->patient?->user?->anonymizedName() ?? 'Unknown',
                     'service' => $appt->service_type,
                     'allergies' => $appt->patient?->allergies,
+                    'current_medications' => ($appt->patient?->prescriptions ?? collect())
+                        ->map(fn ($rx) => [
+                            'medicine' => $rx->medication_name,
+                            'dosage' => $rx->dosage,
+                            'frequency' => $rx->frequency,
+                        ])
+                        ->values()
+                        ->all(),
                     'status' => $appt->status,
                     'history' => $appt->patient?->appointments,
                 ];

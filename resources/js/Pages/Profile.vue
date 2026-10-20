@@ -62,9 +62,7 @@
                 class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
             >
                 <!-- Avatar header -->
-                <div
-                    class="flex items-center gap-5 bg-linear-to-r from-slate-800 to-slate-700 px-8 py-6"
-                >
+                <div class="flex items-center gap-5 bg-white px-8 py-6">
                     <div
                         class="flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-500 text-3xl font-black text-white shadow-lg shadow-indigo-500/30"
                     >

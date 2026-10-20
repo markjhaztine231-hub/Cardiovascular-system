@@ -332,4 +332,298 @@ class MedicationTriZoneTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_today_meds_skips_expired_and_future_courses_without_breaking_indexes()
+    {
+        Carbon::setTestNow('2026-09-21 08:30:00');
+
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'status' => 'Completed',
+        ]);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now(),
+            'ended_at' => Carbon::now(),
+        ]);
+
+        // Expired course: owns canonical index 0 but must not be displayed.
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Amoxicillin',
+            'dosage' => '500 mg',
+            'frequency' => '3x a day (8h)',
+            'start_date' => Carbon::today()->subDays(10),
+            'end_date' => Carbon::today()->subDay(),
+            'status' => 'active',
+        ]);
+
+        // Future course: canonical index 1.
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Atorvastatin',
+            'dosage' => '20 mg',
+            'frequency' => '1x a day',
+            'start_date' => Carbon::today()->addDay(),
+            'end_date' => Carbon::today()->addDays(30),
+            'status' => 'active',
+        ]);
+
+        // Current course: canonical index 2.
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Metoprolol',
+            'dosage' => '25 mg',
+            'frequency' => '3x a day (8h)',
+            'start_date' => Carbon::today(),
+            'end_date' => Carbon::today()->addDays(7),
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($patient->user)->getJson('/patient/medications/today');
+        $response->assertOk();
+
+        $meds = collect($response->json());
+        $this->assertCount(1, $meds);
+        $this->assertSame('Metoprolol', $meds->first()['medicine']);
+        $this->assertSame(2, $meds->first()['prescription_index']);
+
+        $log = $this->actingAs($patient->user)->postJson(
+            '/medications/'.$appointment->id.'/log-dose',
+            [
+                'prescription_index' => 2,
+                'medicine' => 'Metoprolol',
+                'scheduled_time' => '08:00',
+            ]
+        );
+
+        $log->assertOk()->assertJsonFragment(['status' => 'TAKEN']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_today_meds_lists_as_needed_medications_without_doses()
+    {
+        Carbon::setTestNow('2026-09-21 08:30:00');
+
+        [$appointment, , $user] = $this->makeFixture();
+
+        $encounter = Encounter::where('appointment_id', $appointment->id)->firstOrFail();
+
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $appointment->patient_id,
+            'provider_id' => $appointment->provider_id,
+            'medication_name' => 'Nitroglycerin',
+            'dosage' => '0.4 mg',
+            'frequency' => 'As needed',
+            'instructions' => 'For chest pain',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/patient/medications/today');
+        $response->assertOk();
+
+        $med = collect($response->json())->firstWhere('medicine', 'Nitroglycerin');
+
+        $this->assertNotNull($med);
+        $this->assertTrue($med['as_needed']);
+        $this->assertSame(0, $med['expected_doses']);
+        $this->assertSame([], $med['doses']);
+        $this->assertSame('For chest pain', $med['instructions']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_dose_cannot_be_recorded_for_a_closed_course()
+    {
+        Carbon::setTestNow('2026-09-21 08:30:00');
+        [$appointment, $prescription, $user] = $this->makeFixture();
+
+        $prescription->update([
+            'start_date' => Carbon::today()->subDays(10),
+            'end_date' => Carbon::today()->subDay(),
+        ]);
+
+        $response = $this->actingAs($user)->postJson(
+            '/medications/'.$appointment->id.'/log-dose',
+            [
+                'prescription_index' => 0,
+                'medicine' => 'Metoprolol',
+                'scheduled_time' => '08:00',
+            ]
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonFragment(['error_code' => 'COURSE_CLOSED']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_adherence_uses_the_most_recent_ninety_days_for_long_courses()
+    {
+        Carbon::setTestNow('2026-09-21 12:00:00');
+
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->subDays(120)->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'status' => 'Completed',
+        ]);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now(),
+            'ended_at' => Carbon::now(),
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Metoprolol',
+            'dosage' => '25 mg',
+            'frequency' => '1x a day',
+            'start_date' => Carbon::today()->subDays(120),
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($patient->user)
+            ->getJson('/medications/'.$appointment->id.'/adherence');
+        $response->assertOk();
+
+        $daily = collect($response->json('daily'));
+        $this->assertCount(90, $daily);
+        $this->assertSame(Carbon::today()->subDays(89)->toDateString(), $daily->first()['date']);
+        $this->assertSame(Carbon::today()->toDateString(), $daily->last()['date']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_toggle_rejects_dates_outside_the_prescription_course()
+    {
+        Carbon::setTestNow('2026-09-21 08:30:00');
+        [$appointment, $prescription, $user] = $this->makeFixture();
+
+        $prescription->update([
+            'start_date' => Carbon::today()->subDays(3),
+            'end_date' => Carbon::today()->subDay(),
+        ]);
+
+        $before = $this->actingAs($user)->postJson(
+            '/medications/'.$appointment->id.'/toggle-dose',
+            [
+                'prescription_index' => 0,
+                'date' => Carbon::today()->subDays(5)->toDateString(),
+            ]
+        );
+        $before->assertStatus(422)
+            ->assertJsonFragment(['error_code' => 'COURSE_CLOSED']);
+
+        $future = $this->actingAs($user)->postJson(
+            '/medications/'.$appointment->id.'/toggle-dose',
+            [
+                'prescription_index' => 0,
+                'date' => Carbon::today()->addDay()->toDateString(),
+            ]
+        );
+        $future->assertStatus(422)
+            ->assertJsonFragment(['error_code' => 'FUTURE_DATE']);
+
+        $inside = $this->actingAs($user)->postJson(
+            '/medications/'.$appointment->id.'/toggle-dose',
+            [
+                'prescription_index' => 0,
+                'date' => Carbon::today()->subDays(2)->toDateString(),
+            ]
+        );
+        $inside->assertOk()->assertJsonFragment(['action' => 'added']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_adherence_stops_counting_doses_after_the_course_ends()
+    {
+        Carbon::setTestNow('2026-09-21 12:00:00');
+
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->subDays(10)->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'status' => 'Completed',
+        ]);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'completed',
+            'started_at' => Carbon::now(),
+            'ended_at' => Carbon::now(),
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Metoprolol',
+            'dosage' => '25 mg',
+            'frequency' => '1x a day',
+            'start_date' => Carbon::today()->subDays(10),
+            'end_date' => Carbon::today()->subDays(4),
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($patient->user)
+            ->getJson('/medications/'.$appointment->id.'/adherence');
+        $response->assertOk();
+
+        $daily = collect($response->json('daily'));
+        $this->assertCount(11, $daily);
+
+        $courseDays = $daily->filter(
+            fn ($day) => collect($day['medications'])->contains('medicine', 'Metoprolol')
+        );
+        $this->assertCount(7, $courseDays);
+        $this->assertSame(
+            1,
+            collect($daily->first()['medications'])->firstWhere('medicine', 'Metoprolol')['expected']
+        );
+
+        $afterCourse = $daily->filter(
+            fn ($day) => $day['date'] > Carbon::today()->subDays(4)->toDateString()
+        );
+        $this->assertTrue(
+            $afterCourse->every(fn ($day) => collect($day['medications'])->isEmpty())
+        );
+
+        Carbon::setTestNow();
+    }
 }

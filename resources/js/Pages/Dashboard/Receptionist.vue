@@ -222,41 +222,54 @@
                 class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
             >
                 <div class="border-b border-gray-100 bg-gray-50/50 px-6 py-5">
-                    <div class="flex items-center justify-between">
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-3"
+                    >
                         <h3 class="text-lg font-black text-gray-800">
                             Clinic Queue (Today)
                         </h3>
-                        <button
-                            @click="calendarOpen = !calendarOpen"
-                            class="inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-bold shadow-sm transition-all"
-                            :class="
-                                calendarOpen
-                                    ? 'border-[#0f8c8e] bg-[#0f8c8e] text-white hover:bg-[#0c7072]'
-                                    : 'border-[#0f8c8e]/40 bg-white text-[#0f8c8e] hover:border-[#0f8c8e] hover:bg-[#0f8c8e]/10'
-                            "
-                            :title="
-                                calendarOpen
-                                    ? 'Hide upcoming calendar'
-                                    : 'Show upcoming calendar'
-                            "
-                        >
-                            <svg
-                                class="h-4 w-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                        <div class="flex flex-wrap items-center gap-3">
+                            <input
+                                v-model="queueSearch"
+                                type="search"
+                                placeholder="Search patient, doctor, status..."
+                                aria-label="Search today's clinic queue"
+                                class="w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none"
+                            />
+                            <button
+                                @click="calendarOpen = !calendarOpen"
+                                class="inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-bold shadow-sm transition-all"
+                                :class="
+                                    calendarOpen
+                                        ? 'border-[#0f8c8e] bg-[#0f8c8e] text-white hover:bg-[#0c7072]'
+                                        : 'border-[#0f8c8e]/40 bg-white text-[#0f8c8e] hover:border-[#0f8c8e] hover:bg-[#0f8c8e]/10'
+                                "
+                                :title="
+                                    calendarOpen
+                                        ? 'Hide upcoming calendar'
+                                        : 'Show upcoming calendar'
+                                "
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                            </svg>
-                            {{
-                                calendarOpen ? 'Hide Calendar' : 'Show Calendar'
-                            }}
-                        </button>
+                                <svg
+                                    class="h-4 w-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                    />
+                                </svg>
+                                {{
+                                    calendarOpen
+                                        ? 'Hide Calendar'
+                                        : 'Show Calendar'
+                                }}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -329,9 +342,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <div
-                                        class="flex justify-end gap-2"
-                                    >
+                                    <div class="flex justify-end gap-2">
                                         <span
                                             v-if="appt.status === 'No-Show'"
                                             class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-gray-500"
@@ -385,8 +396,14 @@
                                             rel="noopener noreferrer"
                                             class="inline-flex items-center gap-1 rounded-lg border border-[#4285f4]/30 bg-[#4285f4]/10 px-3 py-1.5 text-[11px] font-bold text-[#4285f4] transition-all hover:bg-[#4285f4]/20"
                                         >
-                                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M19.5 3h-2.25V1.5h-1.5V3h-7.5V1.5h-1.5V3H4.5A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm0 16.5h-15V9h15v10.5zm0-12h-15V4.5h2.25V6h1.5V4.5h7.5V6h1.5V4.5h2.25V7.5z"/>
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                viewBox="0 0 24 24"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    d="M19.5 3h-2.25V1.5h-1.5V3h-7.5V1.5h-1.5V3H4.5A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm0 16.5h-15V9h15v10.5zm0-12h-15V4.5h2.25V6h1.5V4.5h7.5V6h1.5V4.5h2.25V7.5z"
+                                                />
                                             </svg>
                                             Calendar
                                         </a>
@@ -603,7 +620,9 @@
                         </div>
                     </div>
 
-                    <div class="divide-y divide-gray-100 border-b border-gray-100">
+                    <div
+                        class="divide-y divide-gray-100 border-b border-gray-100"
+                    >
                         <div
                             v-for="(week, weekIndex) in calendarWeeks"
                             :key="weekIndex"
@@ -613,13 +632,11 @@
                                 v-for="cell in week"
                                 :key="cell.key"
                                 @click="selectDay(cell)"
-                                class="min-h-[6rem] cursor-pointer border-r border-gray-100 p-1.5 transition-colors last:border-r-0 hover:bg-teal-50"
+                                class="min-h-24 cursor-pointer border-r border-gray-100 p-1.5 transition-colors last:border-r-0 hover:bg-teal-50"
                                 :class="[
-                                    cell.inMonth
-                                        ? 'bg-white'
-                                        : 'bg-gray-50/80',
+                                    cell.inMonth ? 'bg-white' : 'bg-gray-50/80',
                                     isToday(cell.key)
-                                        ? 'ring-1 ring-inset ring-[#0f8c8e]/50'
+                                        ? 'ring-1 ring-[#0f8c8e]/50 ring-inset'
                                         : '',
                                 ]"
                             >
@@ -629,7 +646,9 @@
                                     <span
                                         v-if="cell.activity"
                                         class="rounded px-1 py-0.5 text-[9px] font-extrabold"
-                                        :class="activityBadgeClass(cell.activity)"
+                                        :class="
+                                            activityBadgeClass(cell.activity)
+                                        "
                                         :title="activityTooltip(cell.activity)"
                                     >
                                         {{ cell.activity.completed }}/{{
@@ -656,9 +675,7 @@
                                         :key="chip.id"
                                         class="truncate rounded border-l-2 px-1 py-0.5 text-[9px] leading-tight font-bold shadow-sm"
                                         :class="chipClass(chip.status)"
-                                        :title="
-                                            `${chip.patient?.name || 'Unknown'} — ${chip.time}`
-                                        "
+                                        :title="`${chip.patient?.name || 'Unknown'} — ${chip.time}`"
                                     >
                                         {{ chip.time }}
                                         {{ chip.patient?.name || 'Unknown' }}
@@ -694,7 +711,9 @@
                                 {{ selectedDayActivity.completed }} completed
                             </span>
                             <span
-                                v-if="selectedDayActivity.completed_consultation"
+                                v-if="
+                                    selectedDayActivity.completed_consultation
+                                "
                                 class="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700"
                             >
                                 Consultation
@@ -760,9 +779,7 @@
                                         {{ appt.status }}
                                     </span>
                                 </div>
-                                <div
-                                    class="flex flex-wrap gap-1.5"
-                                >
+                                <div class="flex flex-wrap gap-1.5">
                                     <button
                                         @click="openTransfer(appt)"
                                         class="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-600 hover:text-white"
@@ -838,7 +855,9 @@
                                 :key="row.key"
                                 class="hover:bg-gray-50"
                             >
-                                <td class="px-6 py-3 font-semibold text-gray-700">
+                                <td
+                                    class="px-6 py-3 font-semibold text-gray-700"
+                                >
                                     {{ row.label }}
                                 </td>
                                 <td class="px-6 py-3 text-center text-gray-600">
@@ -849,10 +868,14 @@
                                 >
                                     {{ row.completed }}
                                 </td>
-                                <td class="px-6 py-3 text-center text-indigo-600">
+                                <td
+                                    class="px-6 py-3 text-center text-indigo-600"
+                                >
                                     {{ row.completed_consultation }}
                                 </td>
-                                <td class="px-6 py-3 text-center text-fuchsia-600">
+                                <td
+                                    class="px-6 py-3 text-center text-fuchsia-600"
+                                >
                                     {{ row.completed_procedure }}
                                 </td>
                                 <td class="px-6 py-3 text-center text-cyan-600">
@@ -930,7 +953,7 @@
                         class="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                         <div class="flex-1">
-                            <p class="text-sm font-black text-black-900">
+                            <p class="text-black-900 text-sm font-black">
                                 {{ req.patient?.name || 'Unknown Patient' }}
                             </p>
                             <p class="mt-0.5 text-xs font-medium text-gray-500">
@@ -1235,12 +1258,19 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
             <div
-                class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
+                ref="transferDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="transfer-dialog-title"
+                tabindex="-1"
+                class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all outline-none"
             >
                 <div
                     class="flex items-center justify-between bg-[#146b8a] px-6 py-4 text-white"
                 >
-                    <h3 class="text-lg font-bold">Transfer Patient</h3>
+                    <h3 id="transfer-dialog-title" class="text-lg font-bold">
+                        Transfer Patient
+                    </h3>
                     <button
                         @click="isTransferOpen = false"
                         class="text-teal-200 hover:text-white"
@@ -1300,12 +1330,22 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
             <div
+                ref="editRescheduleDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="edit-reschedule-modal-title"
+                tabindex="-1"
                 class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
             >
                 <div
                     class="flex items-center justify-between bg-blue-600 px-6 py-4 text-white"
                 >
-                    <h3 class="text-lg font-bold">Edit Reschedule Request</h3>
+                    <h3
+                        id="edit-reschedule-modal-title"
+                        class="text-lg font-bold"
+                    >
+                        Edit Reschedule Request
+                    </h3>
                     <button
                         @click="cancelEditReschedule"
                         class="text-blue-200 hover:text-white"
@@ -1377,12 +1417,22 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
             <div
+                ref="queueRescheduleDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="queue-reschedule-modal-title"
+                tabindex="-1"
                 class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
             >
                 <div
                     class="flex items-center justify-between bg-amber-600 px-6 py-4 text-white"
                 >
-                    <h3 class="text-lg font-bold">Reschedule Appointment</h3>
+                    <h3
+                        id="queue-reschedule-modal-title"
+                        class="text-lg font-bold"
+                    >
+                        Reschedule Appointment
+                    </h3>
                     <button
                         @click="cancelQueueReschedule"
                         class="text-amber-200 hover:text-white"
@@ -1455,13 +1505,21 @@
             class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
         >
             <div
-                class="my-6 w-full max-w-7xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
+                ref="studyFormDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="study-form-dialog-title"
+                tabindex="-1"
+                class="my-6 w-full max-w-7xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all outline-none"
             >
                 <div
                     class="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl bg-indigo-700 px-6 py-4 text-white"
                 >
                     <div>
-                        <h3 class="text-lg font-bold">
+                        <h3
+                            id="study-form-dialog-title"
+                            class="text-lg font-bold"
+                        >
                             Pre-fill Echo / TMT / Doppler / Stress Echo / ABPM
                         </h3>
                         <p class="text-xs text-indigo-200">
@@ -1647,33 +1705,47 @@
                                 <EchoForm
                                     v-if="activeStudyTab === 'echo'"
                                     v-model:echo-data="studyForm.echo_data"
-                                    :patient-name="studyAppt?.patient?.name ?? ''"
+                                    :patient-name="
+                                        studyAppt?.patient?.name ?? ''
+                                    "
                                     restricted
                                 />
                                 <TmtForm
                                     v-if="activeStudyTab === 'tmt'"
                                     v-model:tmt-data="studyForm.tmt_data"
                                     :echo-sex="studyForm.echo_data.sex"
-                                    :patient-name="studyAppt?.patient?.name ?? ''"
+                                    :patient-name="
+                                        studyAppt?.patient?.name ?? ''
+                                    "
                                     restricted
                                 />
                                 <DopplerForm
                                     v-if="activeStudyTab === 'doppler'"
-                                    v-model:doppler-data="studyForm.doppler_data"
+                                    v-model:doppler-data="
+                                        studyForm.doppler_data
+                                    "
                                     :echo-data="studyForm.echo_data"
-                                    :patient-name="studyAppt?.patient?.name ?? ''"
+                                    :patient-name="
+                                        studyAppt?.patient?.name ?? ''
+                                    "
                                     restricted
                                 />
                                 <StressEchoForm
                                     v-if="activeStudyTab === 'stress_echo'"
-                                    v-model:stress-echo-data="studyForm.stress_echo_data"
-                                    :patient-name="studyAppt?.patient?.name ?? ''"
+                                    v-model:stress-echo-data="
+                                        studyForm.stress_echo_data
+                                    "
+                                    :patient-name="
+                                        studyAppt?.patient?.name ?? ''
+                                    "
                                     restricted
                                 />
                                 <AbpmForm
                                     v-if="activeStudyTab === 'abpm'"
                                     v-model:abpm-data="studyForm.abpm_data"
-                                    :patient-name="studyAppt?.patient?.name ?? ''"
+                                    :patient-name="
+                                        studyAppt?.patient?.name ?? ''
+                                    "
                                     restricted
                                 />
                             </div>
@@ -1685,8 +1757,8 @@
                                     v-if="studySavedAt"
                                     class="mr-auto text-xs font-semibold text-emerald-600"
                                 >
-                                    Saved study data will appear in the
-                                    doctor's consultation form.
+                                    Saved study data will appear in the doctor's
+                                    consultation form.
                                 </p>
                                 <button
                                     type="button"
@@ -1842,10 +1914,13 @@
                                             </button>
                                             <pre
                                                 v-if="
-                                                    openStudyScanText.has(doc.id)
+                                                    openStudyScanText.has(
+                                                        doc.id,
+                                                    )
                                                 "
-                                                class="mt-2 max-h-48 overflow-auto rounded-lg bg-gray-50 p-3 text-xs whitespace-pre-wrap break-words text-gray-700"
-                                            >{{ doc.ocr_text }}</pre>
+                                                class="mt-2 max-h-48 overflow-auto rounded-lg bg-gray-50 p-3 text-xs wrap-break-word whitespace-pre-wrap text-gray-700"
+                                                >{{ doc.ocr_text }}</pre
+                                            >
                                             <p
                                                 v-if="
                                                     !doc.ocr_text &&
@@ -1885,15 +1960,16 @@
 
 <script setup lang="ts">
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
-import LogoutButton from '@/components/LogoutButton.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import ScanUploadModal from '@/components/ScanUploadModal.vue';
-import EchoForm from '@/components/Clinical/EchoForm.vue';
-import TmtForm from '@/components/Clinical/TmtForm.vue';
-import DopplerForm from '@/components/Clinical/DopplerForm.vue';
-import StressEchoForm from '@/components/Clinical/StressEchoForm.vue';
 import AbpmForm from '@/components/Clinical/AbpmForm.vue';
+import DopplerForm from '@/components/Clinical/DopplerForm.vue';
+import EchoForm from '@/components/Clinical/EchoForm.vue';
+import StressEchoForm from '@/components/Clinical/StressEchoForm.vue';
+import TmtForm from '@/components/Clinical/TmtForm.vue';
+import LogoutButton from '@/components/LogoutButton.vue';
+import ScanUploadModal from '@/components/ScanUploadModal.vue';
 import Toast from '@/components/Toast.vue';
+import { useModalA11y } from '@/composables/useModalA11y';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
 import { blankStudyForms } from '@/utils/studyForms';
@@ -1907,20 +1983,26 @@ watch(
     () => (page.props as any).flash,
     (flash) => {
         if (flash?.success) {
-showSuccess(flash.success);
-}
+            showSuccess(flash.success);
+        }
 
         if (flash?.error) {
-showError(flash.error);
-}
+            showError(flash.error);
+        }
     },
     { immediate: true },
 );
 watch(
     () => (page.props as any).errors,
     (errors) => {
-        if (errors && typeof errors === 'object' && Object.keys(errors).length) {
-            showError(Object.values(errors as Record<string, string>).join('\n'));
+        if (
+            errors &&
+            typeof errors === 'object' &&
+            Object.keys(errors).length
+        ) {
+            showError(
+                Object.values(errors as Record<string, string>).join('\n'),
+            );
         }
     },
 );
@@ -1943,8 +2025,32 @@ const selectedDateKey = ref(dateKey(new Date()));
 // ── Queue pagination ───────────────────────────────────────────────
 const queuePage = ref(1);
 const queuePerPage = ref(10);
+const queueSearch = ref('');
 
-const queueTotal = computed(() => props.masterQueue?.length ?? 0);
+const filteredQueue = computed(() => {
+    const query = queueSearch.value.trim().toLowerCase();
+    const queue = props.masterQueue ?? [];
+
+    if (!query) {
+        return queue;
+    }
+
+    return queue.filter((appt: any): boolean =>
+        [
+            appt.patient?.name,
+            appt.doctor?.name,
+            appt.status,
+            appt.time,
+            appt.service_type,
+        ].some((value) =>
+            String(value ?? '')
+                .toLowerCase()
+                .includes(query),
+        ),
+    );
+});
+
+const queueTotal = computed(() => filteredQueue.value.length);
 
 const queueTotalPages = computed(() =>
     Math.max(1, Math.ceil(queueTotal.value / queuePerPage.value)),
@@ -1953,13 +2059,11 @@ const queueTotalPages = computed(() =>
 const paginatedQueue = computed(() => {
     const start = (queuePage.value - 1) * queuePerPage.value;
 
-    return (props.masterQueue ?? []).slice(start, start + queuePerPage.value);
+    return filteredQueue.value.slice(start, start + queuePerPage.value);
 });
 
 const queueRangeStart = computed(() =>
-    queueTotal.value === 0
-        ? 0
-        : (queuePage.value - 1) * queuePerPage.value + 1,
+    queueTotal.value === 0 ? 0 : (queuePage.value - 1) * queuePerPage.value + 1,
 );
 
 const queueRangeEnd = computed(() =>
@@ -1980,6 +2084,7 @@ const queuePageNumbers = computed<number[]>(() => {
     start = Math.max(1, end - size + 1);
 
     const pages: number[] = [];
+
     for (let page = start; page <= end; page++) {
         pages.push(page);
     }
@@ -2000,6 +2105,9 @@ watch(queuePerPage, () => {
     queuePage.value = 1;
 });
 
+watch(queueSearch, () => {
+    queuePage.value = 1;
+});
 
 const scanModalOpen = ref(false);
 const scanAppointment = ref<any>(null);
@@ -2020,6 +2128,9 @@ function onScansChanged(): void {
 
 // ── Receptionist study pre-fill (Echo / TMT / Doppler) ─────────────
 const studyFormOpen = ref(false);
+const { container: studyFormDialog } = useModalA11y(studyFormOpen, () =>
+    closeStudyForm(),
+);
 const studyAppt = ref<any>(null);
 const studyLoading = ref(false);
 const studyBusy = ref(false);
@@ -2111,17 +2222,29 @@ function studyScanStatusBadge(status: string): string {
 }
 
 function studyScanConfidence(value: number | null): string {
-    return value === null || value === undefined ? 'N/A' : `${Math.round(value * 100)}%`;
+    return value === null || value === undefined
+        ? 'N/A'
+        : `${Math.round(value * 100)}%`;
 }
 
 /** Merge saved values into the blank form, keeping only non-empty keys so an
  * older record never leaves stray empty strings in the form. */
-function mergeStudyValues(target: Record<string, any>, source: Record<string, any> | null): void {
-    if (!source || typeof source !== 'object') return;
+function mergeStudyValues(
+    target: Record<string, any>,
+    source: Record<string, any> | null,
+): void {
+    if (!source || typeof source !== 'object') {
+        return;
+    }
 
     for (const [key, value] of Object.entries(source)) {
-        if (!(key in target)) continue;
-        if (value === '' || value === null || value === undefined) continue;
+        if (!(key in target)) {
+            continue;
+        }
+
+        if (value === '' || value === null || value === undefined) {
+            continue;
+        }
 
         if (Array.isArray(value)) {
             if (Array.isArray(target[key])) {
@@ -2135,11 +2258,16 @@ function mergeStudyValues(target: Record<string, any>, source: Record<string, an
                 }
 
                 (value as any[]).forEach((item, i) => {
-                    if (i < target[key].length && typeof item === 'object' && item !== null) {
+                    if (
+                        i < target[key].length &&
+                        typeof item === 'object' &&
+                        item !== null
+                    ) {
                         mergeStudyValues(target[key][i], item);
                     }
                 });
             }
+
             continue;
         }
 
@@ -2148,7 +2276,9 @@ function mergeStudyValues(target: Record<string, any>, source: Record<string, an
 }
 
 async function openStudyForm(appt: any): Promise<void> {
-    if (!appt) return;
+    if (!appt) {
+        return;
+    }
 
     studyAppt.value = appt;
     studyForm.clearErrors();
@@ -2163,7 +2293,10 @@ async function openStudyForm(appt: any): Promise<void> {
     try {
         const res = await fetch(`/appointments/${appt.id}/study-data`, {
             credentials: 'same-origin',
-            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
         });
 
         if (!res.ok) {
@@ -2214,7 +2347,9 @@ function closeStudyForm(): void {
 }
 
 function submitStudyForm(): void {
-    if (!studyAppt.value) return;
+    if (!studyAppt.value) {
+        return;
+    }
 
     studyForm.put(`/appointments/${studyAppt.value.id}/study-data`, {
         preserveScroll: true,
@@ -2245,11 +2380,20 @@ function isToday(key: string): boolean {
  */
 function onEnterAdvance(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
-    if (!target) return;
+
+    if (!target) {
+        return;
+    }
 
     const tag = target.tagName;
-    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') return;
-    if (tag !== 'INPUT' && tag !== 'SELECT') return;
+
+    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') {
+        return;
+    }
+
+    if (tag !== 'INPUT' && tag !== 'SELECT') {
+        return;
+    }
 
     // Never let Enter implicitly submit a surrounding form.
     event.preventDefault();
@@ -2262,12 +2406,19 @@ function onEnterAdvance(event: KeyboardEvent): void {
     ).filter((el) => el.offsetParent !== null);
 
     const index = fields.indexOf(target);
-    if (index === -1) return;
+
+    if (index === -1) {
+        return;
+    }
 
     const next = fields[index + 1];
-    if (!next) return;
+
+    if (!next) {
+        return;
+    }
 
     next.focus();
+
     if (
         next instanceof HTMLInputElement &&
         next.type !== 'checkbox' &&
@@ -2284,8 +2435,7 @@ const apptsByDay = computed<Record<string, any[]>>(() => {
     for (const group of props.futureAppointments || []) {
         for (const appt of group.appointments || []) {
             const iso =
-                appt.date_iso ??
-                dateKey(new Date(`${appt.date} 00:00:00`));
+                appt.date_iso ?? dateKey(new Date(`${appt.date} 00:00:00`));
             (map[iso] = map[iso] || []).push(appt);
         }
     }
@@ -2375,8 +2525,8 @@ const calendarWeeks = computed(() => {
         };
 
         if (i % 7 === 0) {
-weeks.push([]);
-}
+            weeks.push([]);
+        }
 
         weeks[weeks.length - 1].push(cell);
     }
@@ -2385,10 +2535,7 @@ weeks.push([]);
 });
 
 const dayCount = computed(() =>
-    Object.values(apptsByDay.value).reduce(
-        (sum, list) => sum + list.length,
-        0,
-    ),
+    Object.values(apptsByDay.value).reduce((sum, list) => sum + list.length, 0),
 );
 
 const shiftMonth = (n: number) => {
@@ -2406,7 +2553,9 @@ const selectDay = (cell: any) => {
     selectedDateKey.value = cell.key;
 };
 
-const selectedAppts = computed(() => apptsByDay.value[selectedDateKey.value] || []);
+const selectedAppts = computed(
+    () => apptsByDay.value[selectedDateKey.value] || [],
+);
 const selectedDayLabel = computed(() => {
     const [y, m, d] = selectedDateKey.value.split('-').map(Number);
 
@@ -2460,6 +2609,17 @@ const isEditingReschedule = ref(false);
 const editingReschedule = ref<any>(null);
 const isQueueRescheduleOpen = ref(false);
 const queueRescheduleAppt = ref<any>(null);
+const { container: editRescheduleDialog } = useModalA11y(
+    isEditingReschedule,
+    () => cancelEditReschedule(),
+);
+const { container: queueRescheduleDialog } = useModalA11y(
+    isQueueRescheduleOpen,
+    () => cancelQueueReschedule(),
+);
+const { container: transferDialog } = useModalA11y(isTransferOpen, () => {
+    isTransferOpen.value = false;
+});
 // Local midnight-based end of yesterday — the server enforces
 // `after_or_equal:today` in Asia/Manila, so the <input :min> must use the
 // viewer's local date, not UTC (toISOString() can skew a day near midnight).
@@ -2593,40 +2753,40 @@ const formatDays = (daysData: any): string => {
 // inputs render empty and `required` silently blocks the submit button.
 const isoDateFromDisplay = (v?: string | null): string => {
     if (!v) {
-return '';
-}
+        return '';
+    }
 
     const d = new Date(v);
 
     if (isNaN(d.getTime())) {
-return '';
-}
+        return '';
+    }
 
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
 const isoTimeFromDisplay = (v?: string | null): string => {
     if (!v) {
-return '';
-}
+        return '';
+    }
 
     const m = v.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?$/);
 
     if (!m) {
-return '';
-}
+        return '';
+    }
 
     let h = Number(m[1]);
     const suffix = (m[3] || '').toUpperCase();
 
     if (suffix) {
         if (suffix === 'PM' && h !== 12) {
-h += 12;
-}
+            h += 12;
+        }
 
         if (suffix === 'AM' && h === 12) {
-h = 0;
-}
+            h = 0;
+        }
     }
 
     return `${pad2(h)}:${m[2]}`;
@@ -2673,8 +2833,8 @@ const DAY_ORDER = [
 
 const toDayNames = (daysData: any): string[] => {
     if (!daysData) {
-return [];
-}
+        return [];
+    }
 
     const list = Array.isArray(daysData)
         ? daysData
@@ -2690,7 +2850,7 @@ return [];
 
     return list.map((d: any) =>
         typeof d === 'number' || /^\d+$/.test(String(d))
-            ? DAY_ORDER[Number(d) - 1] ?? String(d)
+            ? (DAY_ORDER[Number(d) - 1] ?? String(d))
             : String(d),
     );
 };
@@ -2769,8 +2929,10 @@ const denyReschedule = (id: number) => {
 
 const openEditReschedule = (req: any) => {
     editingReschedule.value = req;
-    rescheduleEditForm.requested_date = req.requested_date_iso || isoDateFromDisplay(req.requested_date);
-    rescheduleEditForm.requested_time = req.requested_time_iso || isoTimeFromDisplay(req.requested_time);
+    rescheduleEditForm.requested_date =
+        req.requested_date_iso || isoDateFromDisplay(req.requested_date);
+    rescheduleEditForm.requested_time =
+        req.requested_time_iso || isoTimeFromDisplay(req.requested_time);
     isEditingReschedule.value = true;
 };
 

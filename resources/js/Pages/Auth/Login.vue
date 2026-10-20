@@ -103,8 +103,7 @@
                                     required
                                     class="block w-full appearance-none rounded-xl border border-gray-300 px-3 py-2.5 pr-10 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                                     :class="{
-                                        'border-red-300':
-                                            form.errors.password,
+                                        'border-red-300': form.errors.password,
                                     }"
                                 />
                                 <button
@@ -217,9 +216,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import { Eye, EyeOff } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 const showPassword = ref(false);
 

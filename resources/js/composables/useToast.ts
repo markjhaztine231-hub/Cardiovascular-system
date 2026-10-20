@@ -20,9 +20,13 @@ export function useToast() {
         type: 'success' | 'error' | 'info' | 'warning' = 'info',
         duration = 5000,
     ) {
-        const existing = toasts.value.find((t) => t.message === message && t.type === type);
+        const existing = toasts.value.find(
+            (t) => t.message === message && t.type === type,
+        );
 
-        if (existing) return existing.id;
+        if (existing) {
+            return existing.id;
+        }
 
         const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         const toast: Toast = { id, message, type, duration };

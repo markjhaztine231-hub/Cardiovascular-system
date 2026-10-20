@@ -14,6 +14,7 @@ use App\Http\Controllers\ReceptionistController;
 use App\Http\Controllers\ReceptionistDocumentController;
 use App\Models\Appointment;
 use App\Models\AuditLog;
+use App\Models\Prescription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -109,13 +110,19 @@ Route::middleware('auth')->group(function () {
             abort(403, 'No patient record linked to your account.');
         }
 
-        $nextAppt = Appointment::with('provider.user:id,name')
+        $dashboardRelations = [
+            'provider.user:id,name',
+            'encounter.prescriptions',
+            'encounter.soapNote:id,encounter_id,ai_summary',
+        ];
+
+        $nextAppt = Appointment::with($dashboardRelations)
             ->where('patient_id', $patientId)
             ->whereDate('scheduled_date', '>=', today())
             ->whereNotIn('status', ['Completed', 'Cancelled', 'No-Show'])
             ->orderBy('scheduled_date')->orderBy('scheduled_time')->first();
 
-        $history = Appointment::with('provider.user:id,name')
+        $history = Appointment::with($dashboardRelations)
             ->where('patient_id', $patientId)
             ->where('status', 'Completed')
             ->orderBy('scheduled_date', 'desc')
@@ -123,7 +130,11 @@ Route::middleware('auth')->group(function () {
 
         // The patient dashboard expects a flattened shape (date/time/doctor),
         // not the raw model with scheduled_* columns and the provider relation.
+        // Prescriptions use the same field names as the doctor's prescription
+        // builder so adherence, interaction checks and notifications keep working.
         $shape = function (Appointment $appointment): array {
+            $encounter = $appointment->encounter;
+
             return [
                 'id' => $appointment->id,
                 'patient_id' => $appointment->patient_id,
@@ -131,7 +142,26 @@ Route::middleware('auth')->group(function () {
                 'time' => $appointment->scheduled_time,
                 'status' => $appointment->status,
                 'service_type' => $appointment->service_type,
-                'prescriptions' => [],
+                'prescriptions' => ($encounter?->prescriptions ?? collect())
+                    ->map(fn (Prescription $prescription): array => [
+                        'id' => $prescription->id,
+                        'medicine' => $prescription->medication_name,
+                        'dosage' => $prescription->dosage,
+                        'frequency' => $prescription->frequency,
+                        'duration' => $prescription->duration_days
+                            ? $prescription->duration_days.' days'
+                            : ($prescription->end_date
+                                ? 'Until '.$prescription->end_date->format('M j, Y')
+                                : 'Ongoing'),
+                        'instructions' => $prescription->instructions,
+                        'startDate' => $prescription->start_date?->toDateString(),
+                        'endDate' => $prescription->end_date?->toDateString(),
+                        'prescribedBy' => $appointment->provider?->user?->name,
+                        'prescribedAt' => $prescription->created_at?->toDateString(),
+                    ])
+                    ->values()
+                    ->all(),
+                'ai_summary' => $encounter?->soapNote?->ai_summary,
                 'doctor' => $appointment->provider?->user ? [
                     'id' => $appointment->provider->user->id,
                     'name' => $appointment->provider->user->name,

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import LogoutButton from '@/components/LogoutButton.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/AuthLayout.vue';
@@ -38,9 +37,9 @@ defineProps<{
             </Button>
 
             <LogoutButton>
-                <TextLink as="button" class="mx-auto block text-sm">
+                <button type="button" class="mx-auto block text-sm underline">
                     Log out
-                </TextLink>
+                </button>
             </LogoutButton>
         </Form>
     </AuthLayout>

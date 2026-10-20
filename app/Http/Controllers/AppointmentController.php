@@ -6,6 +6,7 @@ use App\Events\AppointmentRescheduled;
 use App\Events\AppointmentStatusChanged;
 use App\Events\ConsultationCompleted;
 use App\Events\QueueUpdated;
+use App\Events\RescheduleDenied;
 use App\Events\RescheduleRequested;
 use App\Models\AmbulatoryBloodPressureMonitoring;
 use App\Models\Appointment;
@@ -31,6 +32,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -96,17 +98,26 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $providerId = self::autoAssignDoctor($request->date, $request->time);
+        // Lock every provider working this slot, then re-run availability
+        // inside the lock. Without this, two simultaneous bookings can both
+        // pass the check and claim the same doctor.
+        [$providerId, $appointment] = DB::transaction(function () use ($request, $patient) {
+            $this->lockProvidersForSlot($request->date, $request->time);
 
-        $appointment = Appointment::create([
-            'patient_id' => $patient->id,
-            'provider_id' => $providerId,
-            'scheduled_date' => $request->date,
-            'scheduled_time' => $request->time,
-            'duration_minutes' => $this->getDurationMinutes($patient->id),
-            'service_type' => $request->service,
-            'status' => 'Scheduled',
-        ]);
+            $providerId = self::autoAssignDoctor($request->date, $request->time);
+
+            $appointment = Appointment::create([
+                'patient_id' => $patient->id,
+                'provider_id' => $providerId,
+                'scheduled_date' => $request->date,
+                'scheduled_time' => $request->time,
+                'duration_minutes' => $this->getDurationMinutes($patient->id),
+                'service_type' => $request->service,
+                'status' => 'Scheduled',
+            ]);
+
+            return [$providerId, $appointment];
+        });
 
         // Sync to Google Calendar
         $event = $this->calendar->createEvent($appointment);
@@ -228,7 +239,26 @@ class AppointmentController extends Controller
             'status' => 'required|string|in:Scheduled,Pending,Approved,Cancelled,No-Show,Completed,In Progress,Reschedule Requested',
         ]);
 
-        $appointment->update(['status' => $validated['status']]);
+        // Reviving a cancelled appointment must not land on a slot that has
+        // since been booked by someone else.
+        if ($appointment->status === 'Cancelled' && $validated['status'] !== 'Cancelled') {
+            $date = $appointment->scheduled_date->format('Y-m-d');
+            $time = $appointment->scheduled_time;
+
+            DB::transaction(function () use ($appointment, $validated, $date, $time) {
+                $this->lockProvidersForSlot($date, $time, $appointment->provider_id);
+
+                if ($this->slotTaken($appointment->provider_id, $date, $time, $appointment->id)) {
+                    throw ValidationException::withMessages([
+                        'status' => 'This appointment cannot be reactivated — another appointment now occupies that slot.',
+                    ]);
+                }
+
+                $appointment->update(['status' => $validated['status']]);
+            });
+        } else {
+            $appointment->update(['status' => $validated['status']]);
+        }
 
         // Reflect new status on the Google Calendar event
         $this->calendar->updateStatus($appointment);
@@ -289,50 +319,50 @@ class AppointmentController extends Controller
             }
         }
 
-        $conflict = Appointment::where('provider_id', $request->doctor_id)
-            ->whereDate('scheduled_date', $request->date)
-            ->whereTime('scheduled_time', $request->time)
-            ->whereNotIn('status', ['Cancelled', 'No-Show'])
-            ->exists();
+        $appointment = DB::transaction(function () use ($request) {
+            $doctorId = (int) $request->doctor_id;
 
-        if ($conflict) {
-            throw ValidationException::withMessages([
-                'time' => 'This doctor already has an appointment at this time.',
+            $this->lockProvidersForSlot($request->date, $request->time, $doctorId);
+
+            if ($this->slotTaken($doctorId, $request->date, $request->time)) {
+                throw ValidationException::withMessages([
+                    'time' => 'This doctor already has an appointment at this time.',
+                ]);
+            }
+
+            // Use a cryptographically random suffix to prevent email collisions
+            $generatedEmail = strtolower(str_replace(' ', '', $request->name))
+                .'_'.Str::random(10)
+                .'@walkin.clinic.com';
+
+            $patient = User::create([
+                'name' => $request->name,
+                'email' => $generatedEmail,
+                'password' => Hash::make(Str::random(16)), // random password — walk-ins log in via receptionist
+                'role' => 'patient',
+                'status' => 'Walk-in Register',
             ]);
-        }
 
-        // Use a cryptographically random suffix to prevent email collisions
-        $generatedEmail = strtolower(str_replace(' ', '', $request->name))
-            .'_'.Str::random(10)
-            .'@walkin.clinic.com';
+            // Walk-in demographics belong to the normalized patients table.
+            // DOB is approximated from the declared age (YYYY-MM-DD of N years ago).
+            $patientRecord = Patient::create([
+                'user_id' => $patient->id,
+                'date_of_birth' => now()->subYears($request->age)->toDateString(),
+                'sex' => $request->gender,
+                'contact_phone' => $request->phone,
+            ]);
 
-        $patient = User::create([
-            'name' => $request->name,
-            'email' => $generatedEmail,
-            'password' => Hash::make(Str::random(16)), // random password — walk-ins log in via receptionist
-            'role' => 'patient',
-            'status' => 'Walk-in Register',
-        ]);
-
-        // Walk-in demographics belong to the normalized patients table.
-        // DOB is approximated from the declared age (YYYY-MM-DD of N years ago).
-        $patientRecord = Patient::create([
-            'user_id' => $patient->id,
-            'date_of_birth' => now()->subYears($request->age)->toDateString(),
-            'sex' => $request->gender,
-            'contact_phone' => $request->phone,
-        ]);
-
-        $appointment = Appointment::create([
-            'patient_id' => $patientRecord->id,
-            'provider_id' => $request->doctor_id,
-            'scheduled_date' => $request->date,
-            'scheduled_time' => $request->time,
-            'duration_minutes' => $this->getDurationMinutes($patientRecord->id),
-            'service_type' => $request->service_type,
-            'status' => 'Pending',
-            'notes' => 'Age: '.$request->age.' | Gender: '.$request->gender.' | Phone: '.$request->phone,
-        ]);
+            return Appointment::create([
+                'patient_id' => $patientRecord->id,
+                'provider_id' => $doctorId,
+                'scheduled_date' => $request->date,
+                'scheduled_time' => $request->time,
+                'duration_minutes' => $this->getDurationMinutes($patientRecord->id),
+                'service_type' => $request->service_type,
+                'status' => 'Pending',
+                'notes' => 'Age: '.$request->age.' | Gender: '.$request->gender.' | Phone: '.$request->phone,
+            ]);
+        });
 
         // Sync to Google Calendar
         $event = $this->calendar->createEvent($appointment);
@@ -406,27 +436,27 @@ class AppointmentController extends Controller
             }
         }
 
-        $conflict = Appointment::where('provider_id', $request->doctor_id)
-            ->whereDate('scheduled_date', $request->date)
-            ->whereTime('scheduled_time', $request->time)
-            ->whereNotIn('status', ['Cancelled', 'No-Show'])
-            ->exists();
+        $appointment = DB::transaction(function () use ($request) {
+            $doctorId = (int) $request->doctor_id;
 
-        if ($conflict) {
-            throw ValidationException::withMessages([
-                'time' => 'This doctor already has an appointment at this time.',
+            $this->lockProvidersForSlot($request->date, $request->time, $doctorId);
+
+            if ($this->slotTaken($doctorId, $request->date, $request->time)) {
+                throw ValidationException::withMessages([
+                    'time' => 'This doctor already has an appointment at this time.',
+                ]);
+            }
+
+            return Appointment::create([
+                'patient_id' => $request->patient_id,
+                'provider_id' => $doctorId,
+                'scheduled_date' => $request->date,
+                'scheduled_time' => $request->time,
+                'duration_minutes' => $this->getDurationMinutes($request->patient_id),
+                'service_type' => $request->service_type,
+                'status' => 'Pending',
             ]);
-        }
-
-        $appointment = Appointment::create([
-            'patient_id' => $request->patient_id,
-            'provider_id' => $request->doctor_id,
-            'scheduled_date' => $request->date,
-            'scheduled_time' => $request->time,
-            'duration_minutes' => $this->getDurationMinutes($request->patient_id),
-            'service_type' => $request->service_type,
-            'status' => 'Pending',
-        ]);
+        });
 
         // Sync to Google Calendar
         $event = $this->calendar->createEvent($appointment);
@@ -999,6 +1029,61 @@ class AppointmentController extends Controller
     }
 
     /**
+     * Serialize bookings for a date/time slot by taking row locks on the
+     * providers who work it. Two reception desks booking the same doctor at
+     * the same moment otherwise both pass the conflict check and insert a
+     * double booking. Locks are taken in provider-id order so concurrent
+     * multi-provider bookings cannot deadlock each other. Bookings for other
+     * doctors or other times lock different rows and stay parallel.
+     */
+    private function lockProvidersForSlot(string $date, string $time, ?int $providerId = null): void
+    {
+        if ($providerId !== null) {
+            Provider::whereKey($providerId)->lockForUpdate()->first();
+
+            return;
+        }
+
+        $dayInt = Carbon::parse($date)->dayOfWeekIso;
+
+        $providerIds = DoctorSchedule::whereJsonContains('day_of_week', $dayInt)
+            ->whereTime('start_time', '<=', $time)
+            ->whereTime('end_time', '>', $time)
+            ->orderBy('provider_id')
+            ->pluck('provider_id')
+            ->unique()
+            ->values();
+
+        if ($providerIds->isEmpty()) {
+            return;
+        }
+
+        Provider::whereIn('id', $providerIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    /**
+     * True when the provider already has a live appointment in the slot.
+     * Must be called while holding the provider lock from
+     * lockProvidersForSlot() for the check and the write to be safe.
+     */
+    private function slotTaken(
+        int $providerId,
+        string $date,
+        string $time,
+        ?int $ignoreAppointmentId = null,
+    ): bool {
+        return Appointment::where('provider_id', $providerId)
+            ->whereDate('scheduled_date', $date)
+            ->whereTime('scheduled_time', $time)
+            ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '!=', $ignoreAppointmentId))
+            ->whereNotIn('status', ['Cancelled', 'No-Show'])
+            ->exists();
+    }
+
+    /**
      * Broadcast the current queue to a doctor's WebSocket channel.
      * The channel is keyed by the provider's user id (matches the doctor's
      * authenticated user), while the query is provider-scoped.
@@ -1323,7 +1408,21 @@ class AppointmentController extends Controller
 
         $request->validate(['doctor_id' => 'required|exists:providers,id']);
 
-        $appointment->update(['provider_id' => $request->doctor_id]);
+        $doctorId = (int) $request->doctor_id;
+        $date = $appointment->scheduled_date->format('Y-m-d');
+        $time = $appointment->scheduled_time;
+
+        DB::transaction(function () use ($appointment, $doctorId, $date, $time) {
+            $this->lockProvidersForSlot($date, $time, $doctorId);
+
+            if ($this->slotTaken($doctorId, $date, $time, $appointment->id)) {
+                throw ValidationException::withMessages([
+                    'doctor_id' => 'That doctor already has an appointment at this time.',
+                ]);
+            }
+
+            $appointment->update(['provider_id' => $doctorId]);
+        });
 
         // Update the Google Calendar event to reflect the new doctor
         $this->calendar->updateEvent($appointment);
@@ -1524,27 +1623,28 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Verify the requested slot has no appointment conflict
-        $conflict = Appointment::where('provider_id', $appointment->provider_id)
-            ->whereDate('scheduled_date', $appointment->reschedule_requested_date)
-            ->whereTime('scheduled_time', $appointment->reschedule_requested_time)
-            ->where('id', '!=', $appointment->id)
-            ->whereNotIn('status', ['Cancelled', 'No-Show', 'Reschedule Requested'])
-            ->exists();
+        // Verify and move inside a provider lock so a simultaneous booking
+        // cannot claim the requested slot between the check and the update.
+        DB::transaction(function () use ($appointment) {
+            $requestedDate = $appointment->reschedule_requested_date->format('Y-m-d');
+            $requestedTime = $appointment->reschedule_requested_time;
 
-        if ($conflict) {
-            return back()->withErrors([
-                'time' => 'This slot is already taken. Please deny the request and ask the patient to choose another time.',
+            $this->lockProvidersForSlot($requestedDate, $requestedTime, $appointment->provider_id);
+
+            if ($this->slotTaken($appointment->provider_id, $requestedDate, $requestedTime, $appointment->id)) {
+                throw ValidationException::withMessages([
+                    'time' => 'This slot is already taken. Please deny the request and ask the patient to choose another time.',
+                ]);
+            }
+
+            $appointment->update([
+                'scheduled_date' => $appointment->reschedule_requested_date,
+                'scheduled_time' => $appointment->reschedule_requested_time,
+                'status' => 'Scheduled',
+                'reschedule_requested_date' => null,
+                'reschedule_requested_time' => null,
             ]);
-        }
-
-        $appointment->update([
-            'scheduled_date' => $appointment->reschedule_requested_date,
-            'scheduled_time' => $appointment->reschedule_requested_time,
-            'status' => 'Scheduled',
-            'reschedule_requested_date' => null,
-            'reschedule_requested_time' => null,
-        ]);
+        });
 
         $this->calendar->updateEvent($appointment);
 
@@ -1554,7 +1654,9 @@ class AppointmentController extends Controller
         ]);
 
         $appointment->refresh();
+        event(new AppointmentRescheduled($appointment));
         event(new AppointmentStatusChanged($appointment));
+        $this->broadcastQueueUpdated($appointment->provider_id);
 
         return back()->with('success', 'Reschedule approved — appointment updated.');
     }
@@ -1591,26 +1693,23 @@ class AppointmentController extends Controller
             return back()->with('success', 'Schedule remained the same.');
         }
 
-        $conflict = Appointment::where('provider_id', $appointment->provider_id)
-            ->whereDate('scheduled_date', $request->date)
-            ->whereTime('scheduled_time', $requestTime)
-            ->whereNotIn('status', ['Cancelled', 'No-Show'])
-            ->where('id', '!=', $appointment->id)
-            ->exists();
+        DB::transaction(function () use ($appointment, $request, $requestTime) {
+            $this->lockProvidersForSlot($request->date, $requestTime, $appointment->provider_id);
 
-        if ($conflict) {
-            throw ValidationException::withMessages([
-                'time' => 'The doctor already has an appointment at this time.',
+            if ($this->slotTaken($appointment->provider_id, $request->date, $requestTime, $appointment->id)) {
+                throw ValidationException::withMessages([
+                    'time' => 'The doctor already has an appointment at this time.',
+                ]);
+            }
+
+            $appointment->update([
+                'scheduled_date' => $request->date,
+                'scheduled_time' => $requestTime,
+                'status' => 'Scheduled',
+                'reschedule_requested_date' => null,
+                'reschedule_requested_time' => null,
             ]);
-        }
-
-        $appointment->update([
-            'scheduled_date' => $request->date,
-            'scheduled_time' => $requestTime,
-            'status' => 'Scheduled',
-            'reschedule_requested_date' => null,
-            'reschedule_requested_time' => null,
-        ]);
+        });
 
         $this->calendar->updateEvent($appointment);
 
@@ -1649,6 +1748,7 @@ class AppointmentController extends Controller
 
         $appointment->refresh();
         event(new AppointmentStatusChanged($appointment));
+        event(new RescheduleDenied($appointment));
 
         return back()->with('success', 'Reschedule request denied. The original schedule is kept.');
     }
@@ -1661,30 +1761,27 @@ class AppointmentController extends Controller
             'time' => 'required',
         ]);
 
-        // C3 FIX: conflict check — same as storeManual / storeReturning
-        $conflict = Appointment::where('provider_id', $appointment->provider_id)
-            ->whereDate('scheduled_date', $request->date)
-            ->whereTime('scheduled_time', $request->time)
-            ->whereNotIn('status', ['Cancelled', 'No-Show'])
-            ->exists();
+        $followUp = DB::transaction(function () use ($request, $appointment) {
+            $this->lockProvidersForSlot($request->date, $request->time, $appointment->provider_id);
 
-        if ($conflict) {
-            throw ValidationException::withMessages([
-                'time' => 'The doctor already has an appointment at this time. Please choose a different slot.',
+            if ($this->slotTaken($appointment->provider_id, $request->date, $request->time)) {
+                throw ValidationException::withMessages([
+                    'time' => 'The doctor already has an appointment at this time. Please choose a different slot.',
+                ]);
+            }
+
+            return Appointment::create([
+                'patient_id' => $appointment->patient_id,
+                'provider_id' => $appointment->provider_id,
+                'scheduled_date' => $request->date,
+                'scheduled_time' => $request->time,
+                'duration_minutes' => 30,
+                'service_type' => 'Consultation',
+                'status' => 'Scheduled',
+                'notes' => 'Follow-up from consultation on '.
+                                      Carbon::parse($appointment->scheduled_date)->format('M d, Y'),
             ]);
-        }
-
-        $followUp = Appointment::create([
-            'patient_id' => $appointment->patient_id,
-            'provider_id' => $appointment->provider_id,
-            'scheduled_date' => $request->date,
-            'scheduled_time' => $request->time,
-            'duration_minutes' => 30,
-            'service_type' => 'Consultation',
-            'status' => 'Scheduled',
-            'notes' => 'Follow-up from consultation on '.
-                                  Carbon::parse($appointment->scheduled_date)->format('M d, Y'),
-        ]);
+        });
 
         $event = $this->calendar->createEvent($followUp);
         if ($event) {
@@ -1724,15 +1821,23 @@ class AppointmentController extends Controller
             return back()->with('success', 'Schedule remained the same.');
         }
 
-        // M1 FIX: delegate to autoAssignDoctor instead of duplicating logic
-        $providerId = self::autoAssignDoctor($request->date, $request->time);
+        // Lock every provider working the new slot before re-running
+        // auto-assignment, so two simultaneous reschedules cannot claim the
+        // same doctor.
+        $providerId = DB::transaction(function () use ($request, $appointment) {
+            $this->lockProvidersForSlot($request->date, $request->time);
 
-        $appointment->update([
-            'scheduled_date' => $request->date,
-            'scheduled_time' => $request->time,
-            'provider_id' => $providerId,
-            'status' => 'Scheduled',
-        ]);
+            $providerId = self::autoAssignDoctor($request->date, $request->time);
+
+            $appointment->update([
+                'scheduled_date' => $request->date,
+                'scheduled_time' => $request->time,
+                'provider_id' => $providerId,
+                'status' => 'Scheduled',
+            ]);
+
+            return $providerId;
+        });
 
         $this->calendar->updateEvent($appointment);
 
@@ -1742,6 +1847,7 @@ class AppointmentController extends Controller
         ]);
 
         $appointment->refresh();
+        event(new AppointmentRescheduled($appointment));
         event(new AppointmentStatusChanged($appointment));
         $this->broadcastQueueUpdated($appointment->provider_id);
 
