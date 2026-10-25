@@ -24,9 +24,9 @@ defineProps<{
                 :href="home()"
                 class="flex items-center gap-2 self-center font-medium"
             >
-                <img 
-                    src="/logo.png" 
-                    alt="CardioCare Logo" 
+                <img
+                    src="/logo.png"
+                    alt="CardioCare Logo"
                     class="h-9 w-9 object-contain"
                 />
                 <span class="text-sm font-bold text-[#0f8c8e]">CardioCare</span>

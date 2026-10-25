@@ -12,12 +12,20 @@ class ProfileController extends Controller
     /** Show the current user's profile page. */
     public function show()
     {
+        $user = Auth::user();
+
         return inertia('Profile', [
-            'user' => Auth::user(),
+            'user' => array_merge($user->toArray(), [
+                'age' => $user->patient?->age,
+                'date_of_birth' => $user->patient?->date_of_birth?->toDateString(),
+                'sex' => $user->patient?->sex,
+                'contact' => $user->patient?->contact_phone,
+                'specialty' => $user->provider?->specialty,
+            ]),
         ]);
     }
 
-    /** Update name, age, sex, contact, email. */
+    /** Update name, date of birth, sex, contact, email. */
     public function update(Request $request)
     {
         $user = Auth::user();
@@ -25,7 +33,7 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,'.$user->id,
-            'age' => 'nullable|integer|min:1|max:130',
+            'date_of_birth' => 'nullable|date|before_or_equal:today',
             'sex' => 'nullable|string|in:Male,Female',
             'contact' => 'nullable|string|max:30',
             'specialty' => 'nullable|string|max:255',
@@ -41,8 +49,8 @@ class ProfileController extends Controller
             $patient = $user->patient;
             $patient->sex = $validated['sex'] ?? $patient->sex;
             $patient->contact_phone = $validated['contact'] ?? $patient->contact_phone;
-            if ($validated['age'] !== null) {
-                $patient->date_of_birth = now()->subYears((int) $validated['age']);
+            if (array_key_exists('date_of_birth', $validated)) {
+                $patient->date_of_birth = $validated['date_of_birth'];
             }
             $patient->save();
         }

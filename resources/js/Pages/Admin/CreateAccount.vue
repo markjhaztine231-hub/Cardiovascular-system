@@ -159,21 +159,18 @@
                                     <div>
                                         <label
                                             class="mb-1.5 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
-                                            >Age</label
+                                            >Date of Birth</label
                                         >
                                         <input
-                                            type="number"
-                                            v-model="form.age"
-                                            min="1"
-                                            max="130"
-                                            placeholder="e.g. 35"
+                                            type="date"
+                                            v-model="form.date_of_birth"
                                             class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                         />
                                         <p
-                                            v-if="form.errors.age"
+                                            v-if="form.errors.date_of_birth"
                                             class="mt-1 text-xs font-bold text-red-500"
                                         >
-                                            {{ form.errors.age }}
+                                            {{ form.errors.date_of_birth }}
                                         </p>
                                     </div>
                                     <div>
@@ -278,7 +275,7 @@ const form = useForm({
     password: '',
     role: '',
     specialty: '',
-    age: null as number | null,
+    date_of_birth: null as string | null,
     sex: '' as string,
 });
 
@@ -286,7 +283,14 @@ const submitUser = () => {
     form.post('/admin/users', {
         preserveState: true,
         onSuccess: () => {
-            form.reset('name', 'email', 'password', 'specialty', 'age', 'sex');
+            form.reset(
+                'name',
+                'email',
+                'password',
+                'specialty',
+                'date_of_birth',
+                'sex',
+            );
             form.role = '';
         },
     });

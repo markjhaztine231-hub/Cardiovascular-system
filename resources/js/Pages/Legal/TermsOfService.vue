@@ -75,9 +75,7 @@
                     </div>
                 </dl>
 
-                <p
-                    class="mt-4 text-xs text-gray-500 dark:text-gray-400"
-                >
+                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
                     Version {{ version }}
                 </p>
             </div>
@@ -86,8 +84,13 @@
             <div
                 class="mt-6 border border-gray-100 bg-white px-6 py-8 shadow-xl shadow-gray-200/50 sm:rounded-2xl sm:px-10 dark:border-gray-700 dark:bg-gray-800 dark:shadow-none"
             >
-                <div class="space-y-4 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                    <template v-for="(block, index) in terms.blocks" :key="index">
+                <div
+                    class="space-y-4 text-sm leading-relaxed text-gray-700 dark:text-gray-300"
+                >
+                    <template
+                        v-for="(block, index) in terms.blocks"
+                        :key="index"
+                    >
                         <h2
                             v-if="block.type === 'section'"
                             class="pt-4 text-lg font-bold text-gray-900 dark:text-white"
@@ -203,15 +206,33 @@ defineProps<{
  */
 function titleCase(value: string): string {
     const small = [
-        'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor',
-        'of', 'on', 'or', 'per', 'the', 'to', 'via', 'vs',
+        'a',
+        'an',
+        'and',
+        'as',
+        'at',
+        'but',
+        'by',
+        'for',
+        'in',
+        'nor',
+        'of',
+        'on',
+        'or',
+        'per',
+        'the',
+        'to',
+        'via',
+        'vs',
     ];
 
     return value
         .toLowerCase()
         .split(/\s+/)
         .map((word, index) =>
-            index > 0 && small.includes(word) ? word : word.charAt(0).toUpperCase() + word.slice(1),
+            index > 0 && small.includes(word)
+                ? word
+                : word.charAt(0).toUpperCase() + word.slice(1),
         )
         .join(' ');
 }

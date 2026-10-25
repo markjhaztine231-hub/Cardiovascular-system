@@ -144,8 +144,8 @@ class AuthController extends Controller
                     ->symbols()
                     ->uncompromised(),
             ],
-            // Demographics (sobriety of patients; dob approximated from age like storeManual)
-            'age' => ['nullable', 'integer', 'min:0', 'max:150'],
+            // Demographics
+            'date_of_birth' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'sex' => ['nullable', 'string', 'in:Male,Female'],
 
             // 🔒 LEGAL FIX: Section 1.2 of the Agreement makes the checked box
@@ -168,12 +168,9 @@ class AuthController extends Controller
         // auth-only users table: patient demographics live on the patients record
         Patient::create([
             'user_id' => $user->id,
-            // `$validated` only carries keys that were actually present in the
-            // request, so a client that omits age/sex entirely (rather than
-            // sending null) would otherwise raise an undefined-array-key error.
-            'date_of_birth' => ($validated['age'] ?? null) !== null
-                ? now()->subYears((int) $validated['age'])
-                : null,
+            // Only keys present in the request reach `$validated`, so an
+            // omitted date of birth must not raise an undefined-key error.
+            'date_of_birth' => $validated['date_of_birth'] ?? null,
             'sex' => $validated['sex'] ?? null,
         ]);
 

@@ -92,26 +92,25 @@
                         </p>
                     </div>
 
-                    <!-- Row 2: Age & Gender -->
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <!-- Row 2: Date of Birth & Gender -->
+                    <div v-if="!isProcedureOnly" class="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div>
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Age</label
+                                >Date of Birth</label
                             >
                             <input
-                                type="number"
-                                v-model="form.age"
-                                placeholder="e.g. 25"
-                                min="1"
+                                type="date"
+                                v-model="form.date_of_birth"
+                                :max="today"
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-                                required
+                                :required="!isProcedureOnly"
                             />
                             <p
-                                v-if="form.errors.age"
+                                v-if="form.errors.date_of_birth"
                                 class="mt-1 text-xs font-bold text-red-500"
                             >
-                                {{ form.errors.age }}
+                                {{ form.errors.date_of_birth }}
                             </p>
                         </div>
                         <div>
@@ -122,7 +121,7 @@
                             <select
                                 v-model="form.gender"
                                 class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-                                required
+                                :required="!isProcedureOnly"
                             >
                                 <option value="" disabled>Select Sex</option>
                                 <option value="Male">Male</option>
@@ -139,7 +138,7 @@
 
                     <!-- Row 3: Phone & Doctor -->
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div>
+                        <div v-if="!isProcedureOnly">
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
                                 >Phone Number</label
@@ -149,7 +148,7 @@
                                 v-model="form.phone"
                                 placeholder="0917..."
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-                                required
+                                :required="!isProcedureOnly"
                             />
                             <p
                                 v-if="form.errors.phone"
@@ -360,7 +359,7 @@ const minTime = computed((): string =>
 
 const form = useForm({
     name: '',
-    age: '',
+    date_of_birth: '',
     gender: '',
     phone: '',
     doctor_id: '',
@@ -368,6 +367,8 @@ const form = useForm({
     date: today.value, // Auto-selects today for walk-ins
     time: '', // Receptionist must pick a future slot
 });
+
+const isProcedureOnly = computed(() => form.service_type === 'Procedure');
 
 const submit = () => {
     if (isTodayBooking.value && form.time) {

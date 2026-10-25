@@ -37,7 +37,7 @@ class AppointmentDoubleBookingTest extends TestCase
         $this->actingAs($receptionist)
             ->post(route('appointments.manual'), [
                 'name' => 'Walk In Two',
-                'age' => 41,
+                'date_of_birth' => '1985-03-15',
                 'gender' => 'Female',
                 'phone' => '09171234567',
                 'doctor_id' => $doctorTwo->id,
@@ -52,6 +52,12 @@ class AppointmentDoubleBookingTest extends TestCase
             'scheduled_date' => $date,
             'status' => 'Pending',
         ]);
+
+        $this->assertDatabaseHas('patients', [
+            'date_of_birth' => '1985-03-15',
+            'sex' => 'Female',
+            'contact_phone' => '09171234567',
+        ]);
     }
 
     public function test_walk_in_cannot_take_a_slot_already_held_by_the_same_doctor(): void
@@ -65,7 +71,7 @@ class AppointmentDoubleBookingTest extends TestCase
         $this->actingAs($receptionist)
             ->post(route('appointments.manual'), [
                 'name' => 'Walk In Clash',
-                'age' => 30,
+                'date_of_birth' => '1996-06-15',
                 'gender' => 'Male',
                 'phone' => '09170000000',
                 'doctor_id' => $provider->id,

@@ -103,31 +103,28 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label
-                                for="age"
+                                for="date_of_birth"
                                 class="block text-sm font-medium text-gray-700 dark:text-gray-300"
                             >
-                                Age
+                                Date of Birth
                             </label>
                             <div class="mt-1">
                                 <input
-                                    id="age"
-                                    v-model="form.age"
-                                    type="number"
-                                    min="0"
-                                    max="150"
-                                    placeholder="Age"
+                                    id="date_of_birth"
+                                    v-model="form.date_of_birth"
+                                    type="date"
                                     class="block w-full appearance-none rounded-xl border border-gray-300 px-3 py-2.5 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                                     :class="{
                                         'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500':
-                                            form.errors.age,
+                                            form.errors.date_of_birth,
                                     }"
                                 />
                             </div>
                             <p
-                                v-if="form.errors.age"
+                                v-if="form.errors.date_of_birth"
                                 class="mt-2 text-sm text-red-600 dark:text-red-400"
                             >
-                                {{ form.errors.age }}
+                                {{ form.errors.date_of_birth }}
                             </p>
                         </div>
                         <div>
@@ -178,7 +175,10 @@
                                 class="block w-full appearance-none rounded-xl border border-gray-300 px-3 py-2.5 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none sm:text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                             />
                         </div>
-                        <PasswordRequirements :password="form.password" :min="12" />
+                        <PasswordRequirements
+                            :password="form.password"
+                            :min="12"
+                        />
                         <p
                             v-if="form.errors.password"
                             class="mt-2 text-sm text-red-600 dark:text-red-400"
@@ -212,7 +212,9 @@
                         </p>
                     </div>
 
-                    <div class="border-t border-gray-100 pt-6 dark:border-gray-700">
+                    <div
+                        class="border-t border-gray-100 pt-6 dark:border-gray-700"
+                    >
                         <div class="flex items-start">
                             <div class="flex h-5 shrink-0 items-center">
                                 <input
@@ -238,15 +240,14 @@
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="font-medium text-blue-600 underline transition-colors hover:text-blue-500 dark:text-blue-400"
-                                    >{{ terms.title }}</a
+                                        >{{ terms.title }}</a
                                     >
                                     <span class="text-red-500">*</span>
                                 </label>
                                 <p
                                     class="mt-1 text-xs text-gray-500 dark:text-gray-400"
                                 >
-                                    You must accept before creating
-                                    an account.
+                                    You must accept before creating an account.
                                 </p>
                                 <p
                                     v-if="form.errors.terms_accepted"
@@ -292,7 +293,9 @@
                         </button>
                     </div>
 
-                    <div class="text-center text-sm text-gray-600 dark:text-gray-400">
+                    <div
+                        class="text-center text-sm text-gray-600 dark:text-gray-400"
+                    >
                         Already have an account?
                         <Link
                             href="/login"
@@ -324,7 +327,7 @@ defineProps<{ terms: TermsMeta }>();
 const form = useForm({
     name: '',
     email: '',
-    age: '',
+    date_of_birth: '',
     sex: '',
     password: '',
     password_confirmation: '',

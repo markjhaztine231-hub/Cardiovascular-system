@@ -2110,7 +2110,7 @@ async function fetchAdherenceData(): Promise<void> {
         }
 
         const firstWithMeds = props.history.find(
-            (r) => r.prescriptions?.length,
+            (r: ConsultationRecord) => r.prescriptions?.length,
         );
 
         if (!firstWithMeds) {

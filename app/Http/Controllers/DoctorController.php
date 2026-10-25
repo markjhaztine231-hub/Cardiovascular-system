@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\Patient;
+use App\Models\Provider;
 use App\Models\User;
 use App\Support\ClinicalRecordMapper;
 use Carbon\Carbon;
@@ -34,11 +35,8 @@ class DoctorController extends Controller
             'patient.appointments' => function ($q) {
                 $q->where('status', 'Completed')
                     ->latest('scheduled_date')
-                    ->limit(5);  // ✅ Only last 5, not all
+                    ->limit(5);
             },
-            // Meds the patient is actually taking today: status active and the
-            // course window still open. Feeds the consultation interaction
-            // warnings, so expired/future courses must stay out.
             'patient.prescriptions' => function ($q) {
                 $q->where('status', 'active')
                     ->where(fn ($q) => $q->whereNull('start_date')->orWhereDate('start_date', '<=', today()))
@@ -50,20 +48,16 @@ class DoctorController extends Controller
             ->where('provider_id', $providerId)
             ->whereNotIn('status', ['Completed', 'No-Show'])
             ->orderBy('scheduled_time')
-            ->select([  // ✅ Only needed columns
+            ->select([
                 'id', 'patient_id', 'provider_id', 'scheduled_date',
                 'scheduled_time', 'service_type', 'status',
+                'reader_provider_id', 'reading_status', 'reading_date',
             ])
             ->get()
             ->map(function ($appt) {
                 return [
                     'id' => $appt->id,
                     'patient_id' => $appt->patient_id,
-                    // `patient_id` is the patients table PK, but the history and
-                    // analytics routes bind `User $patient`. The queue was
-                    // building those links from patient_id, so every "View
-                    // History" link on the dashboard resolved to a user that
-                    // does not exist and 404'd. Surface the user id too.
                     'patient_user_id' => $appt->patient?->user_id,
                     'time' => Carbon::parse($appt->scheduled_time)->format('h:i A'),
                     'name' => $appt->patient?->user?->anonymizedName() ?? 'Unknown',
@@ -79,12 +73,57 @@ class DoctorController extends Controller
                         ->all(),
                     'status' => $appt->status,
                     'history' => $appt->patient?->appointments,
+                    'reader_provider_id' => $appt->reader_provider_id,
+                    'reading_status' => $appt->reading_status,
+                    'reading_date' => $appt->reading_date?->toDateString(),
                 ];
             });
+
+        $readingQueue = Appointment::with([
+            'patient:id,user_id,allergies',
+            'patient.user:id,name',
+            'provider:id,user_id',
+            'provider.user:id,name',
+        ])
+            ->where('reader_provider_id', $providerId)
+            ->where('status', 'Completed')
+            ->where('reading_status', 'pending')
+            ->orderByRaw("COALESCE(reading_date, scheduled_date) ASC")
+            ->select([
+                'id', 'patient_id', 'provider_id', 'reader_provider_id', 'scheduled_date',
+                'scheduled_time', 'service_type', 'status', 'reading_status', 'reading_date',
+            ])
+            ->get()
+            ->map(function ($appt) {
+                return [
+                    'id' => $appt->id,
+                    'patient_id' => $appt->patient_id,
+                    'patient_user_id' => $appt->patient?->user_id,
+                    'scheduled_date' => $appt->scheduled_date?->toDateString(),
+                    'time' => $appt->scheduled_time ? Carbon::parse($appt->scheduled_time)->format('h:i A') : null,
+                    'name' => $appt->patient?->user?->anonymizedName() ?? 'Unknown',
+                    'service' => $appt->service_type,
+                    'status' => $appt->status,
+                    'reading_status' => $appt->reading_status,
+                    'reading_date' => $appt->reading_date?->toDateString(),
+                    'requested_by' => $appt->provider?->user?->name,
+                ];
+            });
+
+        $doctors = Provider::with('user:id,name')
+            ->whereHas('user')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Provider $p) => [
+                'id' => $p->id,
+                'name' => $p->user?->name ?? 'Unknown',
+            ]);
 
         return Inertia::render('Dashboard/Doctor', [
             'user' => Auth::user(),
             'queue' => $queue,
+            'readingQueue' => $readingQueue,
+            'doctors' => $doctors,
         ]);
     }
 

@@ -48,8 +48,8 @@
                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                 </svg>
-                Type 4 is a free-form note. Drag a scan from the Scans panel
-                (or drop an image file) to attach it, then draft the report.
+                Type 4 is a free-form note. Drag a scan from the Scans panel (or
+                drop an image file) to attach it, then draft the report.
             </div>
 
             <!-- Header Info -->
@@ -199,9 +199,12 @@ const manualDraftData = defineModel<ManualDraftData>('manualDraftData', {
     required: true,
 });
 
-const props = defineProps<{
-    patientName: string;
-}>();
+const props = defineProps({
+    patientName: {
+        type: String,
+        required: true,
+    },
+});
 
 function addImage(image: ManualDraftImage): void {
     if (!image.url) {
@@ -243,12 +246,9 @@ const exportToWord = () => {
         props.patientName,
         date,
     );
-    const blob = new Blob(
-        ['\ufeff', buildDocument('Manual Draft', bodyHtml)],
-        {
-            type: 'application/msword',
-        },
-    );
+    const blob = new Blob(['\ufeff', buildDocument('Manual Draft', bodyHtml)], {
+        type: 'application/msword',
+    });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `Manual_Draft_${props.patientName.replace(/\s+/g, '_')}.doc`;

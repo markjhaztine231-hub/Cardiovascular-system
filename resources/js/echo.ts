@@ -33,7 +33,8 @@ export function getEcho(): EchoChannel | null {
             wsHost: import.meta.env.VITE_REVERB_HOST as string,
             wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 3456),
             wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 3456),
-            forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+            forceTLS:
+                (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
             enabledTransports: ['ws', 'wss'],
         });
     }

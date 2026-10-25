@@ -233,7 +233,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/appointments/manual', [AppointmentController::class, 'storeManual'])->middleware('role:receptionist,admin')->name('appointments.manual');
     Route::get('/appointments/returning', [AppointmentController::class, 'createReturning'])->middleware('role:receptionist,admin')->name('appointments.returning');
     Route::post('/appointments/returning', [AppointmentController::class, 'storeReturning'])->middleware('role:receptionist,admin');
-    Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'completeConsultation'])->middleware('role:doctor')->name('appointments.complete');
+    Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'completeConsultation'])->middleware('role:doctor,receptionist,admin')->name('appointments.complete');
     Route::put('/appointments/{appointment}/transfer', [AppointmentController::class, 'transfer'])->middleware('role:receptionist,admin')->name('appointments.transfer');
     Route::put('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule'])->middleware('role:patient')->name('appointments.reschedule');
 
@@ -261,7 +261,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/appointments/{appointment}/study-data', [AppointmentController::class, 'showStudyData'])
         ->middleware('role:receptionist,doctor,admin')->name('study-data.show');
     Route::put('/appointments/{appointment}/study-data', [AppointmentController::class, 'storeStudyData'])
-        ->middleware('role:receptionist,admin')->name('study-data.update');
+        ->middleware('role:receptionist,doctor,admin')->name('study-data.update');
+    Route::put('/appointments/{appointment}/reading', [AppointmentController::class, 'assignReading'])
+        ->middleware('role:receptionist,doctor,admin')->name('appointments.reading');
 
     // --- DOCTOR CONSULTATION: patient + documents + history ---
     Route::get('/doctor/appointments/{appointment}/consultation', [DoctorConsultationController::class, 'show'])

@@ -403,18 +403,25 @@
 </template>
 
 <script setup lang="ts">
+import type { PropType } from 'vue';
 import type { DopplerData, EchoData } from '@/types/appointment';
 import { buildDocument, buildDopplerDocument } from '@/utils/docExport';
 
 const dopplerData = defineModel<DopplerData>('dopplerData', { required: true });
-const props = withDefaults(
-    defineProps<{
-        echoData: EchoData;
-        patientName: string;
-        restricted?: boolean;
-    }>(),
-    { restricted: false },
-);
+const props = defineProps({
+    echoData: {
+        type: Object as PropType<EchoData>,
+        required: true,
+    },
+    patientName: {
+        type: String,
+        required: true,
+    },
+    restricted: {
+        type: Boolean,
+        default: false,
+    },
+});
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

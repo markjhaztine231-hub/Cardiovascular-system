@@ -657,9 +657,9 @@ export const buildAbpmDocument = (
   </tr>
   <tr>
     <td style="border:none;" colspan="2"><b>Cuff Size:</b> ${v(data.cuff_size)}</td>
-    <td style="border:none;" colspan="2"><b>BP Medications:</b> ${v(
-        data.bp_medications,
-    ) || 'NONE'}</td>
+    <td style="border:none;" colspan="2"><b>BP Medications:</b> ${
+        v(data.bp_medications) || 'NONE'
+    }</td>
   </tr>
   <tr>
     <td style="border:none;"><b>Started:</b> ${v(data.start_date)} ${v(
@@ -768,7 +768,10 @@ export const buildStressEchoDocument = (
           : ''
   }
   ${
-      v(data.pre_bp) || v(data.pre_hr) || v(data.pre_ecg) || v(data.pre_symptoms)
+      v(data.pre_bp) ||
+      v(data.pre_hr) ||
+      v(data.pre_ecg) ||
+      v(data.pre_symptoms)
           ? `<tr><td style="border:none;" colspan="4"><b>Pre-Test:</b> BP: ${v(
                 data.pre_bp,
             )} &nbsp; HR: ${v(data.pre_hr)} &nbsp; Resting ECG: ${v(
@@ -796,11 +799,11 @@ ${(data.stages ?? [])
     .map(
         (s) => `<tr>
     <td>${v(s.stage)}</td><td>${v(s.time)}</td><td>${v(s.speed)}</td><td>${v(
-            s.grade,
-        )}</td>
+        s.grade,
+    )}</td>
     <td>${v(s.hr)}</td><td>${v(s.bp)}</td><td>${v(s.ecg)}</td><td>${v(
-            s.symptoms,
-        )}</td>
+        s.symptoms,
+    )}</td>
   </tr>`,
     )
     .join('')}

@@ -214,7 +214,9 @@
                             <tr
                                 class="bg-rose-50 text-[10px] font-bold text-rose-800 uppercase"
                             >
-                                <th class="border px-2 py-2 text-left">Stage</th>
+                                <th class="border px-2 py-2 text-left">
+                                    Stage
+                                </th>
                                 <th class="border px-2 py-2">Time (min)</th>
                                 <th class="border px-2 py-2">Speed</th>
                                 <th class="border px-2 py-2">Grade (%)</th>
@@ -317,7 +319,8 @@
                     v-else
                     class="rounded-lg border border-dashed border-rose-300 bg-rose-50/50 p-4 text-center text-[11px] text-gray-500"
                 >
-                    No stages yet. Click “+ Add Stage” to build the protocol grid.
+                    No stages yet. Click “+ Add Stage” to build the protocol
+                    grid.
                 </p>
             </div>
 
@@ -508,13 +511,16 @@ const stressEchoData = defineModel<StressEchoData>('stressEchoData', {
     required: true,
 });
 
-const props = withDefaults(
-    defineProps<{
-        patientName: string;
-        restricted?: boolean;
-    }>(),
-    { restricted: false },
-);
+const props = defineProps({
+    patientName: {
+        type: String,
+        required: true,
+    },
+    restricted: {
+        type: Boolean,
+        default: false,
+    },
+});
 
 function addStage(): void {
     stressEchoData.value.stages.push({

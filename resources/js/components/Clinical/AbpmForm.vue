@@ -236,7 +236,9 @@
                             <tr
                                 class="bg-emerald-50 text-[10px] font-bold text-emerald-800 uppercase"
                             >
-                                <th class="border px-2 py-2 text-left">Period</th>
+                                <th class="border px-2 py-2 text-left">
+                                    Period
+                                </th>
                                 <th class="border px-2 py-2">Mean SBP</th>
                                 <th class="border px-2 py-2">Mean DBP</th>
                                 <th class="border px-2 py-2">Mean HR</th>
@@ -246,9 +248,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td
-                                    class="border px-2 py-1.5 font-bold"
-                                >
+                                <td class="border px-2 py-1.5 font-bold">
                                     Daytime (Waking)
                                 </td>
                                 <td class="border px-1 py-1.5">
@@ -489,21 +489,20 @@ const abpmData = defineModel<AbpmData>('abpmData', {
     required: true,
 });
 
-const props = withDefaults(
-    defineProps<{
-        patientName: string;
-        restricted?: boolean;
-    }>(),
-    { restricted: false },
-);
+const props = defineProps({
+    patientName: {
+        type: String,
+        required: true,
+    },
+    restricted: {
+        type: Boolean,
+        default: false,
+    },
+});
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();
-    const bodyHtml = buildAbpmDocument(
-        abpmData.value,
-        props.patientName,
-        date,
-    );
+    const bodyHtml = buildAbpmDocument(abpmData.value, props.patientName, date);
     exportAsDocx(bodyHtml, `ABPM_${props.patientName.replace(/\s+/g, '_')}`);
 };
 </script>

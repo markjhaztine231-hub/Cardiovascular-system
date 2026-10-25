@@ -19,7 +19,10 @@ const vPreventDoubleClick: Directive<HTMLElement, number | undefined> = {
 
             CLICK_COOLDOWN.set(el, now);
 
-            if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) {
+            if (
+                el instanceof HTMLButtonElement ||
+                el instanceof HTMLInputElement
+            ) {
                 el.disabled = true;
                 requestAnimationFrame(() => {
                     setTimeout(() => {

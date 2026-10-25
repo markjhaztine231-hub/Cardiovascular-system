@@ -256,6 +256,12 @@ class ScanOcrWorkflowTest extends TestCase
         $this->assertTrue($row['scans_in_progress']);
         $this->assertSame('processing', $row['scans'][0]['ocr_status']);
         $this->assertSame('prescription', $row['scans'][0]['type']);
+        $this->assertSame($this->patient->mrn, $row['patient']['mrn']);
+        $this->assertSame($this->patient->contact_phone, $row['patient']['phone']);
+        $this->assertSame(
+            'PT-'.str_pad((string) $this->patient->user_id, 5, '0', STR_PAD_LEFT),
+            $row['patient']['system_id'],
+        );
     }
 
     public function test_receptionist_can_retry_a_failed_scan_without_re_uploading_it(): void

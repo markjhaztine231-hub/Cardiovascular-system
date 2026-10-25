@@ -85,6 +85,24 @@ class ManualDraftConsultationTest extends TestCase
             );
     }
 
+    public function test_consultation_completes_without_symptoms_or_vitals(): void
+    {
+        [$doctor, $provider, $patient, $appointment] = $this->makeAppointment();
+
+        $this->actingAs($doctor)
+            ->post(route('appointments.complete', $appointment), [
+                'diagnosis' => 'Routine checkup',
+            ])
+            ->assertRedirect();
+
+        $encounter = Encounter::where('appointment_id', $appointment->id)->first();
+        $this->assertNotNull($encounter);
+        $this->assertSame('', $encounter->chief_complaint);
+        $this->assertSame('', $encounter->soapNote?->subjective);
+        $this->assertSame('', $encounter->soapNote?->objective);
+        $this->assertSame(0, $encounter->vitalSigns()->count());
+    }
+
     public function test_type_4_consultation_clears_the_draft_when_not_selected(): void
     {
         [$doctor, $provider, $patient, $appointment] = $this->makeAppointment();

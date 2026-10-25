@@ -68,6 +68,7 @@ class AdminController extends Controller
                     'specialty' => $user->provider?->specialty ?? '',
                     'joined' => $user->created_at->format('M d, Y'),
                     'age' => $user->patient?->age,
+                    'date_of_birth' => $user->patient?->date_of_birth?->toDateString(),
                     'sex' => $user->patient?->sex,
                 ];
             });
@@ -115,7 +116,7 @@ class AdminController extends Controller
             ],
             'role' => ['required', Rule::in(['admin', 'receptionist', 'doctor', 'patient'])],
             'specialty' => ['nullable', 'string', 'max:255'],
-            'age' => ['nullable', 'integer', 'min:1', 'max:130'],
+            'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
             'sex' => ['nullable', 'string', 'in:Male,Female'],
         ]);
 
@@ -137,9 +138,7 @@ class AdminController extends Controller
         } elseif ($validated['role'] === 'patient') {
             Patient::create([
                 'user_id' => $newUser->id,
-                'date_of_birth' => $validated['age'] !== null
-                    ? now()->subYears((int) $validated['age'])
-                    : null,
+                'date_of_birth' => $validated['date_of_birth'] ?? null,
                 'sex' => $validated['sex'] ?? null,
             ]);
         }
@@ -165,7 +164,7 @@ class AdminController extends Controller
             'role' => ['required', Rule::in(['admin', 'receptionist', 'doctor', 'patient'])],
             'specialty' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8',
-            'age' => ['nullable', 'integer', 'min:1', 'max:130'],
+            'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
             'sex' => ['nullable', 'string', 'in:Male,Female'],
             'status' => ['nullable', 'string', 'in:Register,Walk-in Register,Active,Inactive,Suspended'],
         ]);
@@ -197,10 +196,10 @@ class AdminController extends Controller
             }
         } elseif ($validated['role'] === 'patient') {
             $patientUpdate = [];
-            if ($validated['age'] !== null) {
-                $patientUpdate['date_of_birth'] = now()->subYears((int) $validated['age']);
+            if (array_key_exists('date_of_birth', $validated)) {
+                $patientUpdate['date_of_birth'] = $validated['date_of_birth'];
             }
-            if ($validated['sex'] !== null) {
+            if (($validated['sex'] ?? null) !== null) {
                 $patientUpdate['sex'] = $validated['sex'];
             }
             if (! $user->patient) {

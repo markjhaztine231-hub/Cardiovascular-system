@@ -86,7 +86,10 @@
                                 }"
                             />
                         </div>
-                        <PasswordRequirements :password="form.password" :min="12" />
+                        <PasswordRequirements
+                            :password="form.password"
+                            :min="12"
+                        />
                         <p
                             v-if="form.errors.password"
                             class="mt-2 text-sm text-red-600 dark:text-red-400"

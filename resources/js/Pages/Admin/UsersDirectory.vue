@@ -272,11 +272,11 @@
                             <div>
                                 <label
                                     class="mb-1.5 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
-                                    >Age</label
+                                    >Date of Birth</label
                                 >
                                 <input
-                                    v-model="editForm.age"
-                                    type="number"
+                                    v-model="editForm.date_of_birth"
+                                    type="date"
                                     class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                                 />
                             </div>
@@ -423,7 +423,7 @@ const editForm = useForm({
     role: '',
     specialty: '',
     password: '',
-    age: null as number | null,
+    date_of_birth: '' as string,
     sex: '' as string,
     status: '' as string,
 });
@@ -435,7 +435,7 @@ const openEdit = (u: any) => {
     editForm.role = u.role;
     editForm.specialty = u.specialty || '';
     editForm.password = '';
-    editForm.age = u.age || null;
+    editForm.date_of_birth = u.date_of_birth || '';
     editForm.sex = u.sex || '';
     editForm.status = u.status || '';
 };

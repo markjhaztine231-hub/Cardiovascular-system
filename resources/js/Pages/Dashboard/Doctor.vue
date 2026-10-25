@@ -2021,9 +2021,11 @@
 </template>
 
 <script setup lang="ts">
+
 import { Link, useForm, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+import type { PropType } from 'vue';
 import AbpmForm from '@/components/Clinical/AbpmForm.vue';
 import DopplerForm from '@/components/Clinical/DopplerForm.vue';
 import EchoForm from '@/components/Clinical/EchoForm.vue';
@@ -2035,6 +2037,7 @@ import Toast from '@/components/Toast.vue';
 import { useModalA11y } from '@/composables/useModalA11y';
 import { useSidebar } from '@/composables/useSidebar';
 import { useToast } from '@/composables/useToast';
+
 import { getEcho } from '@/echo';
 
 const {
@@ -2045,6 +2048,7 @@ const {
     toggle,
     closeMobile,
 } = useSidebar('doctor');
+
 import type { ConsultForm, Appointment } from '@/types/appointment';
 import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
 import {
@@ -2056,9 +2060,50 @@ import {
 
 const { success: showSuccess, error: showError } = useToast();
 
+interface DoctorQueueItem {
+    id: number;
+    patient_id: number;
+    patient_user_id?: number;
+    time: string;
+    name: string;
+    service: string;
+    allergies?: string | null;
+    current_medications?: Array<{
+        medicine: string;
+        dosage: string | null;
+        frequency: string | null;
+    }>;
+    status: string;
+    history?: Array<any>;
+    reader_provider_id?: number | null;
+    reading_status?: string | null;
+    reading_date?: string | null;
+}
+
+interface ReadingQueueItem {
+    id: number;
+    patient_id: number;
+    patient_user_id?: number;
+    scheduled_date?: string | null;
+    time?: string | null;
+    name: string;
+    service: string;
+    status: string;
+    reading_status?: string | null;
+    reading_date?: string | null;
+    requested_by?: string | null;
+}
+
+interface DoctorOptionItem {
+    id: number;
+    name: string;
+}
+
 const props = defineProps({
     user: { type: Object, required: true },
-    queue: { type: Array<Appointment>, required: true },
+    queue: { type: Array as PropType<DoctorQueueItem[]>, required: true },
+    readingQueue: { type: Array as PropType<ReadingQueueItem[]>, default: () => [] as ReadingQueueItem[] },
+    doctors: { type: Array as PropType<DoctorOptionItem[]>, default: () => [] as DoctorOptionItem[] },
 });
 
 const nextPatient = computed(() =>

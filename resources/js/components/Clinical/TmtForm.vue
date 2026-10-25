@@ -447,14 +447,20 @@ import type { TMTData } from '@/types/appointment';
 import { buildDocument, buildTmtDocument } from '@/utils/docExport';
 
 const tmtData = defineModel<TMTData>('tmtData', { required: true });
-const props = withDefaults(
-    defineProps<{
-        echoSex: string;
-        patientName: string;
-        restricted?: boolean;
-    }>(),
-    { restricted: false },
-);
+const props = defineProps({
+    echoSex: {
+        type: String,
+        required: true,
+    },
+    patientName: {
+        type: String,
+        required: true,
+    },
+    restricted: {
+        type: Boolean,
+        default: false,
+    },
+});
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

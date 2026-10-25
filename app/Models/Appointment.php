@@ -13,6 +13,10 @@ class Appointment extends Model
     protected $fillable = [
         'patient_id',
         'provider_id',
+        'reader_provider_id',
+        'reading_date',
+        'reading_status',
+        'reading_completed_at',
         'scheduled_date',
         'scheduled_time',
         'duration_minutes',
@@ -30,6 +34,8 @@ class Appointment extends Model
     protected $casts = [
         'scheduled_date' => 'date',
         'reschedule_requested_date' => 'date',
+        'reading_date' => 'date',
+        'reading_completed_at' => 'datetime',
         'consultation_started_at' => 'datetime',
     ];
 
@@ -41,6 +47,20 @@ class Appointment extends Model
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);
+    }
+
+    public function readerProvider(): BelongsTo
+    {
+        return $this->belongsTo(Provider::class, 'reader_provider_id');
+    }
+
+    /**
+     * Only Procedure and Consultation and Procedure visits can be sent to a
+     * reading doctor. Plain consultations are completed by the attending doctor.
+     */
+    public function supportsReadingAssignment(): bool
+    {
+        return in_array($this->service_type, ['Procedure', 'Consultation and Procedure'], true);
     }
 
     public function encounter(): HasOne

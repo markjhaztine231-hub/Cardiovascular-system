@@ -237,7 +237,15 @@ class AppointmentController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|string|in:Scheduled,Pending,Approved,Cancelled,No-Show,Completed,In Progress,Reschedule Requested',
+            'reader_provider_id' => 'nullable|exists:providers,id',
+            'reading_date' => 'nullable|required_with:reader_provider_id|date',
         ]);
+
+        if (! empty($validated['reader_provider_id']) && ! $appointment->supportsReadingAssignment()) {
+            throw ValidationException::withMessages([
+                'reader_provider_id' => 'Only procedure appointments can be assigned to a reading doctor.',
+            ]);
+        }
 
         // Reviving a cancelled appointment must not land on a slot that has
         // since been booked by someone else.
@@ -260,6 +268,10 @@ class AppointmentController extends Controller
             $appointment->update(['status' => $validated['status']]);
         }
 
+        if ($validated['status'] === 'Completed') {
+            $this->applyReadingAssignment($appointment, $validated);
+        }
+
         // Reflect new status on the Google Calendar event
         $this->calendar->updateStatus($appointment);
 
@@ -274,6 +286,118 @@ class AppointmentController extends Controller
         $this->broadcastQueueUpdated($appointment->provider_id);
 
         return back()->with('success', 'Status updated successfully!');
+    }
+
+    /**
+     * Apply an optional reading assignment supplied while completing a visit.
+     * A missing reader leaves the appointment unchanged; selecting a reader
+     * always resets the reading back to pending.
+     */
+    private function applyReadingAssignment(Appointment $appointment, array $data): void
+    {
+        if (! array_key_exists('reader_provider_id', $data)) {
+            return;
+        }
+
+        if (empty($data['reader_provider_id'])) {
+            $appointment->update([
+                'reader_provider_id' => null,
+                'reading_date' => null,
+                'reading_status' => null,
+                'reading_completed_at' => null,
+            ]);
+
+            return;
+        }
+
+        $appointment->update([
+            'reader_provider_id' => $data['reader_provider_id'],
+            'reading_date' => $data['reading_date'] ?? null,
+            'reading_status' => 'pending',
+            'reading_completed_at' => null,
+        ]);
+    }
+
+    /**
+     * Assign, change, or complete the reading of a procedure result. The
+     * receptionist may complete the reading on behalf of doctors who work
+     * manually; a doctor may operate only on appointments they are involved in.
+     */
+    public function assignReading(Request $request, Appointment $appointment)
+    {
+        $user = Auth::user();
+
+        if (! in_array($user->role, ['receptionist', 'admin'], true)) {
+            $providerId = $user->provider?->id;
+            if ($providerId === null || ! in_array($providerId, [$appointment->provider_id, $appointment->reader_provider_id], true)) {
+                abort(403, 'This appointment is not assigned to you.');
+            }
+        }
+
+        if ($appointment->status !== 'Completed') {
+            throw ValidationException::withMessages([
+                'reading_date' => 'Mark the appointment as completed before assigning a reading doctor.',
+            ]);
+        }
+
+        if ($appointment->reading_status === 'completed') {
+            throw ValidationException::withMessages([
+                'reading_date' => 'This reading is already completed and can no longer be changed.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'reader_provider_id' => 'nullable|exists:providers,id',
+            'reading_date' => 'nullable|required_with:reader_provider_id|date',
+            'reading_status' => 'nullable|string|in:pending,completed',
+        ]);
+
+        if (! empty($validated['reader_provider_id']) && ! $appointment->supportsReadingAssignment()) {
+            throw ValidationException::withMessages([
+                'reader_provider_id' => 'Only procedure appointments can be assigned to a reading doctor.',
+            ]);
+        }
+
+        $readerId = $validated['reader_provider_id'] ?? $appointment->reader_provider_id;
+
+        if (($validated['reading_status'] ?? null) === 'completed') {
+            if (! $readerId) {
+                throw ValidationException::withMessages([
+                    'reader_provider_id' => 'Select a reading doctor before completing the reading.',
+                ]);
+            }
+
+            $appointment->update([
+                'reader_provider_id' => $readerId,
+                'reading_date' => $validated['reading_date'] ?? $appointment->reading_date,
+                'reading_status' => 'completed',
+                'reading_completed_at' => now(),
+            ]);
+
+            $action = 'Completed reading for Appointment #'.$appointment->id.' (Reader ID: '.$readerId.')';
+        } else {
+            $appointment->update([
+                'reader_provider_id' => $validated['reader_provider_id'] ?? null,
+                'reading_date' => $validated['reading_date'] ?? null,
+                'reading_status' => empty($validated['reader_provider_id']) ? null : 'pending',
+                'reading_completed_at' => null,
+            ]);
+
+            $action = empty($validated['reader_provider_id'])
+                ? 'Cleared reading assignment for Appointment #'.$appointment->id
+                : 'Assigned reading doctor ID '.$validated['reader_provider_id'].' for Appointment #'.$appointment->id;
+        }
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'patient_id' => $appointment->patient_id,
+            'action' => $action,
+        ]);
+
+        Cache::forget('receptionist_stats');
+        $this->broadcastQueueUpdated($appointment->provider_id);
+
+        return back()->with('success', 'Reading assignment updated.');
     }
 
     // 3. Show Manual Booking Page for Receptionist
@@ -298,16 +422,27 @@ class AppointmentController extends Controller
     // 4. Handle Manual Walk-in Submission
     public function storeManual(Request $request)
     {
-        $request->validate([
+        $isProcedureOnly = $request->input('service_type') === 'Procedure';
+
+        $rules = [
             'name' => 'required|string|max:255',
-            'age' => 'required|integer|min:1',
-            'gender' => 'required|string|in:Male,Female',
-            'phone' => 'required|string|max:20',
             'doctor_id' => 'required|exists:providers,id',
             'service_type' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
             'date' => 'required|date',
             'time' => 'required',
-        ]);
+        ];
+
+        if ($isProcedureOnly) {
+            $rules['date_of_birth'] = 'nullable|date|after:1900-01-01|before_or_equal:today';
+            $rules['gender'] = 'nullable|string|in:Male,Female';
+            $rules['phone'] = 'nullable|string|max:20';
+        } else {
+            $rules['date_of_birth'] = 'required|date|after:1900-01-01|before_or_equal:today';
+            $rules['gender'] = 'required|string|in:Male,Female';
+            $rules['phone'] = 'required|string|max:20';
+        }
+
+        $request->validate($rules);
 
         // Can't schedule a walk-in into a slot that already started today.
         if ($request->date === now()->toDateString()) {
@@ -321,6 +456,7 @@ class AppointmentController extends Controller
 
         $appointment = DB::transaction(function () use ($request) {
             $doctorId = (int) $request->doctor_id;
+            $isProcedureOnly = $request->input('service_type') === 'Procedure';
 
             $this->lockProvidersForSlot($request->date, $request->time, $doctorId);
 
@@ -344,13 +480,17 @@ class AppointmentController extends Controller
             ]);
 
             // Walk-in demographics belong to the normalized patients table.
-            // DOB is approximated from the declared age (YYYY-MM-DD of N years ago).
             $patientRecord = Patient::create([
                 'user_id' => $patient->id,
-                'date_of_birth' => now()->subYears($request->age)->toDateString(),
+                'date_of_birth' => $request->date_of_birth,
                 'sex' => $request->gender,
                 'contact_phone' => $request->phone,
             ]);
+
+            $notes = null;
+            if (! $isProcedureOnly) {
+                $notes = 'DOB: '.$request->date_of_birth.' | Gender: '.$request->gender.' | Phone: '.$request->phone;
+            }
 
             return Appointment::create([
                 'patient_id' => $patientRecord->id,
@@ -360,7 +500,7 @@ class AppointmentController extends Controller
                 'duration_minutes' => $this->getDurationMinutes($patientRecord->id),
                 'service_type' => $request->service_type,
                 'status' => 'Pending',
-                'notes' => 'Age: '.$request->age.' | Gender: '.$request->gender.' | Phone: '.$request->phone,
+                'notes' => $notes,
             ]);
         });
 
@@ -482,8 +622,20 @@ class AppointmentController extends Controller
     // 7. Save Consultation (SOAP) Record — normalized into clinical sub-tables
     public function completeConsultation(Request $request, Appointment $appointment)
     {
-        // Only the assigned doctor may complete their own consultation
-        if (! $appointment->provider || $appointment->provider->user_id !== Auth::id()) {
+        $user = Auth::user();
+        $isDoctorOwner = $appointment->provider && $appointment->provider->user_id === $user->id;
+        $isReceptionistAuthorized = false;
+
+        if (! $isDoctorOwner && in_array($user->role, ['receptionist', 'admin'], true)) {
+            $authorized = $request->boolean('doctor_authorized') || $request->input('authorized_by_doctor') || $request->input('doctor_authorization');
+            if ($authorized) {
+                $isReceptionistAuthorized = true;
+            } elseif ($appointment->notes && str_contains(strtolower($appointment->notes), 'receptionist_completion_authorized')) {
+                $isReceptionistAuthorized = true;
+            }
+        }
+
+        if (! $isDoctorOwner && ! $isReceptionistAuthorized) {
             abort(403, 'Only the assigned doctor may complete this consultation.');
         }
 
@@ -491,6 +643,8 @@ class AppointmentController extends Controller
 
         // Comprehensive validation with required fields and constraints
         $validated = $request->validate([
+            'reader_provider_id' => 'nullable|exists:providers,id',
+            'reading_date' => 'nullable|required_with:reader_provider_id|date',
             'symptoms' => 'nullable|string|max:5000',
             'vitals' => 'nullable|string|max:5000',
             'diagnosis' => 'required|string|max:500',
@@ -587,8 +741,8 @@ class AppointmentController extends Controller
         ]);
 
         // Sanitize text fields to prevent XSS
-        $validated['symptoms'] = $this->sanitizeText($validated['symptoms']);
-        $validated['vitals'] = $this->sanitizeText($validated['vitals']);
+        $validated['symptoms'] = $this->sanitizeText($validated['symptoms'] ?? '');
+        $validated['vitals'] = $this->sanitizeText($validated['vitals'] ?? '');
         $validated['diagnosis'] = $this->sanitizeText($validated['diagnosis']);
         $validated['plan'] = $this->sanitizeText($validated['plan'] ?? '');
 
@@ -756,7 +910,14 @@ class AppointmentController extends Controller
             ]);
         }
 
+        if (! empty($validated['reader_provider_id']) && ! $appointment->supportsReadingAssignment()) {
+            throw ValidationException::withMessages([
+                'reader_provider_id' => 'Only procedure appointments can be assigned to a reading doctor.',
+            ]);
+        }
+
         $appointment->update(['status' => 'Completed']);
+        $this->applyReadingAssignment($appointment, $validated);
 
         // Mark event as completed in Google Calendar
         $this->calendar->updateStatus($appointment);
@@ -788,11 +949,20 @@ class AppointmentController extends Controller
             'echocardiogram', 'treadmillTest', 'dopplerStudy', 'stressEcho', 'abpm', 'vitalSigns',
         ])->first();
 
-        $appointment->load('documents.uploader:id,name');
+        $appointment->load(['documents.uploader:id,name', 'readerProvider.user:id,name']);
+
+        $readingPending = $appointment->status === 'Completed' && $appointment->reading_status === 'pending';
 
         $payload = [
             'saved' => $encounter !== null,
             'status' => $encounter?->status,
+            'appointment_status' => $appointment->status,
+            'reading_status' => $appointment->reading_status,
+            'reading_date' => $appointment->reading_date?->toDateString(),
+            'reading_completed_at' => $appointment->reading_completed_at?->toIso8601String(),
+            'reader' => $appointment->readerProvider?->user?->name,
+            'is_locked' => in_array($appointment->status, ['Cancelled', 'No-Show'], true)
+                || ($appointment->status === 'Completed' && ! $readingPending),
             'echo_data' => $encounter?->echocardiogram
                 ? ClinicalRecordMapper::forPayload($encounter->echocardiogram)
                 : null,
@@ -836,8 +1006,22 @@ class AppointmentController extends Controller
      */
     public function storeStudyData(Request $request, Appointment $appointment)
     {
+        $user = Auth::user();
+
+        if ($user->role === 'doctor') {
+            $providerId = $user->provider?->id;
+            abort_unless(
+                $providerId !== null && in_array($providerId, [$appointment->provider_id, $appointment->reader_provider_id], true),
+                403,
+                'This appointment is not assigned to you.'
+            );
+        }
+
+        $readingPending = $appointment->status === 'Completed' && $appointment->reading_status === 'pending';
+
         abort_if(
-            in_array($appointment->status, ['Completed', 'Cancelled', 'No-Show'], true),
+            in_array($appointment->status, ['Cancelled', 'No-Show'], true)
+                || ($appointment->status === 'Completed' && ! $readingPending),
             422,
             'This appointment is already closed and its records are final.'
         );

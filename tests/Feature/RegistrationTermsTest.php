@@ -261,7 +261,7 @@ class RegistrationTermsTest extends TestCase
     public function test_patient_demographics_still_apply_alongside_terms_acceptance()
     {
         $this->post(route('register'), $this->registrationPayload([
-            'age' => 41,
+            'date_of_birth' => '1985-03-15',
             'sex' => 'Male',
         ]))->assertRedirect(route('patient.dashboard'));
 
@@ -269,6 +269,15 @@ class RegistrationTermsTest extends TestCase
         $patient = Patient::where('user_id', $user->id)->firstOrFail();
 
         $this->assertSame('Male', $patient->sex);
-        $this->assertNotNull($patient->date_of_birth);
+        $this->assertSame('1985-03-15', $patient->date_of_birth?->toDateString());
+    }
+
+    public function test_future_date_of_birth_is_rejected()
+    {
+        $this->post(route('register'), $this->registrationPayload([
+            'date_of_birth' => now()->addDay()->format('Y-m-d'),
+        ]))->assertSessionHasErrors('date_of_birth');
+
+        $this->assertDatabaseMissing('users', ['email' => 'juan.dela@clinic.test']);
     }
 }

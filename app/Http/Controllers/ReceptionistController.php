@@ -60,7 +60,7 @@ class ReceptionistController extends Controller
         // M3 FIX: select only queue-relevant columns — clinical study blobs live in
         // encounters/studies now, so the queue stays light.
         $masterQueue = Appointment::with([
-            'patient:id,user_id',
+            'patient:id,user_id,mrn,contact_phone',
             'patient.user:id,name',
             'provider:id,user_id',
             'provider.user:id,name',
@@ -80,6 +80,11 @@ class ReceptionistController extends Controller
                     'patient' => [
                         'id' => $appt->patient?->user_id,
                         'patient_record_id' => $appt->patient?->id,
+                        'system_id' => $appt->patient?->user_id
+                            ? 'PT-'.str_pad((string) $appt->patient->user_id, 5, '0', STR_PAD_LEFT)
+                            : null,
+                        'mrn' => $appt->patient?->mrn,
+                        'phone' => $appt->patient?->contact_phone,
                         'name' => $appt->patient?->user?->anonymizedName() ?? 'Unknown',
                     ],
                     'doctor' => [
@@ -205,6 +210,25 @@ class ReceptionistController extends Controller
                 ];
             });
 
+        // All patient records with search support
+        $patients = Patient::with('user:id,name,email')
+            ->get(['id', 'user_id', 'mrn', 'date_of_birth', 'sex', 'contact_phone'])
+            ->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'user_id' => $p->user_id,
+                    'system_id' => $p->user_id ? 'PT-'.str_pad((string) $p->user_id, 5, '0', STR_PAD_LEFT) : null,
+                    'name' => $p->user?->name ?? 'Unknown',
+                    'email' => $p->user?->email ?? '',
+                    'mrn' => $p->mrn,
+                    'phone' => $p->contact_phone,
+                    'date_of_birth' => $p->date_of_birth?->format('Y-m-d'),
+                    'sex' => $p->sex,
+                ];
+            })
+            ->sortBy('name')
+            ->values();
+
         return Inertia::render('Dashboard/Receptionist', [
             'user' => Auth::user(),
             'stats' => $stats,
@@ -214,6 +238,7 @@ class ReceptionistController extends Controller
             'schedules' => $schedules,
             'auditLogs' => $auditLogs,
             'rescheduleRequests' => $rescheduleRequests,
+            'patients' => $patients,
         ]);
     }
 

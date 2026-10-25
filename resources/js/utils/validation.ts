@@ -73,12 +73,10 @@ export function formatPatientId(patientId: string | number): string {
 /**
  * Validates medication frequency against approved list
  */
-export function validateMedicationFrequency(
-    frequency: string,
-): boolean {
+export function validateMedicationFrequency(frequency: string): boolean {
     if (!frequency || typeof frequency !== 'string') {
-return false;
-}
+        return false;
+    }
 
     return MEDICATION_FREQUENCIES.some(
         (f: string) => f.toLowerCase() === frequency.toLowerCase(),
@@ -111,12 +109,18 @@ export function checkMedicationInteractions(
     }
 
     const medNames = medications
-        .map((m: any) => (typeof m.medicine === 'string' ? m.medicine.toLowerCase() : ''))
+        .map((m: any) =>
+            typeof m.medicine === 'string' ? m.medicine.toLowerCase() : '',
+        )
         .filter((name: string) => name.length > 0);
 
     DANGEROUS_DRUG_INTERACTIONS.forEach(([drug1, drug2]: [string, string]) => {
-        const has1 = medNames.some((m: string) => m.includes(drug1.toLowerCase()));
-        const has2 = medNames.some((m: string) => m.includes(drug2.toLowerCase()));
+        const has1 = medNames.some((m: string) =>
+            m.includes(drug1.toLowerCase()),
+        );
+        const has2 = medNames.some((m: string) =>
+            m.includes(drug2.toLowerCase()),
+        );
 
         if (has1 && has2) {
             warnings.push(
@@ -131,9 +135,7 @@ export function checkMedicationInteractions(
 /**
  * Validates complete Prescription object
  */
-export function validatePrescription(
-    prescription: any,
-): ValidationError[] {
+export function validatePrescription(prescription: any): ValidationError[] {
     const errors: ValidationError[] = [];
 
     if (!prescription.medicine || typeof prescription.medicine !== 'string') {

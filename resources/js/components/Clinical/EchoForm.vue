@@ -564,13 +564,16 @@ import type { EchoData } from '@/types/appointment';
 import { buildDocument, buildEchoHTML } from '@/utils/docExport';
 
 const echoData = defineModel<EchoData>('echoData', { required: true });
-const props = withDefaults(
-    defineProps<{
-        patientName: string;
-        restricted?: boolean;
-    }>(),
-    { restricted: false },
-);
+const props = defineProps({
+    patientName: {
+        type: String,
+        required: true,
+    },
+    restricted: {
+        type: Boolean,
+        default: false,
+    },
+});
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

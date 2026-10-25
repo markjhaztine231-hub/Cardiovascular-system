@@ -39,8 +39,8 @@ document.addEventListener(
         );
 
         if (!target) {
-return;
-}
+            return;
+        }
 
         const lastClick = CLICK_COOLDOWN.get(target) ?? 0;
         const now = Date.now();

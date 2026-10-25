@@ -132,20 +132,23 @@
                             </p>
                         </div>
 
-                        <!-- Age -->
+                        <!-- Date of Birth -->
                         <div>
                             <label
                                 class="mb-1.5 block text-xs font-extrabold tracking-widest text-black uppercase"
-                                >Age</label
+                                >Date of Birth</label
                             >
                             <input
-                                type="number"
-                                v-model="profileForm.age"
-                                min="1"
-                                max="130"
-                                placeholder="e.g. 35"
+                                type="date"
+                                v-model="profileForm.date_of_birth"
                                 class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                             />
+                            <p
+                                v-if="profileForm.errors.date_of_birth"
+                                class="mt-1 text-xs font-bold text-red-500"
+                            >
+                                {{ profileForm.errors.date_of_birth }}
+                            </p>
                         </div>
 
                         <!-- Sex -->
@@ -306,6 +309,7 @@ interface User {
     name: string;
     email: string;
     age?: string;
+    date_of_birth?: string;
     sex?: string;
     contact?: string;
     role?: string;
@@ -330,7 +334,7 @@ const flashSuccess = computed(() => {
 const profileForm = useForm({
     name: props.user.name ?? '',
     email: props.user.email ?? '',
-    age: props.user.age ?? '',
+    date_of_birth: props.user.date_of_birth ?? '',
     sex: props.user.sex ?? '',
     contact: props.user.contact ?? '',
 });

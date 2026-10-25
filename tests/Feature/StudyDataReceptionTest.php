@@ -4,12 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\Document;
-use App\Models\DopplerStudy;
-use App\Models\Echocardiogram;
 use App\Models\Encounter;
 use App\Models\Patient;
 use App\Models\Provider;
-use App\Models\TreadmillTest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;

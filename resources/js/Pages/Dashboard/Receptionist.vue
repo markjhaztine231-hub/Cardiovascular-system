@@ -232,7 +232,7 @@
                             <input
                                 v-model="queueSearch"
                                 type="search"
-                                placeholder="Search patient, doctor, status..."
+                                placeholder="Search patient, MRN, phone, doctor, status..."
                                 aria-label="Search today's clinic queue"
                                 class="w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none"
                             />
@@ -314,10 +314,18 @@
                                 >
                                     {{ appt.time }}
                                 </td>
-                                <td
-                                    class="px-6 py-4 text-sm font-bold text-gray-700"
-                                >
-                                    {{ appt.patient?.name || 'Unknown' }}
+                                <td class="px-6 py-4">
+                                    <div
+                                        class="text-sm font-bold text-gray-700"
+                                    >
+                                        {{ appt.patient?.name || 'Unknown' }}
+                                    </div>
+                                    <div
+                                        v-if="appt.patient?.mrn"
+                                        class="mt-0.5 text-[11px] font-semibold text-gray-400"
+                                    >
+                                        MRN {{ appt.patient.mrn }}
+                                    </div>
                                 </td>
                                 <td
                                     class="px-6 py-4 text-sm font-bold text-[#0f8c8e]"
@@ -1708,7 +1716,7 @@
                                     :patient-name="
                                         studyAppt?.patient?.name ?? ''
                                     "
-                                    restricted
+                                    :restricted="false"
                                 />
                                 <TmtForm
                                     v-if="activeStudyTab === 'tmt'"
@@ -1717,7 +1725,7 @@
                                     :patient-name="
                                         studyAppt?.patient?.name ?? ''
                                     "
-                                    restricted
+                                    :restricted="false"
                                 />
                                 <DopplerForm
                                     v-if="activeStudyTab === 'doppler'"
@@ -1728,7 +1736,7 @@
                                     :patient-name="
                                         studyAppt?.patient?.name ?? ''
                                     "
-                                    restricted
+                                    :restricted="false"
                                 />
                                 <StressEchoForm
                                     v-if="activeStudyTab === 'stress_echo'"
@@ -1738,7 +1746,7 @@
                                     :patient-name="
                                         studyAppt?.patient?.name ?? ''
                                     "
-                                    restricted
+                                    :restricted="false"
                                 />
                                 <AbpmForm
                                     v-if="activeStudyTab === 'abpm'"
@@ -1746,7 +1754,7 @@
                                     :patient-name="
                                         studyAppt?.patient?.name ?? ''
                                     "
-                                    restricted
+                                    :restricted="false"
                                 />
                             </div>
 
@@ -2016,6 +2024,7 @@ const props = defineProps<{
     schedules: any[];
     auditLogs: any[];
     rescheduleRequests: any[];
+    patients?: any[];
 }>();
 
 const calendarOpen = ref(false);
@@ -2038,6 +2047,10 @@ const filteredQueue = computed(() => {
     return queue.filter((appt: any): boolean =>
         [
             appt.patient?.name,
+            appt.patient?.mrn,
+            appt.patient?.phone,
+            appt.patient?.system_id,
+            appt.patient?.patient_record_id,
             appt.doctor?.name,
             appt.status,
             appt.time,

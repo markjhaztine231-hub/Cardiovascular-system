@@ -44,16 +44,15 @@
             </div>
         </div>
 
-        <div
-            v-if="isOpen"
-            class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2"
-        >
+        <div v-if="isOpen" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
             <!-- BP Chart -->
             <div
                 v-if="bpData.labels.length > 0"
                 class="rounded-xl border border-gray-100 bg-gray-50 p-4"
             >
-                <h4 class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                <h4
+                    class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                >
                     Blood Pressure
                 </h4>
                 <div class="relative">
@@ -66,7 +65,9 @@
                 v-if="hrData.labels.length > 0"
                 class="rounded-xl border border-gray-100 bg-gray-50 p-4"
             >
-                <h4 class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                <h4
+                    class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                >
                     Heart Rate
                 </h4>
                 <div class="relative">
@@ -79,7 +80,9 @@
                 v-if="lvefData.labels.length > 0"
                 class="rounded-xl border border-gray-100 bg-gray-50 p-4"
             >
-                <h4 class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                <h4
+                    class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                >
                     Ejection Fraction (LVEF)
                 </h4>
                 <div class="relative">
@@ -92,7 +95,9 @@
                 v-if="weightData.labels.length > 0"
                 class="rounded-xl border border-gray-100 bg-gray-50 p-4"
             >
-                <h4 class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                <h4
+                    class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase"
+                >
                     Weight
                 </h4>
                 <div class="relative">
@@ -115,10 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-    Chart,
-    registerables,
-} from 'chart.js';
+import { Chart, registerables } from 'chart.js';
 import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 
 Chart.register(...registerables);
@@ -178,20 +180,20 @@ const weightData = computed(() => {
 
     for (const v of data.value.vitals) {
         if (v.weight != null) {
-map.set(v.date, v.weight);
-}
+            map.set(v.date, v.weight);
+        }
     }
 
     for (const v of data.value.echo) {
         if (v.weight != null) {
-map.set(v.date, v.weight);
-}
+            map.set(v.date, v.weight);
+        }
     }
 
     for (const v of data.value.tmt) {
         if (v.weight != null) {
-map.set(v.date, v.weight);
-}
+            map.set(v.date, v.weight);
+        }
     }
 
     const sorted = [...map.entries()].sort((a, b) => {
@@ -207,29 +209,34 @@ map.set(v.date, v.weight);
     };
 });
 
-const hasAnyData = computed(() =>
-    bpData.value.labels.length > 0 ||
-    hrData.value.labels.length > 0 ||
-    lvefData.value.labels.length > 0 ||
-    weightData.value.labels.length > 0,
+const hasAnyData = computed(
+    () =>
+        bpData.value.labels.length > 0 ||
+        hrData.value.labels.length > 0 ||
+        lvefData.value.labels.length > 0 ||
+        weightData.value.labels.length > 0,
 );
 
 function destroyCharts() {
     if (bpChart) {
- bpChart.destroy(); bpChart = null; 
-}
+        bpChart.destroy();
+        bpChart = null;
+    }
 
     if (hrChart) {
- hrChart.destroy(); hrChart = null; 
-}
+        hrChart.destroy();
+        hrChart = null;
+    }
 
     if (lvefChart) {
- lvefChart.destroy(); lvefChart = null; 
-}
+        lvefChart.destroy();
+        lvefChart = null;
+    }
 
     if (weightChart) {
- weightChart.destroy(); weightChart = null; 
-}
+        weightChart.destroy();
+        weightChart = null;
+    }
 }
 
 function buildChart(
@@ -238,18 +245,18 @@ function buildChart(
     config: any,
 ): Chart | null {
     if (!canvas) {
-return null;
-}
+        return null;
+    }
 
     if (existing) {
-existing.destroy();
-}
+        existing.destroy();
+    }
 
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-return null;
-}
+        return null;
+    }
 
     return new Chart(ctx, config);
 }
@@ -308,7 +315,11 @@ function renderCharts() {
                         legend: {
                             display: true,
                             position: 'bottom',
-                            labels: { font: { size: 9 }, boxWidth: 10, padding: 8 },
+                            labels: {
+                                font: { size: 9 },
+                                boxWidth: 10,
+                                padding: 8,
+                            },
                         },
                     },
                 },
@@ -320,24 +331,33 @@ function renderCharts() {
                 type: 'line',
                 data: {
                     labels: hrData.value.labels,
-                    datasets: [{
-                        label: 'HR (bpm)',
-                        data: hrData.value.values,
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139,92,246,0.1)',
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        borderWidth: 2,
-                    }],
+                    datasets: [
+                        {
+                            label: 'HR (bpm)',
+                            data: hrData.value.values,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139,92,246,0.1)',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            borderWidth: 2,
+                        },
+                    ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
-                        y: { beginAtZero: false, ticks: { font: { size: 9 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: {
+                            ticks: { font: { size: 9 }, maxTicksLimit: 6 },
+                            grid: { display: false },
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: { font: { size: 9 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                        },
                     },
                 },
             });
@@ -348,24 +368,33 @@ function renderCharts() {
                 type: 'line',
                 data: {
                     labels: lvefData.value.labels,
-                    datasets: [{
-                        label: 'LVEF (%)',
-                        data: lvefData.value.values,
-                        borderColor: '#059669',
-                        backgroundColor: 'rgba(5,150,105,0.1)',
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        borderWidth: 2,
-                    }],
+                    datasets: [
+                        {
+                            label: 'LVEF (%)',
+                            data: lvefData.value.values,
+                            borderColor: '#059669',
+                            backgroundColor: 'rgba(5,150,105,0.1)',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            borderWidth: 2,
+                        },
+                    ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
-                        y: { beginAtZero: false, ticks: { font: { size: 9 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: {
+                            ticks: { font: { size: 9 }, maxTicksLimit: 6 },
+                            grid: { display: false },
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: { font: { size: 9 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                        },
                     },
                 },
             });
@@ -376,24 +405,33 @@ function renderCharts() {
                 type: 'line',
                 data: {
                     labels: weightData.value.labels,
-                    datasets: [{
-                        label: 'Weight (kg)',
-                        data: weightData.value.values,
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245,158,11,0.1)',
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        borderWidth: 2,
-                    }],
+                    datasets: [
+                        {
+                            label: 'Weight (kg)',
+                            data: weightData.value.values,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245,158,11,0.1)',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            borderWidth: 2,
+                        },
+                    ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
-                        y: { beginAtZero: false, ticks: { font: { size: 9 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: {
+                            ticks: { font: { size: 9 }, maxTicksLimit: 6 },
+                            grid: { display: false },
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: { font: { size: 9 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                        },
                     },
                 },
             });
@@ -405,11 +443,13 @@ async function fetchAnalytics() {
     loading.value = true;
 
     try {
-        const res = await fetch(`/doctor/patients/${props.patientId}/analytics`);
+        const res = await fetch(
+            `/doctor/patients/${props.patientId}/analytics`,
+        );
 
         if (!res.ok) {
-throw new Error('Failed to load analytics');
-}
+            throw new Error('Failed to load analytics');
+        }
 
         data.value = await res.json();
         await nextTick();
@@ -422,7 +462,7 @@ throw new Error('Failed to load analytics');
 }
 
 watch(isOpen, (val) => {
-    if (val && (!data.value.vitals.length && !data.value.echo.length)) {
+    if (val && !data.value.vitals.length && !data.value.echo.length) {
         fetchAnalytics();
     } else if (val) {
         nextTick(() => renderCharts());
@@ -431,8 +471,8 @@ watch(isOpen, (val) => {
 
 onMounted(() => {
     if (isOpen.value) {
-fetchAnalytics();
-}
+        fetchAnalytics();
+    }
 });
 
 onUnmounted(() => {
