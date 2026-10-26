@@ -104,7 +104,7 @@
                                 v-model="form.date_of_birth"
                                 :max="minDob"
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-                                :required="!isProcedureOnly"
+
                             />
                             <p class="mt-1 text-xs text-gray-500">
                                 Must be at least 1 year old
