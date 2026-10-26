@@ -312,7 +312,7 @@
                                 <td
                                     class="px-6 py-4 text-sm font-bold text-gray-900"
                                 >
-                                    {{ appt.time }}
+                                    {{ getTimeSlotLabel(appt.time) }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <div
@@ -703,9 +703,9 @@
                                         :key="chip.id"
                                         class="truncate rounded border-l-2 px-1 py-0.5 text-[9px] leading-tight font-bold shadow-sm"
                                         :class="chipClass(chip.status)"
-                                        :title="`${chip.patient?.name || 'Unknown'} — ${chip.time}`"
+                                        :title="`${chip.patient?.name || 'Unknown'} �?" ${getTimeSlotLabel(chip.time)}`"
                                     >
-                                        {{ chip.time }}
+                                        {{ getTimeSlotLabel(chip.time) }}
                                         {{ chip.patient?.name || 'Unknown' }}
                                     </div>
                                     <span
@@ -779,9 +779,9 @@
                                     class="flex min-w-0 flex-1 items-center gap-3"
                                 >
                                     <span
-                                        class="w-16 shrink-0 text-xs font-black text-gray-900"
+                                        class="w-36 shrink-0 text-xs font-black text-gray-900"
                                     >
-                                        {{ appt.time }}
+                                        {{ getTimeSlotLabel(appt.time) }}
                                     </span>
                                     <span
                                         class="truncate text-xs font-bold text-gray-700"
@@ -3089,6 +3089,16 @@ const markReadingComplete = (id: number) => {
             preserveScroll: true,
         },
     );
+};
+
+const getTimeSlotLabel = (time: string) => {
+    if (!time) return 'N/A';
+    const t = time.toString().substring(0, 5);
+    if (t >= '06:00' && t < '13:00') return 'Morning (6:00 AM - 12:00 PM)';
+    if (t >= '13:00' && t <= '18:00') return 'Afternoon (1:00 PM - 6:00 PM)';
+    if (t === '09:00') return 'Morning (6:00 AM - 12:00 PM)';
+    if (t === '14:00') return 'Afternoon (1:00 PM - 6:00 PM)';
+    return time;
 };
 
 const cancelAppointment = (id: number) => {

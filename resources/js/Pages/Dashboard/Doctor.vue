@@ -364,8 +364,8 @@
                                 class="text-lg font-medium text-teal-100"
                                 v-if="nextPatient"
                             >
-                                {{ nextPatient.service ?? 'General Checkup' }} •
-                                {{ nextPatient.time }}
+                                {{ nextPatient.service ?? 'General Checkup' }} �?�
+                                {{ getTimeSlotLabel(nextPatient.time) }}
                             </p>
                         </div>
                         <div class="relative z-10 mt-8">
@@ -458,7 +458,7 @@
                                         <td
                                             class="px-6 py-5 text-sm font-bold whitespace-nowrap text-[#146b8a]"
                                         >
-                                            {{ appt.time }}
+                                            {{ getTimeSlotLabel(appt.time) }}
                                         </td>
                                         <td
                                             class="px-6 py-5 text-sm font-bold whitespace-nowrap text-gray-900"
@@ -2039,6 +2039,16 @@ import { useSidebar } from '@/composables/useSidebar';
 import { useToast } from '@/composables/useToast';
 
 import { getEcho } from '@/echo';
+
+const getTimeSlotLabel = (time: string) => {
+    if (!time) return 'N/A';
+    const t = time.toString().substring(0, 5);
+    if (t >= '06:00' && t < '13:00') return 'Morning (6:00 AM - 12:00 PM)';
+    if (t >= '13:00' && t <= '18:00') return 'Afternoon (1:00 PM - 6:00 PM)';
+    if (t === '09:00') return 'Morning (6:00 AM - 12:00 PM)';
+    if (t === '14:00') return 'Afternoon (1:00 PM - 6:00 PM)';
+    return time;
+};
 
 const {
     isOpen,

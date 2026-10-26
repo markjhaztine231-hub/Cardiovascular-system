@@ -236,26 +236,22 @@
                         <div>
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Slot Time</label
+                                >Time Slot</label
                             >
-                            <input
-                                type="time"
-                                v-model="form.time"
-                                :min="minTime"
-                                class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
+                            <select
+                                v-model="form.time_slot"
                                 required
-                            />
+                                class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
+                            >
+                                <option value="" disabled>Select Time Slot</option>
+                                <option value="morning">Morning (6:00 AM - 12:00 PM)</option>
+                                <option value="afternoon">Afternoon (1:00 PM - 6:00 PM)</option>
+                            </select>
                             <p
-                                v-if="timeError"
+                                v-if="form.errors.time_slot"
                                 class="mt-1 text-xs font-bold text-red-500"
                             >
-                                {{ timeError }}
-                            </p>
-                            <p
-                                v-if="form.errors.time"
-                                class="mt-1 text-xs font-bold text-red-500"
-                            >
-                                {{ form.errors.time }}
+                                {{ form.errors.time_slot }}
                             </p>
                         </div>
                     </div>
@@ -368,7 +364,7 @@ const form = useForm({
     doctor_id: '',
     service_type: '',
     date: '',
-    time: '',
+    time_slot: '',
 });
 
 const minDob = computed(() => {
