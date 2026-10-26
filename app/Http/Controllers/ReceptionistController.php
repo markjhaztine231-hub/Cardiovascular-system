@@ -64,14 +64,17 @@ class ReceptionistController extends Controller
             'patient.user:id,name',
             'provider:id,user_id',
             'provider.user:id,name',
+            'readerProvider:id,user_id',
+            'readerProvider.user:id,name',
             // Only counters are needed in the table; ocr_text blobs stay out of
             // the queue payload and are fetched per-scan when a modal opens.
             'documents:id,appointment_id,type,ocr_status',
         ])
             ->whereDate('scheduled_date', today())
             ->select([
-                'id', 'patient_id', 'provider_id', 'scheduled_date',
+                'id', 'patient_id', 'provider_id', 'reader_provider_id', 'scheduled_date',
                 'scheduled_time', 'status', 'service_type', 'google_event_url',
+                'reading_status', 'reading_date',
             ])
             ->orderBy('scheduled_time')->get()->map(function ($appt) {
                 return [
@@ -91,7 +94,15 @@ class ReceptionistController extends Controller
                         'id' => $appt->provider?->id,
                         'name' => $appt->provider?->user?->name ?? 'Unknown',
                     ],
+                    'reading_doctor' => [
+                        'id' => $appt->readerProvider?->id,
+                        'name' => $appt->readerProvider?->user?->name ?? null,
+                    ],
+                    'service_type' => $appt->service_type,
                     'status' => $appt->status,
+                    'reading_status' => $appt->reading_status,
+                    'reading_date' => $appt->reading_date?->toDateString(),
+                    'reader_provider_id' => $appt->reader_provider_id,
                     'google_event_url' => $appt->google_event_url,
                     'scans' => $appt->documents->map(fn ($doc) => [
                         'id' => $doc->id,

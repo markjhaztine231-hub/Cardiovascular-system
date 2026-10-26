@@ -845,6 +845,134 @@
                 </div>
             </div>
 
+            <!-- READING REQUESTS -->
+            <div
+                class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+            >
+                <div class="border-b border-gray-100 bg-gray-50/50 px-6 py-5">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h3 class="text-lg font-black text-gray-800">
+                            Reading Requests
+                        </h3>
+                        <p class="text-xs font-semibold text-gray-500">
+                            Completed Procedure / Consultation and Procedure appointments
+                        </p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border-collapse text-left">
+                        <thead>
+                            <tr class="border-b border-gray-100 bg-white">
+                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Patient
+                                </th>
+                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Requesting Doctor
+                                </th>
+                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Reading Doctor
+                                </th>
+                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Service Type
+                                </th>
+                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Reading Date
+                                </th>
+                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Reading Status
+                                </th>
+                                <th class="px-6 py-4 text-right text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            <tr
+                                v-for="appt in masterQueue.filter((a:any) => a.status === 'Completed' && ['Procedure', 'Consultation and Procedure'].includes(a.service_type))"
+                                :key="appt.id"
+                                class="transition-colors hover:bg-gray-50"
+                            >
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-bold text-gray-700">
+                                        {{ appt.patient?.name || 'Unknown' }}
+                                    </div>
+                                    <div v-if="appt.patient?.mrn" class="mt-0.5 text-[11px] font-semibold text-gray-400">
+                                        MRN {{ appt.patient.mrn }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-bold text-[#0f8c8e]">
+                                    {{ appt.doctor?.name || 'Unassigned' }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <select
+                                        class="w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none"
+                                        :value="appt.reader_provider_id || ''"
+                                        @change="assignReading(appt.id, ($event.target as HTMLSelectElement).value, appt.reading_date || '')"
+                                    >
+                                        <option value="">Not Assigned</option>
+                                        <option v-for="doc in doctors" :key="doc.id" :value="doc.id">
+                                            {{ doc.name }}
+                                        </option>
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-700">
+                                    {{ appt.service_type }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <input
+                                        type="date"
+                                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none"
+                                        :value="appt.reading_date || ''"
+                                        @change="assignReading(appt.id, appt.reader_provider_id || '', ($event.target as HTMLInputElement).value)"
+                                    />
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span
+                                        class="rounded-md border px-2.5 py-1 text-xs font-bold tracking-wider uppercase"
+                                        :class="
+                                            appt.reading_status === 'completed'
+                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                                : appt.reading_status === 'pending'
+                                                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                                  : 'border-gray-200 bg-gray-50 text-gray-600'
+                                        "
+                                    >
+                                        {{ appt.reading_status || 'Not Assigned' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button
+                                            v-if="appt.reading_status === 'pending' && appt.reader_provider_id"
+                                            @click="markReadingComplete(appt.id)"
+                                            class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
+                                        >
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Mark Reading Complete
+                                        </button>
+                                        <span
+                                            v-if="appt.reading_status === 'completed'"
+                                            class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-gray-500"
+                                        >
+                                            Completed
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr
+                                v-if="masterQueue.filter((a:any) => a.status === 'Completed' && ['Procedure', 'Consultation and Procedure'].includes(a.service_type)).length === 0"
+                            >
+                                <td colspan="7" class="px-6 py-8 text-center font-medium text-gray-500">
+                                    No reading requests at this time.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- DAILY ACTIVITY HISTORY -->
             <div
                 class="mb-8 rounded-2xl border border-gray-200 bg-white shadow-sm"
@@ -2928,6 +3056,35 @@ const markComplete = (id: number) => {
     router.post(
         `/appointments/${id}/complete`,
         {},
+        {
+            preserveScroll: true,
+        },
+    );
+};
+
+const assignReading = (id: number, readerId: string | number, readingDate: string) => {
+    router.put(
+        `/appointments/${id}/reading`,
+        {
+            reader_provider_id: readerId || null,
+            reading_date: readingDate || null,
+        },
+        {
+            preserveScroll: true,
+        },
+    );
+};
+
+const markReadingComplete = (id: number) => {
+    if (!confirm('Mark this reading as completed?')) {
+        return;
+    }
+
+    router.put(
+        `/appointments/${id}/reading`,
+        {
+            reading_status: 'completed',
+        },
         {
             preserveScroll: true,
         },
