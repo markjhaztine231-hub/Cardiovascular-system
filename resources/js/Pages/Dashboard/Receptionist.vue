@@ -471,6 +471,26 @@
                                             </span>
                                         </button>
                                         <button
+                                            v-if="appt.status !== 'Completed' && appt.status !== 'Cancelled' && appt.status !== 'No-Show'"
+                                            @click="markComplete(appt.id)"
+                                            class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
+                                        >
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            Mark Complete
+                                        </button>
+                                        <button
                                             v-if="appt.status !== 'No-Show'"
                                             @click="markNoShow(appt.id)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-600 hover:text-white"
@@ -2898,6 +2918,20 @@ const markNoShow = (id: number) => {
             { preserveScroll: true },
         );
     }
+};
+
+const markComplete = (id: number) => {
+    if (!confirm('Mark this appointment as completed?')) {
+        return;
+    }
+
+    router.post(
+        `/appointments/${id}/complete`,
+        {},
+        {
+            preserveScroll: true,
+        },
+    );
 };
 
 const cancelAppointment = (id: number) => {
