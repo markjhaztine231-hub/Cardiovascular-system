@@ -102,10 +102,13 @@
                             <input
                                 type="date"
                                 v-model="form.date_of_birth"
-                                :max="today"
+                                :max="minDob"
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
                                 :required="!isProcedureOnly"
                             />
+                            <p class="mt-1 text-xs text-gray-500">
+                                Must be at least 1 year old
+                            </p>
                             <p
                                 v-if="form.errors.date_of_birth"
                                 class="mt-1 text-xs font-bold text-red-500"
@@ -148,7 +151,7 @@
                                 v-model="form.phone"
                                 placeholder="0917..."
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-                                :required="!isProcedureOnly"
+
                             />
                             <p
                                 v-if="form.errors.phone"
@@ -364,8 +367,17 @@ const form = useForm({
     phone: '',
     doctor_id: '',
     service_type: '',
-    date: today.value, // Auto-selects today for walk-ins
-    time: '', // Receptionist must pick a future slot
+    date: '',
+    time: '',
+});
+
+const minDob = computed(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 });
 
 const isProcedureOnly = computed(() => form.service_type === 'Procedure');

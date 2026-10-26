@@ -434,12 +434,12 @@ class AppointmentController extends Controller
 
         if ($isProcedureOnly) {
             $rules['date_of_birth'] = 'nullable|date|after:1900-01-01|before_or_equal:today';
-            $rules['gender'] = 'nullable|string|in:Male,Female';
-            $rules['phone'] = 'nullable|string|max:20';
+            $rules['gender'] = 'nullable|string|max:20';
+            $rules['phone'] = 'nullable|string|max:50';
         } else {
-            $rules['date_of_birth'] = 'required|date|after:1900-01-01|before_or_equal:today';
-            $rules['gender'] = 'required|string|in:Male,Female';
-            $rules['phone'] = 'required|string|max:20';
+            $rules['date_of_birth'] = ['required', 'date', 'after:1900-01-01', 'before_or_equal:'.now()->subYear()->toDateString()];
+            $rules['gender'] = 'required|string|max:20';
+            $rules['phone'] = ['required', 'string', 'regex:/^[0-9+\-\s()]+$/', 'max:50'];
         }
 
         $request->validate($rules);
