@@ -380,20 +380,6 @@ const minDob = computed(() => {
 const isProcedureOnly = computed(() => form.service_type === 'Procedure');
 
 const submit = () => {
-    if (isTodayBooking.value && form.time) {
-        const [hh, mm] = form.time.split(':').map(Number);
-        const slotMinutes = hh * 60 + mm;
-        const now = new Date();
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-        if (slotMinutes <= nowMinutes) {
-            timeError.value =
-                'That time has already passed — please pick a future time.';
-
-            return;
-        }
-    }
-
     timeError.value = '';
     form.post('/appointments/manual');
 };
