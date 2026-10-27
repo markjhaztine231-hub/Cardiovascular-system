@@ -423,34 +423,27 @@ class AppointmentController extends Controller
     // 4. Handle Manual Walk-in Submission
     public function storeManual(Request $request)
     {
-        $isProcedureOnly = $request->input('service_type') === 'Procedure';
-
         $rules = [
             'name' => 'required|string|max:255',
             'doctor_id' => 'required|exists:providers,id',
             'service_type' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
             'date' => 'required|date',
-            'time_slot' => 'required|in:morning,afternoon',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'date_of_birth' => 'nullable|date|after:1900-01-01|before_or_equal:today',
+            'gender' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', 'regex:/^[0-9+\-\s()]+$/', 'max:50'],
         ];
-
-        if ($isProcedureOnly) {
-            $rules['date_of_birth'] = 'nullable|date|after:1900-01-01|before_or_equal:today';
-            $rules['gender'] = 'nullable|string|max:20';
-            $rules['phone'] = 'nullable|string|max:50';
-        } else {
-            $rules['date_of_birth'] = ['required', 'date', 'after:1900-01-01', 'before_or_equal:'.now()->subYear()->toDateString()];
-            $rules['gender'] = 'required|string|max:20';
-            $rules['phone'] = ['required', 'string', 'regex:/^[0-9+\-\s()]+$/', 'max:50'];
-        }
 
         $request->validate($rules);
 
         $request->merge([
-            'time' => $this->resolveTimeSlot($request->input('time_slot')),
+            'time' => $request->filled('time_slot')
+                ? $this->resolveTimeSlot($request->input('time_slot'))
+                : null,
         ]);
 
         // Can't schedule a walk-in into a slot that already started today.
-        if ($request->date === now()->toDateString()) {
+        if ($request->date === now()->toDateString() && $request->time) {
             $slotAt = Carbon::parse($request->date.' '.$request->time);
             if ($slotAt->lte(Carbon::now())) {
                 throw ValidationException::withMessages([
@@ -461,11 +454,10 @@ class AppointmentController extends Controller
 
         $appointment = DB::transaction(function () use ($request) {
             $doctorId = (int) $request->doctor_id;
-            $isProcedureOnly = $request->input('service_type') === 'Procedure';
 
-            $this->lockProvidersForSlot($request->date, $request->time, $doctorId);
+            $this->lockProvidersForSlot($request->date, $request->time ?? '00:00:00', $doctorId);
 
-            if ($this->slotTaken($doctorId, $request->date, $request->time)) {
+            if ($request->time && $this->slotTaken($doctorId, $request->date, $request->time)) {
                 throw ValidationException::withMessages([
                     'time_slot' => 'This doctor already has an appointment at this time.',
                 ]);
@@ -492,10 +484,11 @@ class AppointmentController extends Controller
                 'contact_phone' => $request->phone,
             ]);
 
-            $notes = null;
-            if (! $isProcedureOnly) {
-                $notes = 'DOB: '.$request->date_of_birth.' | Gender: '.$request->gender.' | Phone: '.$request->phone;
-            }
+            $notes = implode(' | ', array_filter([
+                $request->filled('date_of_birth') ? 'DOB: '.$request->date_of_birth : null,
+                $request->filled('gender') ? 'Gender: '.$request->gender : null,
+                $request->filled('phone') ? 'Phone: '.$request->phone : null,
+            ])) ?: null;
 
             return Appointment::create([
                 'patient_id' => $patientRecord->id,

@@ -81,6 +81,7 @@ Route::middleware('auth')->group(function () {
     // --- RECEPTIONIST DASHBOARD ---
     // ==========================================
     Route::get('/receptionist/dashboard', [ReceptionistController::class, 'dashboard'])->middleware('role:receptionist,admin')->name('receptionist.dashboard');
+    Route::get('/receptionist/patients/{patient}/history', [ReceptionistController::class, 'patientHistory'])->middleware('role:receptionist,admin')->name('receptionist.patients.history');
 
     // RECEPTIONIST ACTIONS
     Route::post('/receptionist/schedules', [AppointmentController::class, 'storeSchedule'])->middleware('role:receptionist,admin')->name('schedules.store');
@@ -285,7 +286,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/doctor/reports/monthly/pdf', [PdfController::class, 'downloadMonthlyReport'])->middleware(['role:doctor', 'throttle:doctor-pdf'])->name('pdf.monthly-report');
     Route::get('/doctor/pdf/{appointment}/{type}', [PdfController::class, 'download'])
         ->where('type', 'echo|tmt|doppler|manual_draft|stress_echo|abpm|prescription')
-        ->middleware('role:doctor,patient')
+        ->middleware('role:doctor,patient,receptionist,admin')
         ->name('pdf.download');
 
 });

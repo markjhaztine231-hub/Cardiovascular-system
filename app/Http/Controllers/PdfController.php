@@ -26,9 +26,10 @@ class PdfController extends Controller
      */
     public function download(Appointment $appointment, string $type)
     {
-        // Only doctors or the patient themselves may download
+        // Clinicians and front-desk staff may download, as may the patient
+        // themselves (restricted to their own record below).
         $user = Auth::user();
-        if (! in_array($user->role, ['doctor', 'patient'])) {
+        if (! in_array($user->role, ['doctor', 'patient', 'receptionist', 'admin'])) {
             abort(403);
         }
 

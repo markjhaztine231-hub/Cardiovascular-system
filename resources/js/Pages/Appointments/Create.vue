@@ -97,17 +97,16 @@
                         <div>
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Date of Birth</label
+                                >Date of Birth (Optional)</label
                             >
                             <input
                                 type="date"
                                 v-model="form.date_of_birth"
-                                :max="minDob"
+                                :max="today"
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-
                             />
                             <p class="mt-1 text-xs text-gray-500">
-                                Must be at least 1 year old
+                                Optional; can be added later.
                             </p>
                             <p
                                 v-if="form.errors.date_of_birth"
@@ -119,12 +118,11 @@
                         <div>
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Sex</label
+                                >Sex (Optional)</label
                             >
                             <select
                                 v-model="form.gender"
                                 class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-                                :required="!isProcedureOnly"
                             >
                                 <option value="" disabled>Select Sex</option>
                                 <option value="Male">Male</option>
@@ -144,14 +142,13 @@
                         <div v-if="!isProcedureOnly">
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Phone Number</label
+                                >Phone Number (Optional)</label
                             >
                             <input
                                 type="text"
                                 v-model="form.phone"
                                 placeholder="0917..."
                                 class="w-full rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
-
                             />
                             <p
                                 v-if="form.errors.phone"
@@ -236,14 +233,13 @@
                         <div>
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Time Slot</label
+                                >Time Slot (Optional)</label
                             >
                             <select
                                 v-model="form.time_slot"
-                                required
                                 class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
                             >
-                                <option value="" disabled>Select Time Slot</option>
+                                <option value="">Any time</option>
                                 <option value="morning">Morning (6:00 AM - 12:00 PM)</option>
                                 <option value="afternoon">Afternoon (1:00 PM - 6:00 PM)</option>
                             </select>
@@ -354,16 +350,6 @@ const form = useForm({
     service_type: '',
     date: '',
     time_slot: '',
-});
-
-const minDob = computed(() => {
-    const d = new Date();
-    d.setFullYear(d.getFullYear() - 1);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-
-    return `${y}-${m}-${day}`;
 });
 
 const isProcedureOnly = computed(() => form.service_type === 'Procedure');

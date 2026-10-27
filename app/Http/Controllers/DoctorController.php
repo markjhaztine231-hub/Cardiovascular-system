@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\User;
-use App\Support\ClinicalRecordMapper;
+use App\Support\PatientHistoryMapper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -88,7 +87,7 @@ class DoctorController extends Controller
             ->where('reader_provider_id', $providerId)
             ->where('status', 'Completed')
             ->where('reading_status', 'pending')
-            ->orderByRaw("COALESCE(reading_date, scheduled_date) ASC")
+            ->orderByRaw('COALESCE(reading_date, scheduled_date) ASC')
             ->select([
                 'id', 'patient_id', 'provider_id', 'reader_provider_id', 'scheduled_date',
                 'scheduled_time', 'service_type', 'status', 'reading_status', 'reading_date',
@@ -350,101 +349,7 @@ class DoctorController extends Controller
             abort(404);
         }
 
-        // Eager-load everything needed to build the EMR record in one pass.
-        $history = $patientRecord->encounters()
-            ->with([
-                'appointment:id,patient_id,provider_id,scheduled_date,scheduled_time,service_type',
-                'appointment.provider.user:id,name',
-                'provider.user:id,name',
-                'soapNote',
-                'diagnoses',
-                'prescriptions',
-                'vitalSigns',
-                'echocardiogram',
-                'treadmillTest',
-                'dopplerStudy',
-                'manualDraft',
-                'stressEcho',
-                'abpm',
-            ])
-            ->where('status', 'completed')
-            ->orderByDesc('started_at')
-            ->get()
-            ->map(function ($encounter) use ($patientRecord) {
-                $appt = $encounter->appointment;
-                $provider = $encounter->provider ?? $appt?->provider;
-                $soap = $encounter->soapNote;
-                $vs = $encounter->vitalSigns->first();
-
-                $date = $encounter->started_at?->format('M d, Y')
-                    ?? ($appt?->scheduled_date?->format('M d, Y') ?? 'N/A');
-                $time = $appt?->scheduled_time
-                    ? Carbon::parse($appt->scheduled_time)->format('h:i A') : '';
-
-                return [
-                    'id' => $encounter->id,
-                    // The PDF export route binds an Appointment, but the page
-                    // historically sent the encounter id. The two id spaces
-                    // do not line up (encounter 25 belonged to appointment 29),
-                    // so every download 404'd. Ship the appointment id too.
-                    'appointment_id' => $encounter->appointment_id,
-                    'date' => $date,
-                    'time' => $time,
-                    'doctor' => $provider?->user?->name ?? 'Unknown',
-                    'specialty' => $provider?->specialty,
-                    'service' => $appt?->service_type ?? 'Consultation',
-                    'symptoms' => $soap?->subjective,
-                    'vitals' => $soap?->objective,
-                    'prescriptions' => $encounter->prescriptions->map(fn ($rx) => [
-                        'medicine' => $rx->medication_name,
-                        'dosage' => $rx->dosage,
-                        'frequency' => $rx->frequency,
-                        'duration' => $rx->duration_days ? $rx->duration_days.' days' : null,
-                        'instructions' => $rx->instructions,
-                    ])->values(),
-                    'ai_summary' => $soap?->ai_summary,
-                    // Type numbering is canonical app-wide: echo=Type 1,
-                    // tmt=Type 2, doppler=Type 3 (see AppointmentController
-                    // and MonthlyReportService). These were previously swapped,
-                    // which mislabelled every completed consultation.
-                    'consultation_type' => match ($encounter->encounter_type) {
-                        'echo' => 'Type 1 - Echocardiographic',
-                        'tmt' => 'Type 2 - Treadmill (TMT)',
-                        'doppler' => 'Type 3 - Color Doppler',
-                        'manual_draft' => 'Type 4 - Manual Draft',
-                        'stress_echo' => 'Type 5 - Stress Echo',
-                        'abpm' => 'Type 6 - Ambulatory BP Monitoring',
-                        default => 'Consultation',
-                    },
-                    // Study panels are gated on the relation existing rather
-                    // than on encounter_type, because a Doppler encounter also
-                    // carries the echo fields.
-                    'echo_data' => ClinicalRecordMapper::forPayload(
-                        $encounter->echocardiogram, null, null, $patientRecord
-                    ),
-                    'tmt_data' => ClinicalRecordMapper::forPayload(
-                        null, $encounter->treadmillTest, null, $patientRecord
-                    ),
-                    'doppler_data' => ClinicalRecordMapper::forPayload(
-                        null, null, $encounter->dopplerStudy, $patientRecord
-                    ),
-                    'manual_draft_data' => $encounter->manualDraft ? [
-                        'requesting_physician' => $encounter->manualDraft->requesting_physician,
-                        'title' => $encounter->manualDraft->title,
-                        'draft' => $encounter->manualDraft->draft,
-                        'conclusion' => $encounter->manualDraft->conclusion,
-                        'images' => $encounter->manualDraft->attachments ?? [],
-                    ] : null,
-                    'stress_echo_data' => $encounter->stressEcho?->payload ?? null,
-                    'abpm_data' => $encounter->abpm?->payload ?? null,
-                    'vital_sign' => [
-                        'bp' => $vs ? $vs->blood_pressure_systolic.'/'.$vs->blood_pressure_diastolic : null,
-                        'hr' => $vs?->heart_rate_bpm,
-                        'spo2' => $vs?->oxygen_saturation_percent,
-                        'temp' => $vs?->temperature_celsius,
-                    ],
-                ];
-            });
+        $history = PatientHistoryMapper::history($patientRecord);
 
         return Inertia::render('Dashboard/PatientHistory', [
             'user' => Auth::user(),
@@ -457,42 +362,7 @@ class DoctorController extends Controller
                 'joined' => $patient->created_at?->format('M Y'),
             ],
             'history' => $history,
-            'ocrHistory' => $this->ocrHistory($patientRecord),
+            'ocrHistory' => PatientHistoryMapper::ocrHistory($patientRecord),
         ]);
-    }
-
-    /**
-     * The patient's uploaded scans with their OCR lifecycle, so the doctor can
-     * review what has been recognised (and whether it still needs a look) from
-     * the same EMR screen as the rest of the record.
-     */
-    private function ocrHistory(Patient $patientRecord): array
-    {
-        return Document::where('patient_id', $patientRecord->id)
-            ->with('uploader:id,name', 'appointment:id,scheduled_date,status')
-            ->latest()
-            ->limit(100)
-            ->get()
-            ->map(fn (Document $d) => [
-                'id' => $d->id,
-                'type' => $d->type,
-                'original_filename' => $d->original_filename,
-                'url' => $d->url(),
-                'ocr_status' => $d->ocr_status,
-                'ocr_confidence' => $d->ocr_confidence,
-                'ocr_error' => $d->ocr_error,
-                'engine' => $d->engine(),
-                'requires_review' => $d->requiresReview(),
-                'uploaded_by' => $d->uploader?->name,
-                'appointment' => $d->appointment ? [
-                    'id' => $d->appointment->id,
-                    'scheduled_date' => $d->appointment->scheduled_date?->toDateString(),
-                    'status' => $d->appointment->status,
-                ] : null,
-                'ocr_text' => $d->ocr_text,
-                'created_at' => $d->created_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
     }
 }

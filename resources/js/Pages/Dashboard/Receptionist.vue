@@ -973,6 +973,168 @@
                 </div>
             </div>
 
+            <!-- PATIENT RECORDS -->
+            <div
+                class="mb-8 rounded-2xl border border-gray-200 bg-white shadow-sm"
+            >
+                <div
+                    class="flex flex-col gap-3 border-b border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h3 class="font-bold text-gray-800">Patient Records</h3>
+                        <p class="mt-0.5 text-xs text-gray-500">
+                            Search registered patients and open their completed
+                            visit history.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <svg
+                                class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
+                                />
+                            </svg>
+                            <input
+                                v-model="patientSearch"
+                                type="search"
+                                placeholder="Search name, MRN, phone..."
+                                class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pr-4 pl-9 text-sm font-medium text-gray-700 transition-colors outline-none focus:border-[#0f8c8e] focus:bg-white sm:w-72"
+                            />
+                        </div>
+                        <span
+                            class="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600"
+                            >{{ filteredPatients.length }} patient(s)</span
+                        >
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead
+                            class="bg-gray-50 text-[11px] font-bold tracking-wider text-gray-500 uppercase"
+                        >
+                            <tr>
+                                <th class="px-6 py-3">Patient</th>
+                                <th class="px-6 py-3">Contact</th>
+                                <th class="px-6 py-3">DOB / Sex</th>
+                                <th class="px-6 py-3 text-center">Visits</th>
+                                <th class="px-6 py-3">Last Visit</th>
+                                <th class="px-6 py-3 text-right">Records</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            <tr
+                                v-for="patient in pagedPatients"
+                                :key="patient.id"
+                                class="transition-colors hover:bg-gray-50"
+                            >
+                                <td class="px-6 py-4">
+                                    <p class="font-bold text-gray-800">
+                                        {{ patient.name }}
+                                    </p>
+                                    <p
+                                        class="mt-0.5 font-mono text-xs text-gray-500"
+                                    >
+                                        {{
+                                            patient.mrn ||
+                                            patient.system_id ||
+                                            'No MRN'
+                                        }}
+                                    </p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="font-medium text-gray-700">
+                                        {{ patient.phone || 'No phone' }}
+                                    </p>
+                                    <p class="text-xs text-gray-400">
+                                        {{ patient.email }}
+                                    </p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="font-medium text-gray-700">
+                                        {{ patient.date_of_birth || 'N/A' }}
+                                    </p>
+                                    <p class="text-xs text-gray-400">
+                                        {{ patient.sex || 'N/A' }}
+                                    </p>
+                                </td>
+                                <td
+                                    class="px-6 py-4 text-center font-bold text-gray-700"
+                                >
+                                    {{ patient.total_visits || 0 }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="font-medium text-gray-700">
+                                        {{ patient.last_visit || 'No visits' }}
+                                    </p>
+                                    <p class="text-xs text-gray-400">
+                                        <template v-if="patient.last_doctor">
+                                            {{ patient.last_doctor }} ·
+                                            {{ patient.last_service }}
+                                        </template>
+                                    </p>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button
+                                        type="button"
+                                        @click="openPatientRecords(patient)"
+                                        class="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-bold text-[#0f8c8e] transition-colors hover:bg-[#0f8c8e] hover:text-white"
+                                    >
+                                        View Records
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="filteredPatients.length === 0">
+                                <td
+                                    colspan="6"
+                                    class="px-6 py-8 text-center font-medium text-gray-500"
+                                >
+                                    No patients match your search.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div
+                    v-if="filteredPatients.length > 0"
+                    class="flex flex-col gap-3 border-t border-gray-100 px-6 py-3 text-xs font-medium text-gray-500 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <span>
+                        Showing {{ patientPageStart }}-{{ patientPageEnd }} of
+                        {{ filteredPatients.length }}
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            :disabled="patientPage <= 1"
+                            @click="patientPage--"
+                            class="rounded-lg border border-gray-200 px-3 py-1.5 font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Previous
+                        </button>
+                        <span
+                            >Page {{ patientPage }} of
+                            {{ patientTotalPages }}</span
+                        >
+                        <button
+                            type="button"
+                            :disabled="patientPage >= patientTotalPages"
+                            @click="patientPage++"
+                            class="rounded-lg border border-gray-200 px-3 py-1.5 font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- DAILY ACTIVITY HISTORY -->
             <div
                 class="mb-8 rounded-2xl border border-gray-200 bg-white shadow-sm"
@@ -2102,6 +2264,255 @@
             </div>
         </div>
 
+        <!-- PATIENT RECORDS HISTORY MODAL -->
+        <div
+            v-if="patientRecordsOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4"
+            @click.self="closePatientRecords"
+        >
+            <div
+                class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Patient record history"
+            >
+                <div
+                    class="flex items-start justify-between border-b border-gray-200 px-6 py-4"
+                >
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">
+                            {{ selectedPatient?.name }}
+                        </h3>
+                        <p class="mt-1 text-xs font-medium text-gray-500">
+                            {{ selectedPatient?.mrn || selectedPatient?.system_id }}
+                            <template v-if="selectedPatient?.date_of_birth">
+                                · {{ selectedPatient.date_of_birth }}
+                            </template>
+                            <template v-if="selectedPatient?.sex">
+                                · {{ selectedPatient.sex }}
+                            </template>
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        @click="closePatientRecords"
+                        class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        aria-label="Close patient records"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
+                <div class="overflow-y-auto px-6 py-5">
+                    <div
+                        v-if="patientHistoryLoading"
+                        class="py-12 text-center text-sm font-medium text-gray-500"
+                    >
+                        Loading patient history...
+                    </div>
+                    <div
+                        v-else-if="patientHistory.length === 0"
+                        class="py-12 text-center text-sm font-medium text-gray-500"
+                    >
+                        No completed visits are recorded for this patient yet.
+                    </div>
+                    <div v-else class="space-y-4">
+                        <article
+                            v-for="record in patientHistory"
+                            :key="record.id"
+                            class="rounded-xl border border-gray-200 p-4"
+                        >
+                            <div
+                                class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                            >
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="font-bold text-gray-800">
+                                            {{ record.date }}
+                                        </p>
+                                        <span
+                                            class="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-bold text-gray-600"
+                                        >
+                                            {{ record.time }}
+                                        </span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        {{ record.doctor }} · {{ record.service }}
+                                    </p>
+                                </div>
+                                <span
+                                    class="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700"
+                                    >Completed</span
+                                >
+                            </div>
+                            <div
+                                class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2"
+                            >
+                                <div
+                                    class="rounded-lg bg-gray-50 px-3 py-2"
+                                >
+                                    <p
+                                        class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Symptoms
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs font-medium whitespace-pre-wrap text-gray-700"
+                                    >
+                                        {{ record.symptoms || 'Not recorded' }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-lg bg-gray-50 px-3 py-2"
+                                >
+                                    <p
+                                        class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Vitals
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs font-medium whitespace-pre-wrap text-gray-700"
+                                    >
+                                        {{ record.vitals || 'Not recorded' }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-lg bg-gray-50 px-3 py-2"
+                                >
+                                    <p
+                                        class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Assessment / Diagnosis
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs font-medium whitespace-pre-wrap text-gray-700"
+                                    >
+                                        {{ record.diagnosis || 'Not recorded' }}
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-lg bg-gray-50 px-3 py-2"
+                                >
+                                    <p
+                                        class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Plan
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs font-medium whitespace-pre-wrap text-gray-700"
+                                    >
+                                        {{ record.plan || 'Not recorded' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div
+                                v-if="record.prescriptions?.length"
+                                class="mt-3 rounded-lg border border-teal-100 bg-teal-50/40 p-3"
+                            >
+                                <p
+                                    class="text-[10px] font-extrabold tracking-widest text-[#0f8c8e] uppercase"
+                                >
+                                    Prescriptions
+                                </p>
+                                <ul class="mt-2 space-y-1.5">
+                                    <li
+                                        v-for="(med, idx) in record.prescriptions"
+                                        :key="idx"
+                                        class="text-xs font-medium text-gray-700"
+                                    >
+                                        <span class="font-bold text-gray-900">{{
+                                            med.medicine
+                                        }}</span>
+                                        <template v-if="med.dosage">
+                                            · {{ med.dosage }}
+                                        </template>
+                                        <template v-if="med.frequency">
+                                            · {{ med.frequency }}
+                                        </template>
+                                        <template v-if="med.duration">
+                                            · {{ med.duration }}
+                                        </template>
+                                        <span
+                                            v-if="med.instructions"
+                                            class="block text-[11px] text-gray-500"
+                                        >
+                                            {{ med.instructions }}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div
+                                v-if="studySections(record).length"
+                                class="mt-3 space-y-2"
+                            >
+                                <p
+                                    class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
+                                    Recorded Studies
+                                </p>
+                                <details
+                                    v-for="study in studySections(record)"
+                                    :key="study.label"
+                                    class="rounded-lg border border-gray-200 bg-white"
+                                >
+                                    <summary
+                                        class="cursor-pointer px-3 py-2 text-xs font-bold text-gray-700"
+                                    >
+                                        {{ study.label }}
+                                    </summary>
+                                    <dl
+                                        class="grid grid-cols-1 gap-x-4 gap-y-1 border-t border-gray-100 px-3 py-2 sm:grid-cols-2"
+                                    >
+                                        <div
+                                            v-for="[key, value] in visibleStudyFields(
+                                                study.data,
+                                            )"
+                                            :key="key"
+                                        >
+                                            <dt
+                                                class="text-[10px] font-bold tracking-wide text-gray-400 uppercase"
+                                            >
+                                                {{ fieldLabel(key) }}
+                                            </dt>
+                                            <dd
+                                                class="wrap-break-words text-xs font-medium text-gray-700"
+                                            >
+                                                {{ displayStudyValue(value) }}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </details>
+                            </div>
+                            <div
+                                v-if="record.forms?.length"
+                                class="mt-3 flex flex-wrap gap-2"
+                            >
+                                <a
+                                    v-for="form in record.forms"
+                                    :key="form.type"
+                                    :href="form.url"
+                                    class="rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-bold text-[#0f8c8e] transition-colors hover:bg-[#0f8c8e] hover:text-white"
+                                >
+                                    Download {{ form.label }}
+                                </a>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- OCR scan upload -->
         <ScanUploadModal
             :open="scanModalOpen"
@@ -2174,6 +2585,163 @@ const props = defineProps<{
     rescheduleRequests: any[];
     patients?: any[];
 }>();
+
+const patientSearch = ref('');
+const patientPage = ref(1);
+const patientPerPage = 8;
+const patientRecordsOpen = ref(false);
+const patientHistoryLoading = ref(false);
+const selectedPatient = ref<any>(null);
+const patientHistory = ref<any[]>([]);
+
+const filteredPatients = computed(() => {
+    const query = patientSearch.value.trim().toLowerCase();
+    const patients = props.patients ?? [];
+
+    if (!query) {
+        return patients;
+    }
+
+    return patients.filter((patient: any): boolean =>
+        [
+            patient.name,
+            patient.mrn,
+            patient.system_id,
+            patient.phone,
+            patient.email,
+            patient.last_doctor,
+        ].some((value) =>
+            String(value ?? '')
+                .toLowerCase()
+                .includes(query),
+        ),
+    );
+});
+
+const patientTotalPages = computed(() =>
+    Math.max(1, Math.ceil(filteredPatients.value.length / patientPerPage)),
+);
+
+const pagedPatients = computed(() => {
+    const start = (patientPage.value - 1) * patientPerPage;
+
+    return filteredPatients.value.slice(start, start + patientPerPage);
+});
+
+const patientPageStart = computed(() =>
+    filteredPatients.value.length
+        ? (patientPage.value - 1) * patientPerPage + 1
+        : 0,
+);
+
+const patientPageEnd = computed(() =>
+    Math.min(
+        patientPage.value * patientPerPage,
+        filteredPatients.value.length,
+    ),
+);
+
+watch(patientSearch, () => {
+    patientPage.value = 1;
+});
+
+const openPatientRecords = async (patient: any) => {
+    selectedPatient.value = patient;
+    patientRecordsOpen.value = true;
+    patientHistoryLoading.value = true;
+    patientHistory.value = [];
+
+    try {
+        const response = await fetch(
+            `/receptionist/patients/${patient.id}/history`,
+            {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            },
+        );
+
+        if (!response.ok) {
+            throw new Error('Failed to load patient history.');
+        }
+
+        const data = await response.json();
+        patientHistory.value = Array.isArray(data.records)
+            ? data.records
+            : [];
+    } catch {
+        showError('Unable to load patient history.');
+    } finally {
+        patientHistoryLoading.value = false;
+    }
+};
+
+const closePatientRecords = () => {
+    patientRecordsOpen.value = false;
+    selectedPatient.value = null;
+    patientHistory.value = [];
+};
+
+const studySections = (record: any) =>
+    [
+        { label: 'Echocardiogram (Type 1)', data: record.echo_data },
+        { label: 'Treadmill Test (Type 2)', data: record.tmt_data },
+        { label: 'Color Doppler (Type 3)', data: record.doppler_data },
+        { label: 'Manual Draft (Type 4)', data: record.manual_draft_data },
+        { label: 'Stress Echo (Type 5)', data: record.stress_echo_data },
+        { label: 'Ambulatory BP (Type 6)', data: record.abpm_data },
+    ].filter(
+        (study) =>
+            study.data &&
+            typeof study.data === 'object' &&
+            Object.keys(study.data).length > 0,
+    );
+
+const HIDDEN_STUDY_FIELDS = new Set([
+    'id',
+    'encounter_id',
+    'patient_id',
+    'provider_id',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+    'performed_at',
+]);
+
+const visibleStudyFields = (data: Record<string, any>) =>
+    Object.entries(data ?? {}).filter(([key, value]) => {
+        if (HIDDEN_STUDY_FIELDS.has(key) || value === null || value === '') {
+            return false;
+        }
+
+        if (Array.isArray(value)) {
+            return value.length > 0;
+        }
+
+        if (typeof value === 'object') {
+            return Object.keys(value).length > 0;
+        }
+
+        return true;
+    });
+
+const fieldLabel = (key: string) =>
+    key
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const displayStudyValue = (value: unknown) => {
+    if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No';
+    }
+
+    if (typeof value === 'object') {
+        return JSON.stringify(value);
+    }
+
+    return String(value);
+};
 
 const calendarOpen = ref(false);
 const calendarCursor = ref(new Date());

@@ -1035,12 +1035,12 @@
                                         class="mb-2 block text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
                                         >Assessment (Diagnosis)</label
                                     >
-                                    <input
-                                        type="text"
+                                    <textarea
                                         v-model="consultForm.diagnosis"
+                                        rows="2"
                                         placeholder="e.g. Acute Viral Infection"
-                                        class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
-                                    />
+                                        class="min-h-20 w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-relaxed font-medium text-gray-900 outline-none field-sizing:content focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
+                                    ></textarea>
                                 </div>
 
                                 <!-- Plan (P in SOAP) -->

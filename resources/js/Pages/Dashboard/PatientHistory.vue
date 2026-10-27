@@ -1786,6 +1786,47 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <div>
+                                    <p
+                                        class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Assessment (Diagnosis)
+                                    </p>
+                                    <div
+                                        class="min-h-20 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                                    >
+                                        <p
+                                            class="text-sm font-medium whitespace-pre-wrap text-gray-700"
+                                        >
+                                            {{
+                                                selectedRecord.diagnosis ||
+                                                'No diagnosis recorded.'
+                                            }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p
+                                        class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                    >
+                                        Plan (Recommendations)
+                                    </p>
+                                    <div
+                                        class="min-h-20 rounded-xl border border-gray-200 bg-gray-50 p-4"
+                                    >
+                                        <p
+                                            class="text-sm font-medium whitespace-pre-wrap text-gray-700"
+                                        >
+                                            {{
+                                                selectedRecord.plan ||
+                                                'No plan recorded.'
+                                            }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- PRESCRIPTIONS -->
@@ -1832,6 +1873,12 @@
                                     <p class="mt-1 text-xs text-gray-500">
                                         {{ med.frequency }} —
                                         {{ med.duration }} days
+                                    </p>
+                                    <p
+                                        v-if="med.instructions"
+                                        class="mt-1 text-xs text-gray-500"
+                                    >
+                                        {{ med.instructions }}
                                     </p>
                                 </div>
                             </div>
@@ -3039,6 +3086,8 @@ interface ConsultationRecord extends Appointment {
     doctor?: string;
     symptoms?: string;
     vitals?: string;
+    diagnosis?: string;
+    plan?: string;
     consultation_type?: string | string[];
     prescriptions?:
         | Array<{
@@ -3046,6 +3095,7 @@ interface ConsultationRecord extends Appointment {
               dosage: string;
               frequency: string;
               duration: string;
+              instructions?: string | null;
           }>
         | string;
     ai_summary?: string;
@@ -3372,6 +3422,7 @@ function parsedPrescriptions(record: ConsultationRecord): Array<{
     dosage: string;
     frequency: string;
     duration: string | number;
+    instructions?: string | null;
 }> {
     if (!record.prescriptions) {
         return [];

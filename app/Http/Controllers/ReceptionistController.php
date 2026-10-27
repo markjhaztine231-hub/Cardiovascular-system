@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\DoctorSchedule;
 use App\Models\Patient;
 use App\Models\Provider;
+use App\Support\PatientHistoryMapper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -223,8 +224,20 @@ class ReceptionistController extends Controller
 
         // All patient records with search support
         $patients = Patient::with('user:id,name,email')
+            ->withCount(['appointments as completed_visits_count' => function ($query) {
+                $query->where('status', 'Completed');
+            }])
+            ->with(['appointments' => function ($query) {
+                $query->where('status', 'Completed')
+                    ->with('provider.user:id,name')
+                    ->latest('scheduled_date')
+                    ->latest('scheduled_time')
+                    ->limit(1);
+            }])
             ->get(['id', 'user_id', 'mrn', 'date_of_birth', 'sex', 'contact_phone'])
             ->map(function ($p) {
+                $lastVisit = $p->appointments->first();
+
                 return [
                     'id' => $p->id,
                     'user_id' => $p->user_id,
@@ -235,6 +248,10 @@ class ReceptionistController extends Controller
                     'phone' => $p->contact_phone,
                     'date_of_birth' => $p->date_of_birth?->format('Y-m-d'),
                     'sex' => $p->sex,
+                    'total_visits' => $p->completed_visits_count,
+                    'last_visit' => $lastVisit?->scheduled_date?->format('Y-m-d'),
+                    'last_doctor' => $lastVisit?->provider?->user?->name,
+                    'last_service' => $lastVisit?->service_type,
                 ];
             })
             ->sortBy('name')
@@ -250,6 +267,40 @@ class ReceptionistController extends Controller
             'auditLogs' => $auditLogs,
             'rescheduleRequests' => $rescheduleRequests,
             'patients' => $patients,
+        ]);
+    }
+
+    /**
+     * Read-only clinical history for one patient, loaded on demand so the
+     * receptionist roster stays small and fast to render.
+     */
+    public function patientHistory(Patient $patient)
+    {
+        if (! in_array(Auth::user()->role, ['receptionist', 'admin'])) {
+            abort(403, 'Unauthorized access to patient records.');
+        }
+
+        $patient->loadMissing('user:id,name');
+
+        $records = array_map(function (array $record) {
+            unset($record['ai_summary']);
+
+            return $record;
+        }, PatientHistoryMapper::history($patient));
+
+        return response()->json([
+            'patient' => [
+                'id' => $patient->id,
+                'name' => $patient->user?->name ?? 'Unknown',
+                'system_id' => $patient->user_id
+                    ? 'PT-'.str_pad((string) $patient->user_id, 5, '0', STR_PAD_LEFT)
+                    : null,
+                'mrn' => $patient->mrn,
+                'date_of_birth' => $patient->date_of_birth?->format('M d, Y'),
+                'sex' => $patient->sex,
+                'phone' => $patient->contact_phone,
+            ],
+            'records' => $records,
         ]);
     }
 

@@ -60,6 +60,35 @@ class AppointmentDoubleBookingTest extends TestCase
         ]);
     }
 
+    public function test_walk_in_only_requires_name_doctor_service_and_slot_date(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        $provider = Provider::factory()->create();
+        $date = now()->addDays(2)->format('Y-m-d');
+
+        $this->actingAs($receptionist)
+            ->post(route('appointments.manual'), [
+                'name' => 'Minimal Walk In',
+                'doctor_id' => $provider->id,
+                'service_type' => 'Consultation',
+                'date' => $date,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('appointments', [
+            'provider_id' => $provider->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => null,
+            'status' => 'Pending',
+        ]);
+
+        $this->assertDatabaseHas('patients', [
+            'date_of_birth' => null,
+            'sex' => null,
+            'contact_phone' => null,
+        ]);
+    }
+
     public function test_walk_in_cannot_take_a_slot_already_held_by_the_same_doctor(): void
     {
         $receptionist = User::factory()->receptionist()->create();

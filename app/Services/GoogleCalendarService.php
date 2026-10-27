@@ -19,7 +19,7 @@ class GoogleCalendarService
      */
     public function createEvent(Appointment $appointment): ?array
     {
-        if (! $this->isConfigured()) {
+        if (! $this->isConfigured() || ! $appointment->scheduled_time) {
             return null;
         }
 
