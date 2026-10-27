@@ -320,7 +320,7 @@
 
 <script setup lang="ts">
 import { useForm, Link } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 interface Doctor {
     id: string | number;
@@ -344,17 +344,6 @@ const today = computed(() => {
 
     return `${y}-${m}-${day}`;
 });
-
-const timeError = ref('');
-const padTime = (n: number): string => String(n).padStart(2, '0');
-const isTodayBooking = computed(() => form.date === today.value);
-
-// Earliest selectable time = "now"; the native picker refuses anything past it.
-const minTime = computed((): string =>
-    isTodayBooking.value
-        ? `${padTime(new Date().getHours())}:${padTime(new Date().getMinutes())}`
-        : '',
-);
 
 const form = useForm({
     name: '',
@@ -380,7 +369,6 @@ const minDob = computed(() => {
 const isProcedureOnly = computed(() => form.service_type === 'Procedure');
 
 const submit = () => {
-    timeError.value = '';
     form.post('/appointments/manual');
 };
 </script>

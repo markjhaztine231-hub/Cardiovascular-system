@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Str;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -430,7 +430,7 @@ class AppointmentController extends Controller
             'doctor_id' => 'required|exists:providers,id',
             'service_type' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
             'date' => 'required|date',
-            'time' => 'required',
+            'time_slot' => 'required|in:morning,afternoon',
         ];
 
         if ($isProcedureOnly) {
@@ -445,12 +445,16 @@ class AppointmentController extends Controller
 
         $request->validate($rules);
 
+        $request->merge([
+            'time' => $this->resolveTimeSlot($request->input('time_slot')),
+        ]);
+
         // Can't schedule a walk-in into a slot that already started today.
         if ($request->date === now()->toDateString()) {
             $slotAt = Carbon::parse($request->date.' '.$request->time);
             if ($slotAt->lte(Carbon::now())) {
                 throw ValidationException::withMessages([
-                    'time' => 'That time has already passed. Please select a future time.',
+                    'time_slot' => 'That time has already passed. Please select a future time.',
                 ]);
             }
         }
@@ -463,7 +467,7 @@ class AppointmentController extends Controller
 
             if ($this->slotTaken($doctorId, $request->date, $request->time)) {
                 throw ValidationException::withMessages([
-                    'time' => 'This doctor already has an appointment at this time.',
+                    'time_slot' => 'This doctor already has an appointment at this time.',
                 ]);
             }
 
@@ -1211,6 +1215,17 @@ class AppointmentController extends Controller
         }
 
         return false;
+    }
+
+    private function resolveTimeSlot(?string $slot): string
+    {
+        return match ($slot) {
+            'morning' => '09:00:00',
+            'afternoon' => '14:00:00',
+            default => throw ValidationException::withMessages([
+                'time_slot' => 'Please select a valid time slot.',
+            ]),
+        };
     }
 
     /**

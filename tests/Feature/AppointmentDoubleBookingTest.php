@@ -43,7 +43,7 @@ class AppointmentDoubleBookingTest extends TestCase
                 'doctor_id' => $doctorTwo->id,
                 'service_type' => 'Consultation',
                 'date' => $date,
-                'time' => '09:00',
+                'time_slot' => 'morning',
             ])
             ->assertSessionHasNoErrors();
 
@@ -77,9 +77,9 @@ class AppointmentDoubleBookingTest extends TestCase
                 'doctor_id' => $provider->id,
                 'service_type' => 'Consultation',
                 'date' => $date,
-                'time' => '09:00',
+                'time_slot' => 'morning',
             ])
-            ->assertSessionHasErrors('time');
+            ->assertSessionHasErrors('time_slot');
 
         $this->assertSame(0, Appointment::where('provider_id', $provider->id)->whereTime('scheduled_time', '09:00:00')->where('status', 'Pending')->count());
     }

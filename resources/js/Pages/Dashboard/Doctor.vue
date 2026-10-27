@@ -2041,12 +2041,20 @@ import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
 
 const getTimeSlotLabel = (time: string) => {
-    if (!time) return 'N/A';
+    if (!time) {
+        return 'N/A';
+    }
+
     const t = time.toString().substring(0, 5);
-    if (t >= '06:00' && t < '13:00') return 'Morning (6:00 AM - 12:00 PM)';
-    if (t >= '13:00' && t <= '18:00') return 'Afternoon (1:00 PM - 6:00 PM)';
-    if (t === '09:00') return 'Morning (6:00 AM - 12:00 PM)';
-    if (t === '14:00') return 'Afternoon (1:00 PM - 6:00 PM)';
+
+    if (t >= '06:00' && t < '13:00') {
+        return 'Morning (6:00 AM - 12:00 PM)';
+    }
+
+    if (t >= '13:00' && t <= '18:00') {
+        return 'Afternoon (1:00 PM - 6:00 PM)';
+    }
+
     return time;
 };
 
