@@ -357,7 +357,7 @@ class MonthlyReportService
 
             $prescriptions = $rxIds->isNotEmpty()
                 ? Prescription::whereIn('encounter_id', $rxIds)
-                    ->get(['id', 'encounter_id', 'medication_name', 'frequency', 'start_date'])
+                    ->get(['id', 'encounter_id', 'medication_name', 'frequency', 'start_date', 'is_freeform', 'free_text'])
                 : collect();
 
             $medLogRows = $prescriptions->isNotEmpty()
@@ -374,6 +374,12 @@ class MonthlyReportService
             $byMedicine = [];
 
             foreach ($prescriptions as $rx) {
+                // Free-text rows have no structured frequency; counting them
+                // would default to 1x/day and fabricate adherence numbers.
+                if ($rx->is_freeform) {
+                    continue;
+                }
+
                 $medicine = $rx->medication_name;
                 if (empty($medicine)) {
                     continue;

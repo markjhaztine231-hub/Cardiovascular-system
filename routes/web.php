@@ -146,15 +146,24 @@ Route::middleware('auth')->group(function () {
                 'prescriptions' => ($encounter?->prescriptions ?? collect())
                     ->map(fn (Prescription $prescription): array => [
                         'id' => $prescription->id,
-                        'medicine' => $prescription->medication_name,
+                        // Free-text rows have no structured dosage/frequency.
+                        // Surface the free text where the schedule would normally
+                        // show the medicine so the patient still sees the order.
+                        'medicine' => $prescription->is_freeform
+                            ? ($prescription->free_text ?: $prescription->medication_name)
+                            : $prescription->medication_name,
                         'dosage' => $prescription->dosage,
-                        'frequency' => $prescription->frequency,
+                        'frequency' => $prescription->is_freeform
+                            ? 'As directed'
+                            : $prescription->frequency,
                         'duration' => $prescription->duration_days
                             ? $prescription->duration_days.' days'
                             : ($prescription->end_date
                                 ? 'Until '.$prescription->end_date->format('M j, Y')
                                 : 'Ongoing'),
                         'instructions' => $prescription->instructions,
+                        'is_freeform' => (bool) $prescription->is_freeform,
+                        'free_text' => $prescription->free_text,
                         'startDate' => $prescription->start_date?->toDateString(),
                         'endDate' => $prescription->end_date?->toDateString(),
                         'prescribedBy' => $appointment->provider?->user?->name,
@@ -285,7 +294,7 @@ Route::middleware('auth')->group(function () {
     // --- PDF EXPORTS (server-side via barryvdh/laravel-dompdf) ---
     Route::get('/doctor/reports/monthly/pdf', [PdfController::class, 'downloadMonthlyReport'])->middleware(['role:doctor', 'throttle:doctor-pdf'])->name('pdf.monthly-report');
     Route::get('/doctor/pdf/{appointment}/{type}', [PdfController::class, 'download'])
-        ->where('type', 'echo|tmt|doppler|manual_draft|stress_echo|abpm|prescription')
+        ->where('type', 'echo|tmt|doppler|manual_draft|stress_echo|abpm|prescription|clinical_requests')
         ->middleware('role:doctor,patient,receptionist,admin')
         ->name('pdf.download');
 

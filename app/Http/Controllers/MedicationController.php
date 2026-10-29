@@ -32,6 +32,10 @@ class MedicationController extends Controller
         return Prescription::whereHas('encounter', function ($q) use ($appointment) {
             $q->where('appointment_id', $appointment->id);
         })
+            // Free-text rows have no machine-readable frequency, so they have no
+            // dose schedule. Excluding them here keeps the canonical index used
+            // by log-dose/toggle-dose aligned with todayMeds().
+            ->where('is_freeform', false)
             ->orderBy('id')
             ->get();
     }
@@ -426,7 +430,7 @@ class MedicationController extends Controller
 
         $encounters = $patientRecord->encounters()
             ->whereHas('prescriptions')
-            ->with('prescriptions', 'appointment:id,patient_id,scheduled_date')
+            ->with(['prescriptions' => fn ($q) => $q->where('is_freeform', false), 'appointment:id,patient_id,scheduled_date'])
             ->orderByDesc('started_at')
             ->limit(5)
             ->get();
@@ -446,6 +450,7 @@ class MedicationController extends Controller
             $rows = DB::table('prescriptions')
                 ->join('encounters', 'encounters.id', '=', 'prescriptions.encounter_id')
                 ->whereIn('encounters.appointment_id', $appointmentIds)
+                ->where('prescriptions.is_freeform', false)
                 ->orderBy('prescriptions.id')
                 ->get(['prescriptions.id as prescription_id', 'encounters.appointment_id as appointment_id']);
 
@@ -625,7 +630,7 @@ class MedicationController extends Controller
 
         $encounters = $patientRecord->encounters()
             ->whereHas('prescriptions')
-            ->with('prescriptions', 'appointment:id,scheduled_date')
+            ->with(['prescriptions' => fn ($q) => $q->where('is_freeform', false), 'appointment:id,scheduled_date'])
             ->orderByDesc('started_at')
             ->limit(10)
             ->get();
@@ -637,6 +642,10 @@ class MedicationController extends Controller
         $medications = [];
         foreach ($encounters as $encounter) {
             foreach ($encounter->prescriptions as $p) {
+                if ($p->is_freeform) {
+                    continue;
+                }
+
                 if ($p->status !== null && $p->status !== 'active') {
                     continue;
                 }

@@ -3,6 +3,15 @@ export interface Prescription {
     dosage: string;
     frequency: string;
     duration: string | number;
+    /** When true the row is a single free-text order; dosage/frequency are unused. */
+    is_freeform?: boolean;
+    free_text?: string;
+}
+
+export interface ClinicalRequest {
+    type: 'lab' | 'imaging' | 'referral' | 'other';
+    body: string;
+    priority: 'routine' | 'urgent' | 'stat';
 }
 
 export interface VitalsData {
@@ -297,6 +306,7 @@ export interface ConsultForm {
     consultation_type: string[];
     ai_summary: string;
     prescriptions: Prescription[];
+    requests: ClinicalRequest[];
     echo_data: EchoData;
     tmt_data: TMTData;
     doppler_data: DopplerData;

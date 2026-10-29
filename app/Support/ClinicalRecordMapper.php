@@ -149,6 +149,8 @@ class ClinicalRecordMapper
                 'dosage' => $rx->dosage,
                 'frequency' => $rx->frequency,
                 'duration' => $rx->duration_days ? $rx->duration_days.' days' : '',
+                'is_freeform' => (bool) $rx->is_freeform,
+                'free_text' => $rx->free_text,
             ])
             ->values()
             ->all();

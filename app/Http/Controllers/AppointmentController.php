@@ -654,6 +654,12 @@ class AppointmentController extends Controller
             'prescriptions.*.dosage' => 'nullable|string|max:100',
             'prescriptions.*.frequency' => 'nullable|string|max:100',
             'prescriptions.*.duration' => 'nullable|string|max:50',
+            'prescriptions.*.is_freeform' => 'nullable|boolean',
+            'prescriptions.*.free_text' => 'nullable|string|max:5000',
+            'requests' => 'nullable|array',
+            'requests.*.type' => 'nullable|string|in:lab,imaging,referral,other',
+            'requests.*.body' => 'nullable|string|max:5000',
+            'requests.*.priority' => 'nullable|string|in:routine,urgent,stat',
             'ai_summary' => 'nullable|string|max:5000',
             'echo_data' => 'nullable|array',
             'tmt_data' => 'nullable|array',
@@ -744,10 +750,38 @@ class AppointmentController extends Controller
         $validated['diagnosis'] = $this->sanitizeText($validated['diagnosis']);
         $validated['plan'] = $this->sanitizeText($validated['plan'] ?? '');
 
-        // Sanitize prescription data and filter out empty rows
+        // Sanitize prescription data and filter out empty rows. A free-text row
+        // has no structured dosage/frequency/duration: it keeps only a short
+        // label in `medicine` (for legacy columns) and the full text in
+        // `free_text`. `frequency` is nulled so adherence code skips it rather
+        // than defaulting an unknown string to 1x/day.
         if (! empty($validated['prescriptions'])) {
             foreach ($validated['prescriptions'] as $i => $prescription) {
-                if (! empty($prescription['medicine'])) {
+                $isFreeform = filter_var($prescription['is_freeform'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $validated['prescriptions'][$i]['is_freeform'] = $isFreeform;
+
+                if ($isFreeform) {
+                    $freeText = $this->sanitizeText($prescription['free_text'] ?? '');
+                    $label = $this->sanitizeText($prescription['medicine'] ?? '');
+
+                    if ($freeText === '') {
+                        // Nothing to keep; the filter below drops this row.
+                        $validated['prescriptions'][$i]['medicine'] = '';
+                    } else {
+                        if ($label === '') {
+                            $firstLine = trim(strtok($freeText, "\n") ?: '');
+                            $label = $firstLine !== '' ? $firstLine : 'Free-text prescription';
+                        }
+
+                        $validated['prescriptions'][$i]['medicine'] = mb_substr($label, 0, 255);
+                    }
+
+                    $validated['prescriptions'][$i]['free_text'] = $freeText;
+                    $validated['prescriptions'][$i]['dosage'] = '';
+                    $validated['prescriptions'][$i]['frequency'] = null;
+                    $validated['prescriptions'][$i]['duration'] = '';
+                } elseif (! empty($prescription['medicine'])) {
+                    $validated['prescriptions'][$i]['free_text'] = null;
                     $validated['prescriptions'][$i]['medicine'] = $this->sanitizeText($prescription['medicine']);
                     $validated['prescriptions'][$i]['dosage'] = $this->sanitizeText($prescription['dosage'] ?? '');
                     $validated['prescriptions'][$i]['frequency'] = $this->sanitizeText($prescription['frequency'] ?? '');
@@ -756,7 +790,20 @@ class AppointmentController extends Controller
             }
             $validated['prescriptions'] = array_values(array_filter(
                 $validated['prescriptions'],
-                fn ($p) => ! empty($p['medicine'])
+                fn ($p) => ! empty($p['is_freeform'])
+                    ? ! empty($p['free_text'])
+                    : ! empty($p['medicine'])
+            ));
+        }
+
+        // Sanitize free-text requests and drop blank rows.
+        if (! empty($validated['requests'])) {
+            foreach ($validated['requests'] as $i => $requestRow) {
+                $validated['requests'][$i]['body'] = $this->sanitizeText($requestRow['body'] ?? '');
+            }
+            $validated['requests'] = array_values(array_filter(
+                $validated['requests'],
+                fn ($req) => ! empty($req['body'])
             ));
         }
 
@@ -831,9 +878,10 @@ class AppointmentController extends Controller
         // Prescriptions (replaces the legacy JSON array; old adherence logs cascade)
         $encounter->prescriptions()->delete();
         foreach ($validated['prescriptions'] ?? [] as $rx) {
+            $isFreeform = ! empty($rx['is_freeform']);
             $startDate = Carbon::parse($appointment->scheduled_date);
             $days = null;
-            if (! empty($rx['duration'])) {
+            if (! $isFreeform && ! empty($rx['duration'])) {
                 if (preg_match('/^\s*(\d{1,3})\s*(day|days|week|weeks|month|months)?/i', $rx['duration'], $m)) {
                     $mult = match (strtolower($m[2] ?? 'day')) {
                         'week', 'weeks' => 7,
@@ -848,12 +896,30 @@ class AppointmentController extends Controller
                 'patient_id' => $appointment->patient_id,
                 'provider_id' => $appointment->provider_id,
                 'medication_name' => $rx['medicine'],
-                'dosage' => $rx['dosage'] ?? null,
-                'frequency' => $rx['frequency'] ?? null,
-                'duration_days' => $days,
+                'dosage' => $isFreeform ? null : ($rx['dosage'] ?? null),
+                'frequency' => $isFreeform ? null : ($rx['frequency'] ?? null),
+                'duration_days' => $isFreeform ? null : $days,
                 'start_date' => $startDate->toDateString(),
-                'end_date' => $days ? $startDate->copy()->addDays($days)->toDateString() : null,
+                'end_date' => ! $isFreeform && $days ? $startDate->copy()->addDays($days)->toDateString() : null,
+                'is_freeform' => $isFreeform,
+                'free_text' => $isFreeform ? ($rx['free_text'] ?? null) : null,
                 'status' => 'active',
+            ]);
+        }
+
+        // Free-text clinical requests (lab / imaging / referral / other). The
+        // whole set is replaced on save so a re-submitted consultation cannot
+        // accumulate duplicate orders.
+        $encounter->clinicalRequests()->delete();
+        foreach ($validated['requests'] ?? [] as $requestRow) {
+            $encounter->clinicalRequests()->create([
+                'patient_id' => $appointment->patient_id,
+                'provider_id' => $appointment->provider_id,
+                'type' => $requestRow['type'] ?? 'other',
+                'body' => $requestRow['body'] ?? '',
+                'priority' => $requestRow['priority'] ?? 'routine',
+                'status' => 'requested',
+                'created_by' => Auth::id(),
             ]);
         }
 

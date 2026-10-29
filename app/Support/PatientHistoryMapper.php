@@ -23,6 +23,7 @@ class PatientHistoryMapper
                 'soapNote',
                 'diagnoses',
                 'prescriptions',
+                'clinicalRequests',
                 'vitalSigns',
                 'echocardiogram',
                 'treadmillTest',
@@ -78,6 +79,17 @@ class PatientHistoryMapper
                     ];
                 }
 
+                if ($encounter->clinicalRequests->isNotEmpty()) {
+                    $forms[] = [
+                        'type' => 'clinical_requests',
+                        'label' => 'Clinical Requests',
+                        'url' => route('pdf.download', [
+                            'appointment' => $encounter->appointment_id,
+                            'type' => 'clinical_requests',
+                        ]),
+                    ];
+                }
+
                 return [
                     'id' => $encounter->id,
                     // The PDF export route binds an Appointment, while this
@@ -99,7 +111,19 @@ class PatientHistoryMapper
                         'frequency' => $rx->frequency,
                         'duration' => $rx->duration_days ? $rx->duration_days.' days' : null,
                         'instructions' => $rx->instructions,
+                        'is_freeform' => (bool) $rx->is_freeform,
+                        'free_text' => $rx->free_text,
                     ])->values(),
+                    'requests' => $encounter->clinicalRequests
+                        ->map(fn ($request) => [
+                            'id' => $request->id,
+                            'type' => $request->type,
+                            'type_label' => $request->type_label,
+                            'body' => $request->body,
+                            'priority' => $request->priority,
+                            'status' => $request->status,
+                        ])
+                        ->values(),
                     'ai_summary' => $soap?->ai_summary,
                     // Type numbering is canonical app-wide: echo=Type 1,
                     // tmt=Type 2, doppler=Type 3 (see AppointmentController

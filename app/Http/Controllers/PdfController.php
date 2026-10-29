@@ -22,7 +22,7 @@ class PdfController extends Controller
      * PDF blade views still expect the legacy blob keys, so the structured
      * studies are mapped back to that shape at export time.
      *
-     * @param  string  $type  echo | tmt | doppler | manual_draft | stress_echo | abpm | prescription
+     * @param  string  $type  echo | tmt | doppler | manual_draft | stress_echo | abpm | prescription | clinical_requests
      */
     public function download(Appointment $appointment, string $type)
     {
@@ -61,7 +61,7 @@ class PdfController extends Controller
 
         // Guard each document type against a consultation that never had that
         // study recorded, rather than printing an empty form.
-        if ($type !== 'prescription' && match ($type) {
+        if (! in_array($type, ['prescription', 'clinical_requests'], true) && match ($type) {
             'echo' => ! $encounter->echocardiogram,
             'tmt' => ! $encounter->treadmillTest,
             'doppler' => ! $encounter->dopplerStudy,
@@ -112,6 +112,23 @@ class PdfController extends Controller
             ])
                 ->setPaper('a5')
                 ->download("Prescription_{$slug}_{$date}.pdf"),
+
+            'clinical_requests' => Pdf::loadView('pdfs.clinical-requests', [
+                'requests' => $encounter->clinicalRequests
+                    ->map(fn ($request) => [
+                        'type' => $request->type,
+                        'type_label' => $request->type_label,
+                        'body' => $request->body,
+                        'priority' => $request->priority,
+                    ])
+                    ->values()
+                    ->all(),
+                'patient' => $patientName,
+                'date' => $date,
+                'doctor' => $doctorName,
+            ])
+                ->setPaper('a5')
+                ->download("Clinical_Requests_{$slug}_{$date}.pdf"),
 
             'manual_draft' => Pdf::loadView('pdfs.manual-draft', [
                 'draft' => $encounter->manualDraft,

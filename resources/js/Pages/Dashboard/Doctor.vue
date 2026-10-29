@@ -1349,13 +1349,66 @@
                                                 </svg>
                                             </button>
 
-                                            <span
-                                                class="mb-3 inline-block rounded bg-[#146b8a] px-2 py-1 text-[10px] font-extrabold tracking-widest text-white uppercase"
-                                                >Medication
-                                                {{ index + 1 }}</span
+                                            <div
+                                                class="mb-3 flex flex-wrap items-center gap-2 pr-10"
                                             >
+                                                <span
+                                                    class="inline-block rounded bg-[#146b8a] px-2 py-1 text-[10px] font-extrabold tracking-widest text-white uppercase"
+                                                    >Medication
+                                                    {{ index + 1 }}</span
+                                                >
+                                                <button
+                                                    type="button"
+                                                    @click.prevent="
+                                                        toggleMedicationMode(
+                                                            med,
+                                                        )
+                                                    "
+                                                    class="rounded-lg border px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase transition-colors"
+                                                    :class="
+                                                        med.is_freeform
+                                                            ? 'border-[#146b8a] bg-[#146b8a] text-white'
+                                                            : 'border-gray-300 bg-white text-gray-600 hover:border-[#146b8a] hover:text-[#146b8a]'
+                                                    "
+                                                    :title="
+                                                        med.is_freeform
+                                                            ? 'Switch to structured fields'
+                                                            : 'Write the prescription as free text'
+                                                    "
+                                                >
+                                                    {{
+                                                        med.is_freeform
+                                                            ? 'Free-text'
+                                                            : 'Structured'
+                                                    }}
+                                                </button>
+                                            </div>
+
+                                            <!-- Free-text mode: one textarea, no
+                                                 dosage/frequency/duration fields -->
+                                            <div v-if="med.is_freeform" class="pr-10">
+                                                <label
+                                                    class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                                                    >Free-text prescription</label
+                                                >
+                                                <textarea
+                                                    v-model="med.free_text"
+                                                    rows="3"
+                                                    placeholder="e.g. Amlodipine 5mg OD × 30 days; continue aspirin 81mg daily; hold metformin before contrast"
+                                                    class="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                ></textarea>
+                                                <p
+                                                    class="mt-1 text-[10px] font-semibold text-gray-500"
+                                                >
+                                                    Free-text medications are
+                                                    printed on the prescription
+                                                    but excluded from automatic
+                                                    adherence tracking.
+                                                </p>
+                                            </div>
 
                                             <div
+                                                v-else
                                                 class="grid grid-cols-1 gap-4 pr-10 md:grid-cols-4"
                                             >
                                                 <!-- Medicine Name -->
@@ -1444,6 +1497,151 @@
                                         Add Another Medication
                                     </button>
                                 </div>
+
+                                <!-- Free-text clinical requests -->
+                                <div class="mt-8 space-y-4">
+                                    <div
+                                        class="flex flex-wrap items-center justify-between gap-2"
+                                    >
+                                        <h3
+                                            class="text-sm font-extrabold tracking-widest text-[#146b8a] uppercase"
+                                        >
+                                            Clinical Requests
+                                        </h3>
+                                        <p
+                                            class="text-[10px] font-semibold tracking-widest text-gray-500 uppercase"
+                                        >
+                                            Lab · Imaging · Referral
+                                        </p>
+                                    </div>
+
+                                    <p
+                                        v-if="
+                                            consultForm.requests.length === 0
+                                        "
+                                        class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-xs font-medium text-gray-400 italic"
+                                    >
+                                        No requests added.
+                                    </p>
+
+                                    <div
+                                        v-for="(
+                                            req, index
+                                        ) in consultForm.requests"
+                                        :key="`request-${index}`"
+                                        class="group relative rounded-xl border border-gray-200 bg-gray-50 p-5 shadow-sm transition-all hover:border-[#146b8a]"
+                                    >
+                                        <button
+                                            type="button"
+                                            @click.prevent="removeRequest(index)"
+                                            title="Remove Request"
+                                            class="absolute top-4 right-4 rounded-lg border border-red-100 bg-white p-1.5 text-red-400 shadow-sm transition-all hover:scale-105 hover:text-red-600"
+                                        >
+                                            <svg
+                                                class="h-5 w-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                />
+                                            </svg>
+                                        </button>
+
+                                        <span
+                                            class="mb-3 inline-block rounded bg-[#146b8a] px-2 py-1 text-[10px] font-extrabold tracking-widest text-white uppercase"
+                                            >Request {{ index + 1 }}</span
+                                        >
+
+                                        <div
+                                            class="grid grid-cols-1 gap-4 pr-10 md:grid-cols-4"
+                                        >
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                                                    >Type</label
+                                                >
+                                                <select
+                                                    v-model="req.type"
+                                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                >
+                                                    <option value="lab">
+                                                        Laboratory
+                                                    </option>
+                                                    <option value="imaging">
+                                                        Imaging
+                                                    </option>
+                                                    <option value="referral">
+                                                        Referral
+                                                    </option>
+                                                    <option value="other">
+                                                        Other
+                                                    </option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                                                    >Priority</label
+                                                >
+                                                <select
+                                                    v-model="req.priority"
+                                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                >
+                                                    <option value="routine">
+                                                        Routine
+                                                    </option>
+                                                    <option value="urgent">
+                                                        Urgent
+                                                    </option>
+                                                    <option value="stat">
+                                                        STAT
+                                                    </option>
+                                                </select>
+                                            </div>
+
+                                            <div class="md:col-span-4">
+                                                <label
+                                                    class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                                                    >Request details</label
+                                                >
+                                                <textarea
+                                                    v-model="req.body"
+                                                    rows="3"
+                                                    placeholder="e.g. Lipid profile, HbA1c, creatinine — fasting; repeat after 3 months"
+                                                    class="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
+                                                ></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        @click.prevent="addRequest"
+                                        class="flex w-full items-center justify-center rounded-xl border-2 border-dashed border-[#146b8a]/30 py-3 text-sm font-bold text-[#146b8a] transition-colors hover:border-[#146b8a] hover:bg-teal-50"
+                                    >
+                                        <svg
+                                            class="mr-2 h-4 w-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                            />
+                                        </svg>
+                                        Add Request
+                                    </button>
+                                </div>
+
                             </div>
                         </form>
                     </div>
@@ -2067,7 +2265,11 @@ const {
     closeMobile,
 } = useSidebar('doctor');
 
-import type { ConsultForm, Appointment } from '@/types/appointment';
+import type {
+    ConsultForm,
+    Appointment,
+    Prescription,
+} from '@/types/appointment';
 import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
 import {
     validateConsultation,
@@ -2264,8 +2466,16 @@ const consultForm = useForm<ConsultForm>({
     consultation_type: [] as string[],
     ai_summary: '',
     prescriptions: [
-        { medicine: '', dosage: '', frequency: '3x a day (8h)', duration: '' },
+        {
+            medicine: '',
+            dosage: '',
+            frequency: '3x a day (8h)',
+            duration: '',
+            is_freeform: false,
+            free_text: '',
+        },
     ],
+    requests: [],
     echo_data: {
         requesting_physician: '',
         contact_no: '',
@@ -2602,11 +2812,13 @@ const interactionWarnings = computed(() => {
     }));
 
     const pending = consultForm.prescriptions
-        .filter((med) => med.medicine && med.medicine.trim() !== '')
         .map((med) => ({
-            medicine: med.medicine,
+            medicine: med.is_freeform
+                ? (med.free_text ?? '')
+                : med.medicine,
             dosage: med.dosage ?? '',
-        }));
+        }))
+        .filter((med) => med.medicine.trim() !== '');
 
     return checkMedicationInteractions([...current, ...pending]);
 });
@@ -3183,6 +3395,8 @@ function applyMedication(doc: any, med: any): void {
         dosage: med.dosage ?? '',
         frequency: med.frequency ?? '3x a day (8h)',
         duration: med.duration_days ? `${med.duration_days} day(s)` : '',
+        is_freeform: false,
+        free_text: '',
     });
 
     scannedToPrescription.value[doc.id] = true;
@@ -3257,6 +3471,20 @@ function loadDraft() {
 
         Object.assign(consultForm, draft.payload);
 
+        // Drafts saved before clinical requests existed have no `requests`
+        // key; the template iterates it, so normalise the shape on restore.
+        if (!Array.isArray(consultForm.requests)) {
+            consultForm.requests = [];
+        }
+
+        consultForm.prescriptions = (consultForm.prescriptions ?? []).map(
+            (med: Prescription) => ({
+                ...med,
+                is_freeform: Boolean(med.is_freeform),
+                free_text: med.free_text ?? '',
+            }),
+        );
+
         if (draft.vitalFields) {
             Object.assign(vitalsForm, draft.vitalFields);
         }
@@ -3311,11 +3539,52 @@ const addMedication = () => {
         dosage: '',
         frequency: '3x a day (8h)',
         duration: '',
+        is_freeform: false,
+        free_text: '',
     });
 };
 
 const removeMedication = (index: number) => {
     consultForm.prescriptions.splice(index, 1);
+};
+
+/**
+ * Switching a row to free text seeds the textarea from whatever structured
+ * values were already entered, so toggling never silently discards a medicine
+ * the doctor had typed. Switching back leaves the structured fields untouched.
+ */
+const toggleMedicationMode = (med: Prescription) => {
+    if (!med.is_freeform) {
+        if (!med.free_text?.trim()) {
+            med.free_text = [
+                med.medicine,
+                med.dosage,
+                med.frequency,
+                med.duration ? `${med.duration}` : '',
+            ]
+                .map((part) => `${part ?? ''}`.trim())
+                .filter((part) => part !== '')
+                .join(' — ');
+        }
+
+        med.is_freeform = true;
+
+        return;
+    }
+
+    med.is_freeform = false;
+};
+
+const addRequest = () => {
+    consultForm.requests.push({
+        type: 'lab',
+        body: '',
+        priority: 'routine',
+    });
+};
+
+const removeRequest = (index: number) => {
+    consultForm.requests.splice(index, 1);
 };
 
 /** Returns true if any meaningful (non-empty) value exists in a clinical data object. */

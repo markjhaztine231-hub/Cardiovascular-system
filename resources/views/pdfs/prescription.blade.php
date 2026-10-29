@@ -67,15 +67,20 @@ h2 { text-align: center; font-size: 11pt; margin: 6px 0; text-transform: upperca
   <tbody>
     @foreach ($meds as $index => $med)
     @php
+        $isFree  = !empty($med['is_freeform']);
         $dosage  = $med['dosage'] ?? '';
         $freq    = $med['frequency'] ?? '';
         $dur     = $med['duration'] ?? '';
     @endphp
     <tr>
       <td>{{ $index + 1 }}</td>
+      @if ($isFree)
+      <td colspan="3">{!! nl2br(e($med['free_text'] ?? ($med['medicine'] ?? ''))) !!}</td>
+      @else
       <td><strong>{{ $med['medicine'] ?? '' }}</strong></td>
       <td>{{ $dosage }}</td>
       <td>{{ $freq }}{{ $dur ? ' — ' . $dur : '' }}</td>
+      @endif
     </tr>
     @endforeach
   </tbody>

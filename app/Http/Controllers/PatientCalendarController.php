@@ -155,12 +155,18 @@ class PatientCalendarController extends Controller
     {
         $prescriptions = $patient->prescriptions()
             ->where('status', 'active')
+            ->where('is_freeform', false)
             ->with('encounter.appointment:id,scheduled_date')
             ->get();
 
         $events = [];
 
         foreach ($prescriptions as $prescription) {
+            // Free-text prescriptions have no frequency to expand into events.
+            if ($prescription->is_freeform) {
+                continue;
+            }
+
             $startDate = $this->prescriptionStart($prescription);
             $times = $this->triZone->scheduledTimes($prescription->frequency);
 

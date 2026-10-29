@@ -60,6 +60,11 @@ class Encounter extends Model
         return $this->hasMany(Prescription::class);
     }
 
+    public function clinicalRequests(): HasMany
+    {
+        return $this->hasMany(ClinicalRequest::class);
+    }
+
     public function echocardiogram(): HasOne
     {
         return $this->hasOne(Echocardiogram::class);

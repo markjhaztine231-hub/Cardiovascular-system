@@ -21,11 +21,14 @@ class Prescription extends Model
         'end_date',
         'instructions',
         'status',
+        'is_freeform',
+        'free_text',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'is_freeform' => 'boolean',
     ];
 
     public function encounter(): BelongsTo

@@ -32,6 +32,18 @@ export function validateConsultation(form: any): ValidationError[] {
     // Validate prescriptions
     if (form.prescriptions?.length) {
         form.prescriptions.forEach((med: any, index: number) => {
+            // A free-text row only needs its textarea filled.
+            if (med.is_freeform) {
+                if (!med.free_text?.trim()) {
+                    errors.push({
+                        field: `prescriptions.${index}.free_text`,
+                        message: 'Free-text prescription cannot be empty',
+                    });
+                }
+
+                return;
+            }
+
             if (med.medicine?.trim() && !med.dosage?.trim()) {
                 errors.push({
                     field: `prescriptions.${index}.dosage`,
@@ -43,6 +55,18 @@ export function validateConsultation(form: any): ValidationError[] {
                 errors.push({
                     field: `prescriptions.${index}.duration`,
                     message: 'Duration required for medicine',
+                });
+            }
+        });
+    }
+
+    // Validate clinical requests: a row is only meaningful once it has a body.
+    if (form.requests?.length) {
+        form.requests.forEach((req: any, index: number) => {
+            if (req.body?.trim() && !req.type) {
+                errors.push({
+                    field: `requests.${index}.type`,
+                    message: 'Request type is required',
                 });
             }
         });
@@ -137,6 +161,17 @@ export function checkMedicationInteractions(
  */
 export function validatePrescription(prescription: any): ValidationError[] {
     const errors: ValidationError[] = [];
+
+    if (prescription.is_freeform) {
+        if (!prescription.free_text?.trim()) {
+            errors.push({
+                field: 'free_text',
+                message: 'Free-text prescription is required',
+            });
+        }
+
+        return errors;
+    }
 
     if (!prescription.medicine || typeof prescription.medicine !== 'string') {
         errors.push({

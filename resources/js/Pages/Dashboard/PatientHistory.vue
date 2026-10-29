@@ -488,21 +488,38 @@
                                             :key="idx"
                                             class="rounded-lg border border-gray-200 bg-gray-50 p-3"
                                         >
-                                            <p
-                                                class="text-sm font-bold text-[#146b8a]"
-                                            >
-                                                {{ med.medicine }}
-                                                <span
-                                                    class="text-xs font-normal text-gray-500"
-                                                    >({{ med.dosage }})</span
+                                            <template v-if="med.is_freeform">
+                                                <p
+                                                    class="whitespace-pre-line text-sm font-bold text-[#146b8a]"
                                                 >
-                                            </p>
-                                            <p
-                                                class="mt-1 text-xs font-medium text-gray-500"
-                                            >
-                                                {{ med.frequency }} for
-                                                {{ med.duration }} days
-                                            </p>
+                                                    {{
+                                                        med.free_text ||
+                                                        med.medicine
+                                                    }}
+                                                </p>
+                                                <p
+                                                    class="mt-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                                >
+                                                    Free-text order
+                                                </p>
+                                            </template>
+                                            <template v-else>
+                                                <p
+                                                    class="text-sm font-bold text-[#146b8a]"
+                                                >
+                                                    {{ med.medicine }}
+                                                    <span
+                                                        class="text-xs font-normal text-gray-500"
+                                                        >({{ med.dosage }})</span
+                                                    >
+                                                </p>
+                                                <p
+                                                    class="mt-1 text-xs font-medium text-gray-500"
+                                                >
+                                                    {{ med.frequency }} for
+                                                    {{ med.duration }} days
+                                                </p>
+                                            </template>
                                         </div>
                                     </div>
                                     <p
@@ -1864,21 +1881,119 @@
                                     :key="idx"
                                     class="rounded-xl border border-[#146b8a]/20 bg-teal-50/50 p-4"
                                 >
-                                    <p class="font-bold text-[#146b8a]">
-                                        {{ med.medicine }}
-                                    </p>
-                                    <p class="mt-1 text-sm text-gray-600">
-                                        {{ med.dosage }}
-                                    </p>
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        {{ med.frequency }} —
-                                        {{ med.duration }} days
-                                    </p>
-                                    <p
-                                        v-if="med.instructions"
-                                        class="mt-1 text-xs text-gray-500"
+                                    <template v-if="med.is_freeform">
+                                        <p
+                                            class="whitespace-pre-line font-bold text-[#146b8a]"
+                                        >
+                                            {{
+                                                med.free_text || med.medicine
+                                            }}
+                                        </p>
+                                        <p
+                                            class="mt-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
+                                        >
+                                            Free-text order
+                                        </p>
+                                    </template>
+                                    <template v-else>
+                                        <p class="font-bold text-[#146b8a]">
+                                            {{ med.medicine }}
+                                        </p>
+                                        <p class="mt-1 text-sm text-gray-600">
+                                            {{ med.dosage }}
+                                        </p>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            {{ med.frequency }} —
+                                            {{ med.duration }} days
+                                        </p>
+                                        <p
+                                            v-if="med.instructions"
+                                            class="mt-1 text-xs text-gray-500"
+                                        >
+                                            {{ med.instructions }}
+                                        </p>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CLINICAL REQUESTS -->
+                        <div
+                            v-if="selectedRecord.requests?.length"
+                            class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                        >
+                            <div class="mb-5 flex items-center justify-between">
+                                <h3
+                                    class="flex items-center text-sm font-extrabold tracking-widest text-[#146b8a] uppercase"
+                                >
+                                    <svg
+                                        class="mr-2 h-4 w-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
                                     >
-                                        {{ med.instructions }}
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    Clinical Requests
+                                </h3>
+                                <button
+                                    @click="
+                                        downloadServerPdf(
+                                            'clinical_requests',
+                                            selectedRecord,
+                                        )
+                                    "
+                                    class="flex items-center gap-1.5 rounded-lg bg-[#146b8a] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#0f556e]"
+                                >
+                                    <svg
+                                        class="h-4 w-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                        />
+                                    </svg>
+                                    Requests PDF
+                                </button>
+                            </div>
+                            <div class="space-y-3">
+                                <div
+                                    v-for="(req, idx) in selectedRecord.requests"
+                                    :key="req.id ?? idx"
+                                    class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                                >
+                                    <div
+                                        class="mb-2 flex flex-wrap items-center gap-2"
+                                    >
+                                        <span
+                                            class="rounded-full bg-[#146b8a]/10 px-2 py-0.5 text-[10px] font-extrabold tracking-widest text-[#146b8a] uppercase"
+                                            >{{
+                                                req.type_label || req.type
+                                            }}</span
+                                        >
+                                        <span
+                                            class="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-extrabold tracking-widest text-gray-600 uppercase"
+                                            >{{ req.priority }}</span
+                                        >
+                                        <span
+                                            class="text-[10px] font-bold tracking-widest text-gray-400 uppercase"
+                                            >{{ req.status }}</span
+                                        >
+                                    </div>
+                                    <p
+                                        class="whitespace-pre-line text-sm text-gray-700"
+                                    >
+                                        {{ req.body }}
                                     </p>
                                 </div>
                             </div>
@@ -3096,8 +3211,18 @@ interface ConsultationRecord extends Appointment {
               frequency: string;
               duration: string;
               instructions?: string | null;
+              is_freeform?: boolean;
+              free_text?: string | null;
           }>
         | string;
+    requests?: Array<{
+        id?: number;
+        type: string;
+        type_label?: string;
+        body: string;
+        priority: string;
+        status: string;
+    }>;
     ai_summary?: string;
     echo_data?: Record<string, any>;
     doppler_data?: Record<string, any>;
@@ -3114,7 +3239,8 @@ type ExportType =
     | 'manual_draft'
     | 'stress_echo'
     | 'abpm'
-    | 'prescription';
+    | 'prescription'
+    | 'clinical_requests';
 type ExportFormat = 'docx' | 'pdf';
 
 interface OcrDocument {
@@ -3423,6 +3549,8 @@ function parsedPrescriptions(record: ConsultationRecord): Array<{
     frequency: string;
     duration: string | number;
     instructions?: string | null;
+    is_freeform?: boolean;
+    free_text?: string | null;
 }> {
     if (!record.prescriptions) {
         return [];
@@ -3435,7 +3563,10 @@ function parsedPrescriptions(record: ConsultationRecord): Array<{
                 : record.prescriptions;
 
         return Array.isArray(parsed)
-            ? parsed.filter((p: any) => p.medicine)
+            ? parsed.filter(
+                  (p: any) =>
+                      p.medicine || (p.is_freeform && p.free_text?.trim()),
+              )
             : [];
     } catch {
         return [];

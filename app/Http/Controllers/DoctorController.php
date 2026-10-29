@@ -64,7 +64,9 @@ class DoctorController extends Controller
                     'allergies' => $appt->patient?->allergies,
                     'current_medications' => ($appt->patient?->prescriptions ?? collect())
                         ->map(fn ($rx) => [
-                            'medicine' => $rx->medication_name,
+                            'medicine' => $rx->is_freeform
+                                ? ($rx->free_text ?: $rx->medication_name)
+                                : $rx->medication_name,
                             'dosage' => $rx->dosage,
                             'frequency' => $rx->frequency,
                         ])
