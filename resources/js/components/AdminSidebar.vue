@@ -2,234 +2,348 @@
     <!-- Mobile backdrop -->
     <div
         v-if="isMobileOpen"
-        class="fixed inset-0 z-40 bg-black/50 md:hidden"
+        class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm md:hidden"
         @click="closeMobile"
     ></div>
 
     <aside
-        class="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col bg-[#0f172a] text-slate-300 shadow-2xl transition-[width,transform] duration-300 md:static md:z-20 md:flex"
+        class="fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl shadow-slate-900/10 transition-[width,transform] duration-300 md:static md:z-20 md:shadow-none"
         :class="[
             isMobileOpen
                 ? 'translate-x-0'
                 : '-translate-x-full md:translate-x-0',
-            isOpen ? 'md:w-64' : 'md:w-0 md:overflow-hidden',
+            collapsed ? 'md:w-20' : 'md:w-64',
         ]"
     >
-        <div class="flex h-full w-64 shrink-0 flex-col">
+        <!-- Logo -->
+        <div
+            class="flex h-20 shrink-0 items-center border-b border-slate-100"
+            :class="collapsed ? 'md:justify-center md:px-0' : 'px-4'"
+        >
+            <Link
+                href="/admin/dashboard"
+                class="flex min-w-0 items-center gap-3"
+                :class="collapsed ? 'md:justify-center' : ''"
+                :title="collapsed ? 'CardioCare admin' : undefined"
+                @click="closeMobile"
+            >
+                <span
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25"
+                >
+                    <HeartPulse class="h-5 w-5" />
+                </span>
+                <span v-show="!collapsed" class="min-w-0 leading-tight">
+                    <span
+                        class="block truncate text-base font-black tracking-tight text-slate-800"
+                        >CardioCare</span
+                    >
+                    <span
+                        class="block text-[9px] font-black tracking-[0.22em] text-indigo-500 uppercase"
+                        >Admin console</span
+                    >
+                </span>
+            </Link>
+
+            <button
+                v-show="!collapsed"
+                type="button"
+                class="ml-auto hidden rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 md:inline-flex"
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                @click="toggleDesktop"
+            >
+                <PanelLeftClose class="h-4 w-4" />
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto px-3 py-5">
+            <p
+                v-show="!collapsed"
+                class="px-3 pb-2 text-[9px] font-black tracking-[0.22em] text-slate-400 uppercase"
+            >
+                Workspace
+            </p>
+            <ul class="space-y-1">
+                <li v-for="item in workspaceNav" :key="item.href">
+                    <Link
+                        :href="item.href"
+                        :title="collapsed ? item.label : undefined"
+                        class="group flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
+                        :class="[
+                            isActive(item.href)
+                                ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                            collapsed
+                                ? 'md:justify-center md:px-0'
+                                : 'gap-3 px-3',
+                        ]"
+                        @click="closeMobile"
+                    >
+                        <component
+                            :is="item.icon"
+                            class="h-[18px] w-[18px] shrink-0"
+                            :class="
+                                isActive(item.href)
+                                    ? 'text-indigo-600'
+                                    : 'text-slate-400 group-hover:text-slate-600'
+                            "
+                        />
+                        <span v-show="!collapsed">{{ item.label }}</span>
+                        <span
+                            v-if="item.chip && !collapsed"
+                            class="ml-auto rounded-md bg-white/60 px-1.5 py-0.5 text-[9px] font-black tracking-wide text-indigo-500 uppercase ring-1 ring-indigo-100"
+                            >{{ item.chip }}</span
+                        >
+                    </Link>
+                </li>
+            </ul>
+
+            <p
+                v-show="!collapsed"
+                class="mt-6 px-3 pb-2 text-[9px] font-black tracking-[0.22em] text-slate-400 uppercase"
+            >
+                Security &amp; records
+            </p>
             <div
-                class="flex h-20 items-center border-b border-slate-800 bg-[#020617] px-6"
+                v-show="collapsed"
+                class="my-4 border-t border-slate-100"
+            ></div>
+            <ul class="space-y-1">
+                <li v-for="item in securityNav" :key="item.href">
+                    <Link
+                        :href="item.href"
+                        :title="collapsed ? item.label : undefined"
+                        class="group flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
+                        :class="[
+                            isActive(item.href)
+                                ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                            collapsed
+                                ? 'md:justify-center md:px-0'
+                                : 'gap-3 px-3',
+                        ]"
+                        @click="closeMobile"
+                    >
+                        <component
+                            :is="item.icon"
+                            class="h-[18px] w-[18px] shrink-0"
+                            :class="
+                                isActive(item.href)
+                                    ? 'text-indigo-600'
+                                    : 'text-slate-400 group-hover:text-slate-600'
+                            "
+                        />
+                        <span v-show="!collapsed">{{ item.label }}</span>
+                    </Link>
+                </li>
+            </ul>
+
+            <p
+                v-show="!collapsed"
+                class="mt-6 px-3 pb-2 text-[9px] font-black tracking-[0.22em] text-slate-400 uppercase"
+            >
+                Account
+            </p>
+            <div
+                v-show="collapsed"
+                class="my-4 border-t border-slate-100"
+            ></div>
+            <ul class="space-y-1">
+                <li v-for="item in accountNav" :key="item.href">
+                    <Link
+                        :href="item.href"
+                        :title="collapsed ? item.label : undefined"
+                        class="group flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
+                        :class="[
+                            isActive(item.href)
+                                ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                            collapsed
+                                ? 'md:justify-center md:px-0'
+                                : 'gap-3 px-3',
+                        ]"
+                        @click="closeMobile"
+                    >
+                        <component
+                            :is="item.icon"
+                            class="h-[18px] w-[18px] shrink-0"
+                            :class="
+                                isActive(item.href)
+                                    ? 'text-indigo-600'
+                                    : 'text-slate-400 group-hover:text-slate-600'
+                            "
+                        />
+                        <span v-show="!collapsed">{{ item.label }}</span>
+                    </Link>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Status card -->
+        <div v-show="!collapsed" class="px-3 pb-3">
+            <div
+                class="relative overflow-hidden rounded-2xl bg-linear-to-br from-indigo-600 to-violet-700 p-4 text-white shadow-lg shadow-indigo-600/20"
             >
                 <div
-                    class="mr-3 rounded-lg bg-indigo-500 p-2 text-xl font-bold text-white shadow-md shadow-indigo-500/20"
-                >
-                    ⚙
-                </div>
-                <div class="flex-1">
-                    <h1
-                        class="text-lg leading-tight font-bold tracking-wide text-white"
+                    class="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full border-[14px] border-white/10"
+                ></div>
+                <div class="relative flex items-center gap-2">
+                    <ShieldCheck class="h-4 w-4 text-indigo-200" />
+                    <span class="text-xs font-black tracking-wide uppercase"
+                        >System healthy</span
                     >
-                        CardioCare
-                    </h1>
-                    <p
-                        class="text-[10px] tracking-widest text-indigo-400 uppercase"
-                    >
-                        Admin Console
-                    </p>
                 </div>
-                <button
-                    type="button"
-                    class="ml-2 hidden rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white md:inline-flex"
-                    @click="toggleDesktop"
-                    aria-label="Toggle sidebar"
+                <p
+                    class="relative mt-1.5 text-[11px] leading-snug text-indigo-100"
                 >
-                    <svg
-                        class="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16"
-                        />
-                    </svg>
-                </button>
-            </div>
-
-            <nav class="flex-1 overflow-y-auto py-6">
-                <div
-                    class="mb-2 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase"
-                >
-                    System Management
-                </div>
-                <ul class="space-y-1">
-                    <li>
-                        <Link
-                            href="/admin/dashboard"
-                            class="flex items-center px-6 py-3 font-medium transition-colors"
-                            :class="
-                                isActive('/admin/dashboard')
-                                    ? 'border-l-4 border-indigo-500 bg-indigo-600/10 text-indigo-100'
-                                    : 'border-l-4 border-transparent text-slate-400 hover:bg-slate-800 hover:text-white'
-                            "
-                            @click="closeMobile"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                                />
-                            </svg>
-                            Dashboard
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/admin/users-directory"
-                            class="flex items-center px-6 py-3 font-medium transition-colors"
-                            :class="
-                                isActive('/admin/users-directory')
-                                    ? 'border-l-4 border-indigo-500 bg-indigo-600/10 text-indigo-100'
-                                    : 'border-l-4 border-transparent text-slate-400 hover:bg-slate-800 hover:text-white'
-                            "
-                            @click="closeMobile"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                                />
-                            </svg>
-                            Users Directory
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/admin/create-account"
-                            class="flex items-center px-6 py-3 font-medium transition-colors"
-                            :class="
-                                isActive('/admin/create-account')
-                                    ? 'border-l-4 border-indigo-500 bg-indigo-600/10 text-indigo-100'
-                                    : 'border-l-4 border-transparent text-slate-400 hover:bg-slate-800 hover:text-white'
-                            "
-                            @click="closeMobile"
-                        >
-                            <svg
-                                class="mr-3 h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                                />
-                            </svg>
-                            Create Account
-                        </Link>
-                    </li>
-                </ul>
-            </nav>
-
-            <div class="space-y-1 border-t border-slate-800 p-4">
+                    All administrative services are operational.
+                </p>
                 <Link
                     href="/admin/audit-log"
-                    class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                    :class="
-                        isActive('/admin/audit-log')
-                            ? 'bg-slate-800 text-white'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                    "
+                    class="relative mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-white/90 transition hover:text-white"
                     @click="closeMobile"
                 >
-                    <svg
-                        class="mr-3 h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                    </svg>
-                    Audit Log
+                    View audit trail
+                    <ArrowUpRight class="h-3 w-3" />
                 </Link>
+            </div>
+        </div>
+
+        <div v-if="collapsed" class="px-3 pb-3">
+            <Link
+                href="/admin/audit-log"
+                class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition hover:bg-indigo-100"
+                title="System healthy - view audit trail"
+                @click="closeMobile"
+            >
+                <ShieldCheck class="h-4 w-4" />
+            </Link>
+        </div>
+
+        <!-- User -->
+        <div class="border-t border-slate-100 p-3">
+            <div
+                class="flex items-center gap-2.5"
+                :class="collapsed ? 'md:flex-col' : ''"
+            >
                 <Link
                     href="/profile"
-                    class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-slate-700 to-slate-900 text-xs font-black text-white shadow-sm"
+                    :title="displayName"
                     @click="closeMobile"
                 >
-                    <svg
-                        class="mr-3 h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                    </svg>
-                    My Profile
+                    {{ initial }}
                 </Link>
-                <LogoutButton>
+                <div v-show="!collapsed" class="min-w-0 flex-1">
+                    <Link
+                        href="/profile"
+                        class="block truncate text-sm font-bold text-slate-700 hover:text-indigo-600"
+                        @click="closeMobile"
+                    >
+                        {{ displayName }}
+                    </Link>
+                    <p
+                        class="text-[9px] font-black tracking-[0.16em] text-slate-400 uppercase"
+                    >
+                        System administrator
+                    </p>
+                </div>
+                <LogoutButton v-show="!collapsed">
                     <button
                         type="button"
-                        class="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                        class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        title="Sign out"
+                        aria-label="Sign out"
                     >
-                        <svg
-                            class="mr-3 h-5 w-5 rotate-180"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                            />
-                        </svg>
-                        Secure Sign Out
+                        <LogOut class="h-4 w-4" />
                     </button>
                 </LogoutButton>
             </div>
+
+            <LogoutButton v-if="collapsed">
+                <button
+                    type="button"
+                    class="mt-2 flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                    title="Sign out"
+                    aria-label="Sign out"
+                >
+                    <LogOut class="h-4 w-4" />
+                </button>
+            </LogoutButton>
         </div>
     </aside>
 </template>
 
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import {
+    ArrowUpRight,
+    HeartPulse,
+    LayoutDashboard,
+    LogOut,
+    PanelLeftClose,
+    ScrollText,
+    ShieldCheck,
+    UserPlus,
+    UserRound,
+    Users,
+} from 'lucide-vue-next';
+import { computed } from 'vue';
 import LogoutButton from '@/components/LogoutButton.vue';
 import { useSidebar } from '@/composables/useSidebar';
 
-const { isOpen, isMobileOpen, toggleDesktop, closeMobile } =
+const props = defineProps<{
+    user?: { name?: string };
+}>();
+
+const { isOpen, isMobileOpen, isMobile, toggleDesktop, closeMobile } =
     useSidebar('admin');
 
-const isActive = (path: string): boolean => {
-    return window.location.pathname === path;
-};
+const page = usePage();
+
+const collapsed = computed(() => !isOpen.value && !isMobile.value);
+
+const currentPath = computed(() => page.url.split('?')[0]);
+
+const isActive = (href: string): boolean => currentPath.value === href;
+
+const displayName = computed(() => props.user?.name ?? 'Administrator');
+
+const initial = computed(() => displayName.value.charAt(0).toUpperCase());
+
+const workspaceNav = [
+    {
+        label: 'Dashboard',
+        href: '/admin/dashboard',
+        icon: LayoutDashboard,
+    },
+    {
+        label: 'Users directory',
+        href: '/admin/users-directory',
+        icon: Users,
+    },
+    {
+        label: 'Create account',
+        href: '/admin/create-account',
+        icon: UserPlus,
+        chip: 'New',
+    },
+];
+
+const securityNav = [
+    {
+        label: 'Audit log',
+        href: '/admin/audit-log',
+        icon: ScrollText,
+    },
+];
+
+const accountNav = [
+    {
+        label: 'My profile',
+        href: '/profile',
+        icon: UserRound,
+    },
+];
 </script>

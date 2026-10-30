@@ -2,7 +2,7 @@
     <div
         class="flex h-screen bg-[#f1f5f9] font-sans selection:bg-indigo-500 selection:text-white"
     >
-        <AdminSidebar />
+        <AdminSidebar :user="user" />
 
         <main class="flex h-screen flex-1 flex-col overflow-hidden">
             <AdminHeader title="System Administration" :user="user" />

@@ -183,6 +183,8 @@ class AdminController extends Controller
             'action' => 'Created new '.strtoupper($validated['role']).' account for '.$newUser->email.' from IP: '.$request->ip(),
         ]);
 
+        $this->forgetAdminCaches();
+
         return back()->with('success', 'User account successfully created with secure password requirements!');
     }
 
@@ -249,6 +251,8 @@ class AdminController extends Controller
             'action' => 'Updated user account for '.$user->email,
         ]);
 
+        $this->forgetAdminCaches();
+
         return back()->with('success', 'User account updated successfully.');
     }
 
@@ -273,7 +277,19 @@ class AdminController extends Controller
             'action' => 'Deleted user account: '.$email,
         ]);
 
+        $this->forgetAdminCaches();
+
         return back()->with('success', 'User account deleted.');
+    }
+
+    /**
+     * Keep the cached console summaries in sync with account and audit writes.
+     */
+    private function forgetAdminCaches(): void
+    {
+        Cache::forget('admin_dashboard_stats');
+        Cache::forget('admin_users_summary');
+        Cache::forget('admin_audit_summary');
     }
 
     public function usersDirectory(Request $request)
@@ -322,9 +338,28 @@ class AdminController extends Controller
             ];
         });
 
+        // Directory header cards are practice-wide, not filtered by the
+        // search box, so they stay a stable snapshot while browsing.
+        $summary = Cache::remember('admin_users_summary', 300, function () {
+            $counts = User::query()
+                ->select('role')
+                ->selectRaw('count(*) as total')
+                ->groupBy('role')
+                ->pluck('total', 'role');
+
+            return [
+                'total' => (int) $counts->sum(),
+                'doctors' => (int) ($counts['doctor'] ?? 0),
+                'receptionists' => (int) ($counts['receptionist'] ?? 0),
+                'admins' => (int) ($counts['admin'] ?? 0),
+                'patients' => (int) ($counts['patient'] ?? 0),
+            ];
+        });
+
         return inertia('Admin/UsersDirectory', [
             'user' => Auth::user(),
             'users' => $users,
+            'summary' => $summary,
             'filters' => $request->only(['search', 'role', 'status']),
         ]);
     }
@@ -372,9 +407,21 @@ class AdminController extends Controller
             ];
         });
 
+        $summary = Cache::remember('admin_audit_summary', 60, function () {
+            $last = AuditLog::latest('created_at')->first();
+
+            return [
+                'total' => AuditLog::count(),
+                'today' => AuditLog::whereDate('created_at', today())->count(),
+                'actors' => AuditLog::whereNotNull('user_id')->distinct()->count('user_id'),
+                'last' => $last?->created_at?->diffForHumans() ?? 'No activity yet',
+            ];
+        });
+
         return inertia('Admin/AuditLog', [
             'user' => Auth::user(),
             'logs' => $logs,
+            'summary' => $summary,
             'filters' => $request->only(['search', 'date']),
         ]);
     }
