@@ -28,6 +28,7 @@ use App\Models\User;
 use App\Models\VitalSign;
 use App\Services\GoogleCalendarService;
 use App\Support\ClinicalRecordMapper;
+use App\Support\DiagnosisText;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -645,7 +646,7 @@ class AppointmentController extends Controller
             'reading_date' => 'nullable|required_with:reader_provider_id|date',
             'symptoms' => 'nullable|string|max:5000',
             'vitals' => 'nullable|string|max:5000',
-            'diagnosis' => 'required|string|max:500',
+            'diagnosis' => 'nullable|string|max:500',
             'plan' => 'nullable|string|max:5000',
             'consultation_type' => 'nullable|array',
             'consultation_type.*' => 'string|in:Type 1,Type 2,Type 3,Type 4,Type 5,Type 6',
@@ -744,10 +745,15 @@ class AppointmentController extends Controller
             'abpm_data.conclusion' => 'nullable|string|max:5000',
         ]);
 
-        // Sanitize text fields to prevent XSS
+        // Sanitize text fields to prevent XSS. The assessment is optional:
+        // a visit can legitimately be only for clearance or a doctor-requested
+        // review. Placeholders are nulled, but meaningful non-diagnostic notes
+        // (e.g. "For clearance") are kept in soap_notes.assessment.
         $validated['symptoms'] = $this->sanitizeText($validated['symptoms'] ?? '');
         $validated['vitals'] = $this->sanitizeText($validated['vitals'] ?? '');
-        $validated['diagnosis'] = $this->sanitizeText($validated['diagnosis']);
+        $validated['diagnosis'] = DiagnosisText::normalize(
+            $this->sanitizeText($validated['diagnosis'] ?? '')
+        ) ?? '';
         $validated['plan'] = $this->sanitizeText($validated['plan'] ?? '');
 
         // Sanitize prescription data and filter out empty rows. A free-text row
@@ -851,7 +857,7 @@ class AppointmentController extends Controller
             [
                 'subjective' => $validated['symptoms'],
                 'objective' => $validated['vitals'],
-                'assessment' => $validated['diagnosis'],
+                'assessment' => $validated['diagnosis'] !== '' ? $validated['diagnosis'] : null,
                 'plan' => $validated['plan'] ?? '',
                 'ai_summary' => $validated['ai_summary'] ?? null,
             ]
@@ -866,14 +872,20 @@ class AppointmentController extends Controller
             );
         }
 
-        // Diagnosis rows (legacy single-string diagnosis → one ICD row)
+        // Diagnosis rows (legacy single-string diagnosis → one ICD row).
+        // Only real diagnoses get a row: clearance/request-only visits keep
+        // their text in soap_notes.assessment and must not pollute report
+        // diagnosis statistics.
         $encounter->diagnoses()->delete();
-        $encounter->diagnoses()->create([
-            'icd_code' => null,
-            'description' => $validated['diagnosis'],
-            'is_primary' => true,
-            'diagnosed_at' => now(),
-        ]);
+        $diagnosis = DiagnosisText::asDiagnosis($validated['diagnosis']);
+        if ($diagnosis !== null) {
+            $encounter->diagnoses()->create([
+                'icd_code' => null,
+                'description' => $diagnosis,
+                'is_primary' => true,
+                'diagnosed_at' => now(),
+            ]);
+        }
 
         // Prescriptions (replaces the legacy JSON array; old adherence logs cascade)
         $encounter->prescriptions()->delete();

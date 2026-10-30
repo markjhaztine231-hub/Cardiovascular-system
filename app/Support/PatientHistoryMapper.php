@@ -102,8 +102,7 @@ class PatientHistoryMapper
                     'service' => $appt?->service_type ?? 'Consultation',
                     'symptoms' => $soap?->subjective,
                     'vitals' => $soap?->objective,
-                    'diagnosis' => $encounter->diagnoses->firstWhere('is_primary', true)?->description
-                        ?? $encounter->diagnoses->first()?->description,
+                    'diagnosis' => self::diagnosisText($encounter),
                     'plan' => $soap?->plan,
                     'prescriptions' => $encounter->prescriptions->map(fn ($rx) => [
                         'medicine' => $rx->medication_name,
@@ -169,6 +168,23 @@ class PatientHistoryMapper
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Prefer a real structured diagnosis, then any SOAP assessment note, so
+     * clearance/request-only visits still show their note. Placeholder values
+     * ("N/A", "none") are ignored on both paths.
+     */
+    private static function diagnosisText($encounter): ?string
+    {
+        $fromRows = $encounter->diagnoses->firstWhere('is_primary', true)?->description
+            ?? $encounter->diagnoses->first()?->description;
+        $fromSoap = $encounter->soapNote?->assessment;
+
+        return DiagnosisText::asDiagnosis($fromRows)
+            ?? DiagnosisText::asDiagnosis($fromSoap)
+            ?? DiagnosisText::normalize($fromRows)
+            ?? DiagnosisText::normalize($fromSoap);
     }
 
     public static function ocrHistory(Patient $patientRecord): array

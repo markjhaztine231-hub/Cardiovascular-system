@@ -483,4 +483,88 @@ class MonthlyReportAgeAnalyticsTest extends TestCase
         // practice-wide report.
         $this->assertSame(0, MonthlyReport::count());
     }
+
+    // ── Placeholder and visit-reason filtering ─────────────────────────────
+
+    public function test_placeholder_and_clearance_assessments_are_excluded_from_diagnosis_statistics(): void
+    {
+        $this->seenPatientWithDiagnosis(45, 'N/A');
+        $this->seenPatientWithDiagnosis(50, 'none');
+        $this->seenPatientWithDiagnosis(60, 'For clearance');
+        $this->seenPatientWithDiagnosis(70, 'Hypertension', 'I10');
+
+        $stats = MonthlyReportService::generate($this->doctor->id, '2026-09')['stats'];
+
+        $this->assertSame(
+            [['name' => 'Hypertension', 'count' => 1]],
+            $stats['top_diagnoses'],
+            'Only the real diagnosis may reach top_diagnoses.',
+        );
+
+        $this->assertCount(1, $stats['diagnosis_by_age']);
+        $this->assertSame('Hypertension', $stats['diagnosis_by_age'][0]['name']);
+        $this->assertSame(1, $stats['diagnosis_by_age'][0]['total']);
+    }
+
+    public function test_top_diagnoses_collapse_case_and_whitespace_variants(): void
+    {
+        $this->seenPatientWithDiagnosis(30, 'Essential (primary) hypertension');
+        $this->seenPatientWithDiagnosis(40, 'essential  (primary)   hypertension');
+        $this->seenPatientWithDiagnosis(50, 'ESSENTIAL (PRIMARY) HYPERTENSION');
+
+        $stats = MonthlyReportService::generate($this->doctor->id, '2026-09')['stats'];
+
+        $this->assertCount(1, $stats['top_diagnoses']);
+        $this->assertSame(3, $stats['top_diagnoses'][0]['count']);
+    }
+
+    public function test_legacy_placeholder_rows_in_the_previous_month_do_not_create_trends(): void
+    {
+        // A full previous-month report shape, with legacy placeholder rows
+        // appended exactly as they exist in the production database.
+        MonthlyReport::create([
+            'provider_id' => $this->provider->id,
+            'scope' => MonthlyReport::SCOPE_PROVIDER,
+            'month' => '2026-08',
+            'report_text' => 'Previous narrative.',
+            'stats' => [
+                'total' => 3,
+                'completed' => 3,
+                'no_shows' => 0,
+                'cancelled' => 0,
+                'demographics' => ['total_unique_patients' => 3, 'avg_age' => 55.0],
+                'procedures' => ['echocardiogram' => 0, 'treadmill_tmt' => 0, 'color_doppler' => 0, 'total' => 0],
+                'top_diagnoses' => [
+                    ['name' => 'N/A', 'count' => 5],
+                    ['name' => 'For clearance', 'count' => 3],
+                    ['name' => 'Hypertension', 'count' => 2],
+                ],
+                'age_distribution' => [],
+            ],
+        ]);
+
+        $this->seenPatientWithDiagnosis(60, 'Hypertension');
+
+        $stats = MonthlyReportService::generate($this->doctor->id, '2026-09')['stats'];
+        $trends = collect($stats['diagnosis_trends']);
+
+        $this->assertCount(1, $trends, 'Placeholder rows must not become trend entries.');
+        $this->assertSame('Hypertension', $trends->first()['name']);
+        $this->assertSame(1, $trends->first()['current_count']);
+        $this->assertSame(2, $trends->first()['previous_count']);
+    }
+
+    public function test_narrative_never_receives_placeholder_diagnoses(): void
+    {
+        $this->seenPatientWithDiagnosis(45, 'N/A');
+        $this->seenPatientWithDiagnosis(60, 'For clearance');
+        $this->seenPatientWithDiagnosis(70, 'Hypertension', 'I10');
+
+        MonthlyReportService::generate($this->doctor->id, '2026-09');
+        $prompt = $this->promptSentToModel();
+
+        $this->assertStringContainsString('Hypertension (1 case)', $prompt);
+        $this->assertStringNotContainsString('N/A', $prompt);
+        $this->assertStringNotContainsString('For clearance', $prompt);
+    }
 }

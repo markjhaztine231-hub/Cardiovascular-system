@@ -916,11 +916,12 @@
                                     <div>
                                         <label
                                             class="mb-2 block text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
-                                            >Subjective (Symptoms)</label
+                                            >Subjective (Symptoms / Reason for
+                                            Visit)</label
                                         >
                                         <textarea
                                             v-model="consultForm.symptoms"
-                                            placeholder="Patient complaints..."
+                                            placeholder="Patient complaints, history, or reason for visit (e.g. clearance, doctor request)..."
                                             class="h-24 w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-[#0f8c8e]"
                                         ></textarea>
                                     </div>
@@ -1033,14 +1034,18 @@
                                 <div>
                                     <label
                                         class="mb-2 block text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
-                                        >Assessment (Diagnosis)</label
+                                        >Assessment (Diagnosis — optional)</label
                                     >
                                     <textarea
                                         v-model="consultForm.diagnosis"
                                         rows="2"
-                                        placeholder="e.g. Acute Viral Infection"
+                                        placeholder="e.g. Acute Viral Infection. Leave blank if this visit is for clearance or a doctor-requested review."
                                         class="min-h-20 w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-relaxed font-medium text-gray-900 outline-none field-sizing:content focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
                                     ></textarea>
+                                    <p class="mt-1 text-[11px] leading-snug text-gray-500">
+                                        Optional. Avoid N/A or none — use this
+                                        box for the clinical diagnosis only.
+                                    </p>
                                 </div>
 
                                 <!-- Plan (P in SOAP) -->

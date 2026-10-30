@@ -21,13 +21,8 @@ export interface ValidationError {
 export function validateConsultation(form: any): ValidationError[] {
     const errors: ValidationError[] = [];
 
-    // Validate SOAP notes
-    if (!form.diagnosis?.trim()) {
-        errors.push({
-            field: 'diagnosis',
-            message: 'Diagnosis/Assessment is required',
-        });
-    }
+    // Assessment/diagnosis is intentionally optional: clearance visits and
+    // doctor-requested reviews legitimately have no diagnosis to record.
 
     // Validate prescriptions
     if (form.prescriptions?.length) {

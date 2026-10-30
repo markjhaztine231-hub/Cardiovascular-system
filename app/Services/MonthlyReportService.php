@@ -11,6 +11,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Provider;
 use App\Support\AgeBand;
+use App\Support\DiagnosisText;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Http\Client\RequestException;
@@ -323,17 +324,37 @@ class MonthlyReportService
         $type3 = $encounters->where('encounter_type', 'doppler')->count();
 
         // ── Top diagnoses (ICD-10 descriptions, normalized schema) ─────────
+        // Grouping is case/whitespace-insensitive so "Hypertension" and
+        // "hypertension  " are one clinical bucket. Visit reasons such as
+        // clearance or a doctor-requested review are deliberately excluded:
+        // they are notes, not diagnoses, and would otherwise dominate the
+        // narrative during months with many administrative visits.
         $encounterIds = $encounters->pluck('id')->filter();
         $topDiagnoses = [];
         if ($encounterIds->isNotEmpty()) {
-            $topDiagnoses = Diagnosis::whereIn('encounter_id', $encounterIds)
-                ->whereNotNull('description')
-                ->where('description', '!=', '')
-                ->pluck('description')
-                ->countBy()
-                ->sortDesc()->take(5)
-                ->map(fn ($count, $name) => ['name' => $name, 'count' => $count])
-                ->values()->toArray();
+            $groupedDiagnoses = [];
+
+            foreach (Diagnosis::whereIn('encounter_id', $encounterIds)->pluck('description') as $description) {
+                $name = DiagnosisText::asDiagnosis($description);
+                $key = DiagnosisText::key($description);
+
+                if ($name === null || $key === null) {
+                    continue;
+                }
+
+                if (! isset($groupedDiagnoses[$key])) {
+                    $groupedDiagnoses[$key] = ['name' => $name, 'count' => 0];
+                }
+
+                $groupedDiagnoses[$key]['count']++;
+            }
+
+            usort($groupedDiagnoses, function (array $a, array $b): int {
+                return [$b['count'], mb_strtolower($a['name'])]
+                    <=> [$a['count'], mb_strtolower($b['name'])];
+            });
+
+            $topDiagnoses = array_slice($groupedDiagnoses, 0, 5);
         }
 
         // ── Age distribution + diagnosis by age band ────────────────────────
@@ -480,27 +501,60 @@ class MonthlyReportService
         }
 
         // ── Diagnosis trends (current vs previous month) ────────────────────
+        // Previous-month stats are read back from a persisted report, which may
+        // contain placeholder or clearance rows written before this filter
+        // existed. Re-filter and match by normalized key so legacy rows cannot
+        // create phantom +100% swings in the narrative.
         $diagnosisTrends = [];
         if ($prevMonth && $prevStats && ! empty($prevStats['top_diagnoses'])) {
-            $prevDx = collect($prevStats['top_diagnoses']);
-            $allDx = collect($topDiagnoses)
-                ->pluck('name')
-                ->merge($prevDx->pluck('name'))
-                ->unique();
+            $currentByKey = [];
+            foreach ($topDiagnoses as $diagnosis) {
+                $key = DiagnosisText::key($diagnosis['name']);
+                if ($key !== null) {
+                    $currentByKey[$key] = $diagnosis;
+                }
+            }
 
-            foreach ($allDx as $dxName) {
-                $curCnt = collect($topDiagnoses)->firstWhere('name', $dxName)['count'] ?? 0;
-                $prvCnt = $prevDx->firstWhere('name', $dxName)['count'] ?? 0;
+            $previousByKey = [];
+            foreach ($prevStats['top_diagnoses'] as $diagnosis) {
+                $name = $diagnosis['name'] ?? null;
+                $key = DiagnosisText::key($name);
+                $display = DiagnosisText::asDiagnosis($name);
+
+                if ($key === null || $display === null) {
+                    continue;
+                }
+
+                if (! isset($previousByKey[$key])) {
+                    $previousByKey[$key] = ['name' => $display, 'count' => 0];
+                }
+
+                $previousByKey[$key]['count'] += (int) ($diagnosis['count'] ?? 0);
+            }
+
+            $allKeys = array_unique(array_merge(
+                array_keys($currentByKey),
+                array_keys($previousByKey),
+            ));
+
+            foreach ($allKeys as $key) {
+                $current = $currentByKey[$key] ?? null;
+                $previous = $previousByKey[$key] ?? null;
+
+                $curCnt = $current['count'] ?? 0;
+                $prvCnt = $previous['count'] ?? 0;
                 $change = $curCnt - $prvCnt;
                 $pct = $prvCnt > 0 ? round(($change / $prvCnt) * 100, 1) : ($curCnt > 0 ? 100 : 0);
+
                 $diagnosisTrends[] = [
-                    'name' => $dxName,
+                    'name' => $current['name'] ?? $previous['name'],
                     'current_count' => $curCnt,
                     'previous_count' => $prvCnt,
                     'change' => $change,
                     'change_pct' => $pct,
                 ];
             }
+
             usort($diagnosisTrends, fn ($a, $b) => abs($b['change_pct']) <=> abs($a['change_pct']));
         }
 
@@ -642,8 +696,6 @@ class MonthlyReportService
         }
 
         $rows = Diagnosis::whereIn('encounter_id', $encounterIds->all())
-            ->whereNotNull('description')
-            ->where('description', '!=', '')
             ->get(['encounter_id', 'description', 'icd_code']);
 
         if ($rows->isEmpty()) {
@@ -655,6 +707,12 @@ class MonthlyReportService
         foreach ($rows as $row) {
             $patientId = $patientByEncounter[$row->encounter_id] ?? null;
             if (! $patientId) {
+                continue;
+            }
+
+            // Reject placeholders and visit reasons before they reach a band.
+            $name = DiagnosisText::asDiagnosis($row->description);
+            if ($name === null) {
                 continue;
             }
 
@@ -670,12 +728,12 @@ class MonthlyReportService
 
             // Collapse whitespace/case so "Hypertension, essential" and
             // "hypertension  essential" are one clinical bucket, not two.
-            $normalized = strtolower(preg_replace('/\s+/', ' ', trim($row->description)));
+            $normalized = DiagnosisText::key($name) ?? $name;
             $key = $code !== null ? 'code:'.$code : 'desc:'.$normalized;
 
             if (! isset($grouped[$key])) {
                 $grouped[$key] = [
-                    'name' => trim($row->description),
+                    'name' => $name,
                     'code' => $code,
                     'total' => 0,
                     'bands' => array_fill_keys(array_keys(AgeBand::emptyHistogram()), 0),
@@ -726,7 +784,10 @@ class MonthlyReportService
         };
 
         // ── Format current month lists ─────────────────────────────────────
+        // Re-filter here as well: stats can come from a report persisted before
+        // the diagnosis filter existed (month-over-month narrative reuse).
         $dxList = collect($stats['top_diagnoses'])
+            ->filter(fn ($d) => DiagnosisText::key($d['name'] ?? null) !== null)
             ->map(fn ($d) => "{$d['name']} ({$d['count']} ".($d['count'] === 1 ? 'case' : 'cases').')')
             ->join(', ') ?: 'none recorded';
 
@@ -841,6 +902,7 @@ class MonthlyReportService
             $dTotalProc = $proc['total'] - ($prevStats['procedures']['total'] ?? 0);
 
             $prevDxList = collect($prevStats['top_diagnoses'] ?? [])
+                ->filter(fn ($d) => DiagnosisText::key($d['name'] ?? null) !== null)
                 ->map(fn ($d) => "{$d['name']} ({$d['count']} ".($d['count'] === 1 ? 'case' : 'cases').')')
                 ->join(', ') ?: 'none recorded';
 

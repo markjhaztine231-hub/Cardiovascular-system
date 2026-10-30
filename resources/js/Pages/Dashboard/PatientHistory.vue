@@ -1418,14 +1418,15 @@
                                                 <p
                                                     class="mb-1 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                                 >
-                                                    Symptoms / Subjective
+                                                    Subjective / Reason for
+                                                    Visit
                                                 </p>
                                                 <p
                                                     class="line-clamp-2 text-sm font-medium text-gray-700"
                                                 >
                                                     {{
                                                         record.symptoms ||
-                                                        'No symptoms recorded.'
+                                                        'No subjective notes recorded.'
                                                     }}
                                                 </p>
                                             </div>
@@ -1768,7 +1769,8 @@
                                     <p
                                         class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
-                                        Subjective (Symptoms)
+                                        Subjective (Symptoms / Reason for
+                                        Visit)
                                     </p>
                                     <div
                                         class="min-h-20 rounded-xl border border-gray-200 bg-gray-50 p-4"
@@ -1778,7 +1780,7 @@
                                         >
                                             {{
                                                 selectedRecord.symptoms ||
-                                                'No symptoms recorded.'
+                                                'No subjective notes recorded.'
                                             }}
                                         </p>
                                     </div>
@@ -1809,7 +1811,7 @@
                                     <p
                                         class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
-                                        Assessment (Diagnosis)
+                                        Assessment (Diagnosis / Visit Reason)
                                     </p>
                                     <div
                                         class="min-h-20 rounded-xl border border-gray-200 bg-gray-50 p-4"
@@ -1819,7 +1821,7 @@
                                         >
                                             {{
                                                 selectedRecord.diagnosis ||
-                                                'No diagnosis recorded.'
+                                                'No assessment recorded.'
                                             }}
                                         </p>
                                     </div>
