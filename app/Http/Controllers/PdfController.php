@@ -209,12 +209,36 @@ class PdfController extends Controller
             abort(403);
         }
 
-        $query = MonthlyReport::forDoctor(Auth::id());
+        $providerId = Auth::user()->provider?->id;
 
-        if ($request->has('report')) {
+        // A doctor may download their own personal reports and any practice-wide
+        // report, but not another doctor's personal report.
+        $query = MonthlyReport::query()
+            ->where(function ($query) use ($providerId) {
+                $query->where(function ($query) use ($providerId) {
+                    $query->where('scope', MonthlyReport::SCOPE_PROVIDER)
+                        ->where('provider_id', $providerId ?? 0);
+                })->orWhere(function ($query) {
+                    $query->where('scope', MonthlyReport::SCOPE_PRACTICE)
+                        ->whereNull('provider_id');
+                });
+            });
+
+        if ($request->filled('report')) {
             $query->where('id', $request->report);
         } else {
-            $query->forMonth($request->get('month', date('Y-m')));
+            $scope = $request->get('scope') === MonthlyReport::SCOPE_PRACTICE
+                ? MonthlyReport::SCOPE_PRACTICE
+                : MonthlyReport::SCOPE_PROVIDER;
+
+            $query->where('scope', $scope)
+                ->forMonth($request->get('month', date('Y-m')));
+
+            if ($scope === MonthlyReport::SCOPE_PROVIDER) {
+                $query->where('provider_id', $providerId ?? 0);
+            } else {
+                $query->whereNull('provider_id');
+            }
         }
 
         $report = $query->latest()->first();
@@ -225,16 +249,20 @@ class PdfController extends Controller
 
         $formattedMonth = Carbon::parse($report->month.'-01')->format('F Y');
         $slug = str_replace(' ', '_', $formattedMonth);
+        $prefix = $report->isPracticeWide()
+            ? 'Practice_Monthly_Report'
+            : 'Personal_Monthly_Report';
 
         return Pdf::loadView('pdfs.monthly-report', [
             'stats' => $report->stats,
             'reportText' => $report->report_text,
             'formattedMonth' => $formattedMonth,
+            'reportTitle' => MonthlyReport::labelForScope($report->scope),
             'doctor' => Auth::user()->name,
             'generatedAt' => now()->format('F d, Y'),
         ])
             ->setPaper('letter', 'portrait')
-            ->download("Monthly_Report_{$slug}.pdf");
+            ->download("{$prefix}_{$slug}.pdf");
     }
 
     // -------------------------------------------------------------------------

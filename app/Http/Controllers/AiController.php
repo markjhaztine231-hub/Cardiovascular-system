@@ -81,60 +81,84 @@ class AiController extends Controller
     public function showMonthlyReport(Request $request)
     {
         $doctorId = Auth::id();
+        $providerId = Auth::user()->provider?->id;
 
-        // Load a specific report if ?report=X, otherwise the latest overall
-        if ($request->has('report')) {
-            $report = MonthlyReport::forDoctor($doctorId)
+        // Load a specific report if ?report=X, otherwise the latest report for
+        // the requested scope. A doctor may open their own personal reports and
+        // any practice-wide report, but never another doctor's personal report.
+        if ($request->filled('report')) {
+            $report = MonthlyReport::query()
                 ->where('id', $request->report)
+                ->where(function ($query) use ($providerId) {
+                    $query->where(function ($query) use ($providerId) {
+                        $query->where('scope', MonthlyReport::SCOPE_PROVIDER)
+                            ->where('provider_id', $providerId ?? 0);
+                    })->orWhere(function ($query) {
+                        $query->where('scope', MonthlyReport::SCOPE_PRACTICE)
+                            ->whereNull('provider_id');
+                    });
+                })
                 ->firstOrFail();
+
+            $scope = $report->scope;
         } else {
-            $report = MonthlyReport::forDoctor($doctorId)
-                ->latest()
-                ->first();
+            $scope = $this->scopeFromRequest($request);
+
+            $report = $scope === MonthlyReport::SCOPE_PRACTICE
+                ? MonthlyReport::practice()->latest()->first()
+                : MonthlyReport::forDoctor($doctorId)->latest()->first();
         }
 
-        return $this->reportResponse($report);
+        return $this->reportResponse($report, $scope);
     }
 
     public function generateMonthlyReport(Request $request)
     {
         set_time_limit(180);
 
-        $request->validate(['month' => 'required|date_format:Y-m']);
+        $request->validate([
+            'month' => 'required|date_format:Y-m',
+            'scope' => 'nullable|in:personal,practice',
+        ]);
 
         $doctorId = Auth::id();
         $month = $request->month;
+        $scope = $this->scopeFromRequest($request);
 
-        // Guard: prevent rapid duplicate generations (within 30 seconds).
-        $latest = MonthlyReport::forDoctor($doctorId)
-            ->forMonth($month)
-            ->latest()
-            ->first();
+        // Guard: prevent rapid duplicate generations (within 30 seconds) for
+        // the same month AND scope, so a personal and practice report can be
+        // generated back-to-back without one blocking the other.
+        $latest = $scope === MonthlyReport::SCOPE_PRACTICE
+            ? MonthlyReport::practice()->forMonth($month)->latest()->first()
+            : MonthlyReport::forDoctor($doctorId)->forMonth($month)->latest()->first();
 
         if ($latest && $latest->created_at->diffInSeconds(now()) < 30) {
             return back()->withErrors(['month' => 'Please wait before generating another report for this month.']);
         }
 
         // Guard: make sure at least one appointment exists before generating.
-        $exists = Appointment::whereHas('provider', fn ($q) => $q->where('user_id', $doctorId))
-            ->whereBetween('scheduled_date', [
-                Carbon::parse($month.'-01')->startOfMonth()->toDateString(),
-                Carbon::parse($month.'-01')->endOfMonth()->toDateString(),
-            ])
-            ->exists();
+        // Personal reports count only this doctor's assigned appointments;
+        // practice reports count every appointment in the month.
+        $appointments = Appointment::query()->whereBetween('scheduled_date', [
+            Carbon::parse($month.'-01')->startOfMonth()->toDateString(),
+            Carbon::parse($month.'-01')->endOfMonth()->toDateString(),
+        ]);
 
-        if (! $exists) {
+        if ($scope === MonthlyReport::SCOPE_PROVIDER) {
+            $appointments->whereHas('provider', fn ($q) => $q->where('user_id', $doctorId));
+        }
+
+        if (! $appointments->exists()) {
             return back()->withErrors(['month' => 'No appointments found for this month.']);
         }
 
         // Delegate to the shared service — returns both stats and AI narrative.
-        // Always creates a new row (history).
-        $result = MonthlyReportService::generate($doctorId, $month);
+        // Always creates a new row (history) for the selected scope.
+        $result = MonthlyReportService::generate($doctorId, $month, $scope);
 
-        $report = MonthlyReport::forDoctor(Auth::id())
-            ->forMonth($request->month)
-            ->latest()
-            ->first();
+        $report = $scope === MonthlyReport::SCOPE_PRACTICE
+            ? MonthlyReport::practice()->forMonth($month)->latest()->first()
+            : MonthlyReport::forDoctor($doctorId)->forMonth($month)->latest()->first();
 
         // Never fail silently: if the statistics were built but the AI
         // narrative came back empty, tell the doctor instead of showing a
@@ -145,19 +169,35 @@ class AiController extends Controller
             ]);
         }
 
-        return $this->reportResponse($report);
+        return $this->reportResponse($report, $scope);
+    }
+
+    /**
+     * Maps the user-facing scope selector to the stored scope value. Only the
+     * explicit "practice" option widens the report; everything else is treated
+     * as the doctor's personal report.
+     */
+    private function scopeFromRequest(Request $request): string
+    {
+        return $request->input('scope') === MonthlyReport::SCOPE_PRACTICE
+            ? MonthlyReport::SCOPE_PRACTICE
+            : MonthlyReport::SCOPE_PROVIDER;
     }
 
     /**
      * Build the Inertia response with the given report and history.
      */
-    private function reportResponse(?MonthlyReport $report): Response
+    private function reportResponse(?MonthlyReport $report, string $scope = MonthlyReport::SCOPE_PROVIDER): Response
     {
         $doctorId = Auth::id();
 
-        $history = MonthlyReport::forDoctor($doctorId)
-            ->latest()
-            ->get(['id', 'month', 'stats', 'report_text', 'created_at']);
+        $history = $scope === MonthlyReport::SCOPE_PRACTICE
+            ? MonthlyReport::practice()
+                ->latest()
+                ->get(['id', 'month', 'scope', 'stats', 'report_text', 'created_at'])
+            : MonthlyReport::forDoctor($doctorId)
+                ->latest()
+                ->get(['id', 'month', 'scope', 'stats', 'report_text', 'created_at']);
 
         return Inertia::render('Dashboard/MonthlyReport', [
             'user' => Auth::user(),
@@ -166,6 +206,8 @@ class AiController extends Controller
             'reportText' => $report?->report_text,
             'selectedMonth' => $report?->month ?? date('Y-m'),
             'currentReportId' => $report?->id,
+            'currentScope' => $scope,
+            'scopeLabel' => MonthlyReport::labelForScope($scope),
             'reportHistory' => $history,
         ]);
     }
@@ -192,8 +234,19 @@ class AiController extends Controller
             'report_text' => 'required|string|max:20000',
         ]);
 
-        $report = MonthlyReport::forDoctor(Auth::id())
+        $providerId = Auth::user()->provider?->id;
+
+        $report = MonthlyReport::query()
             ->where('id', $request->report_id)
+            ->where(function ($query) use ($providerId) {
+                $query->where(function ($query) use ($providerId) {
+                    $query->where('scope', MonthlyReport::SCOPE_PROVIDER)
+                        ->where('provider_id', $providerId ?? 0);
+                })->orWhere(function ($query) {
+                    $query->where('scope', MonthlyReport::SCOPE_PRACTICE)
+                        ->whereNull('provider_id');
+                });
+            })
             ->firstOrFail();
 
         // Prevent overwriting with identical text.

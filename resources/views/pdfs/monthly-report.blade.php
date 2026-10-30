@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Monthly Clinical Report — {{ $formattedMonth }}</title>
+<title>{{ $reportTitle ?? 'Monthly Clinical Report' }} — {{ $formattedMonth }}</title>
 <style>
     @page {
         size: 8.5in 11in;
@@ -250,7 +250,7 @@
 <div class="clinic-header">
     <div class="clinic-name">&nbsp; CARDIOVASCULAR CARE CENTER</div>
     <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel. 8-353-7182</div>
-    <div class="report-title">Narrative Report</div>
+    <div class="report-title">{{ $reportTitle ?? 'Monthly Narrative Report' }}</div>
     <div class="report-period">Period: {{ $formattedMonth }} &nbsp;&bull;&nbsp; Prepared by: {{ $doctor }}</div>
 </div>
 
@@ -393,7 +393,7 @@
 
 <div class="clinic-header" style="margin-top:0;">
     <div class="clinic-name">&nbsp; CARDIOVASCULAR CARE CENTER</div>
-    <div class="report-title"> Narrative Report</div>
+    <div class="report-title">{{ $reportTitle ?? 'Monthly Narrative Report' }}</div>
     <div class="report-period">Period: {{ $formattedMonth }} &nbsp;&bull;&nbsp; Prepared by: {{ $doctor }}</div>
 </div>
 

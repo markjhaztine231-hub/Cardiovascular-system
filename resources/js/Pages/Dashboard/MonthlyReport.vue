@@ -117,7 +117,7 @@
                                         d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                     />
                                 </svg>
-                                Monthly Narrative Report
+                                Monthly Reports
                             </Link>
                         </li>
                     </ul>
@@ -196,7 +196,7 @@
                         </svg>
                     </button>
                     <h2 class="text-xl font-bold text-gray-800">
-                        Monthly Narrative Report
+                        {{ reportTitle }}
                     </h2>
                 </div>
                 <div class="flex items-center gap-3">
@@ -223,6 +223,36 @@
                 <div
                     class="mx-auto mb-8 max-w-7xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
                 >
+                    <!-- Report scope: personal (assigned patients only) vs practice-wide -->
+                    <div
+                        class="mb-5 inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1"
+                    >
+                        <button
+                            type="button"
+                            class="rounded-lg px-4 py-2 text-xs font-extrabold tracking-wide transition-colors"
+                            :class="
+                                !isPracticeScope
+                                    ? 'bg-[#146b8a] text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            "
+                            @click="switchScope('provider')"
+                        >
+                            Personal Monthly Report
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-lg px-4 py-2 text-xs font-extrabold tracking-wide transition-colors"
+                            :class="
+                                isPracticeScope
+                                    ? 'bg-[#146b8a] text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            "
+                            @click="switchScope('practice')"
+                        >
+                            Practice-Wide Monthly Report
+                        </button>
+                    </div>
+
                     <div
                         class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center"
                     >
@@ -243,11 +273,18 @@
                                         d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                     />
                                 </svg>
-                                Generate Statistics Report
+                                Generate Monthly Report
                             </h3>
                             <p class="mt-1 text-sm font-medium text-gray-500">
-                                Aggregates real appointment and patient data
-                                from the database. No AI — facts only.
+                                <template v-if="isPracticeScope">
+                                    Aggregates every doctor's appointments,
+                                    procedures, and patients across the clinic.
+                                </template>
+                                <template v-else>
+                                    Counts only appointments and patients
+                                    assigned to you. Other doctors' activity is
+                                    excluded.
+                                </template>
                             </p>
                         </div>
                         <form
@@ -292,7 +329,9 @@
                                 {{
                                     generateForm.processing || isGenerating
                                         ? 'Calculating…'
-                                        : 'Generate Report'
+                                        : isPracticeScope
+                                          ? 'Generate Practice Report'
+                                          : 'Generate Personal Report'
                                 }}
                             </button>
                         </form>
@@ -324,10 +363,12 @@
                                 Cardiovascular Care Center
                             </p>
                             <h2 class="mt-1 text-2xl font-black">
-                                Monthly Performance Report
+                                {{ reportTitle }}
                             </h2>
                             <p class="mt-1 font-semibold text-teal-200">
                                 {{ formattedMonth }}
+                                <span class="mx-2">•</span>
+                                {{ isPracticeScope ? 'All doctors' : 'Assigned to you' }}
                             </p>
                         </div>
                         <button
@@ -710,6 +751,95 @@
                                     procedures</span
                                 >
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- ─── PRACTICE BREAKDOWN (practice report only) ─────── -->
+                    <div
+                        v-if="
+                            isPracticeScope &&
+                            (stats.by_provider?.length ?? 0) > 0
+                        "
+                        class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                    >
+                        <h3
+                            class="mb-4 flex items-center gap-2 text-sm font-extrabold tracking-widest text-[#146b8a] uppercase"
+                        >
+                            <span
+                                class="flex h-6 w-6 items-center justify-center rounded-full bg-[#146b8a] text-[10px] font-black text-white"
+                                >3c</span
+                            >
+                            Per-Doctor Breakdown
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr
+                                        class="border-b border-gray-200 text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                                    >
+                                        <th class="px-3 py-2">Doctor</th>
+                                        <th class="px-3 py-2 text-center">
+                                            Total
+                                        </th>
+                                        <th class="px-3 py-2 text-center">
+                                            Completed
+                                        </th>
+                                        <th class="px-3 py-2 text-center">
+                                            No-Shows
+                                        </th>
+                                        <th class="px-3 py-2 text-center">
+                                            Patients
+                                        </th>
+                                        <th class="px-3 py-2 text-center">
+                                            Procedures
+                                        </th>
+                                        <th class="px-3 py-2">
+                                            Top Diagnosis
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="row in stats.by_provider"
+                                        :key="row.provider_id"
+                                        class="border-b border-gray-100 last:border-0"
+                                    >
+                                        <td
+                                            class="px-3 py-3 font-bold text-gray-700"
+                                        >
+                                            {{ row.doctor_name }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 text-center font-bold text-gray-700"
+                                        >
+                                            {{ row.total }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 text-center font-bold text-emerald-600"
+                                        >
+                                            {{ row.completed }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 text-center font-bold text-red-500"
+                                        >
+                                            {{ row.no_shows }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 text-center font-bold text-gray-700"
+                                        >
+                                            {{ row.unique_patients }}
+                                        </td>
+                                        <td
+                                            class="px-3 py-3 text-center font-bold text-indigo-600"
+                                        >
+                                            {{ row.procedures }}
+                                        </td>
+                                        <td class="px-3 py-3 text-gray-600">
+                                            {{ row.top_diagnosis ?? '—' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -1688,7 +1818,7 @@
 </template>
 
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import LogoutButton from '@/components/LogoutButton.vue';
 import { useSidebar } from '@/composables/useSidebar';
@@ -1770,6 +1900,20 @@ interface Stats {
         change: number;
         change_pct: number;
     }>;
+    /** Present only on practice-wide reports. */
+    by_provider?: Array<{
+        provider_id: number;
+        doctor_name: string;
+        specialty: string | null;
+        total: number;
+        completed: number;
+        no_shows: number;
+        cancelled: number;
+        unique_patients: number;
+        avg_age: number | string;
+        procedures: number;
+        top_diagnosis: string | null;
+    }>;
 }
 
 interface User {
@@ -1781,6 +1925,7 @@ interface User {
 interface ReportHistoryItem {
     id: number;
     month: string;
+    scope?: string;
     stats: Stats | null;
     report_text: string | null;
     created_at: string;
@@ -1792,12 +1937,39 @@ const props = defineProps<{
     reportText?: string | null;
     selectedMonth: string;
     currentReportId?: number | null;
+    currentScope?: 'provider' | 'practice';
+    scopeLabel?: string;
     reportHistory?: ReportHistoryItem[];
 }>();
 
+const isPracticeScope = computed(
+    (): boolean => props.currentScope === 'practice',
+);
+
+const reportTitle = computed((): string =>
+    props.scopeLabel ??
+    (isPracticeScope.value
+        ? 'Practice-Wide Monthly Report'
+        : 'Personal Monthly Report'),
+);
+
 const generateForm = useForm({
     month: props.selectedMonth || new Date().toISOString().slice(0, 7),
+    scope: isPracticeScope.value ? 'practice' : 'personal',
 });
+
+/** Reloads the page with the other report scope's latest saved report. */
+function switchScope(scope: 'provider' | 'practice'): void {
+    if (scope === props.currentScope) {
+        return;
+    }
+
+    router.get(
+        '/doctor/reports/monthly',
+        { scope: scope === 'practice' ? 'practice' : 'personal' },
+        { preserveScroll: true },
+    );
+}
 
 const formattedMonth = computed((): string => {
     if (!generateForm.month) {
@@ -1922,6 +2094,7 @@ const downloadPdf = (reportId?: number): void => {
     const id = reportId ?? props.currentReportId;
     const params = new URLSearchParams();
     params.set('month', generateForm.month);
+    params.set('scope', isPracticeScope.value ? 'practice' : 'personal');
 
     if (id) {
         params.set('report', String(id));

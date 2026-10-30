@@ -31,11 +31,23 @@ class MonthlyReportService
      * Builds stats, generates a factual AI narrative, persists both,
      * and returns ['stats' => [...], 'report_text' => '...'].
      *
+     * The default scope is the doctor's personal report: only appointments
+     * assigned to that provider. Passing MonthlyReport::SCOPE_PRACTICE builds
+     * the practice-wide report instead, which sums every doctor's activity.
+     *
      * @param  string  $month  "Y-m" format, e.g. "2026-04"
+     * @param  string  $scope  MonthlyReport::SCOPE_PROVIDER or SCOPE_PRACTICE
      * @return array{stats: array, report_text: string|null}
      */
-    public static function generate(int $doctorId, string $month): array
-    {
+    public static function generate(
+        int $doctorId,
+        string $month,
+        string $scope = MonthlyReport::SCOPE_PROVIDER,
+    ): array {
+        if ($scope === MonthlyReport::SCOPE_PRACTICE) {
+            return self::generatePracticeReport($month);
+        }
+
         $providerId = Provider::where('user_id', $doctorId)->value('id');
 
         // No Provider row means the account is not a practising doctor yet
@@ -63,17 +75,20 @@ class MonthlyReportService
      */
     public static function generateForProvider(?int $providerId, string $month): array
     {
+        // Keep one implementation of the practice-wide report so every caller
+        // receives the same by_provider breakdown and narrative.
+        if ($providerId === null) {
+            return self::generatePracticeReport($month);
+        }
+
         $monthStart = Carbon::parse($month.'-01')->startOfMonth();
         $monthEnd = $monthStart->copy()->endOfMonth();
 
         // ── Previous month lookup (same scope) ──────────────────────────────
         $prevMonth = $monthStart->copy()->subMonth()->format('Y-m');
         $prevReport = MonthlyReport::query()
-            ->when(
-                $providerId !== null,
-                fn ($q) => $q->where('provider_id', $providerId),
-                fn ($q) => $q->whereNull('provider_id'),
-            )
+            ->where('provider_id', $providerId)
+            ->where('scope', MonthlyReport::SCOPE_PROVIDER)
             ->where('month', $prevMonth)
             ->latest()
             ->first();
@@ -91,7 +106,15 @@ class MonthlyReportService
         $stats = self::buildStats($appointments, $providerId, $monthStart, $monthEnd, $prevStats, $prevMonth);
 
         // ── AI narrative — factual only, no predictions ────────────────────
-        $narrative = self::generateNarrative($stats, $month, $prevStats, $prevMonth);
+        $providerName = Provider::with('user:id,name')->find($providerId)?->user?->name;
+        $narrative = self::generateNarrative(
+            $stats,
+            $month,
+            $prevStats,
+            $prevMonth,
+            MonthlyReport::SCOPE_PROVIDER_LABEL,
+            $providerName,
+        );
 
         self::persist($providerId, $month, $stats, $narrative);
 
@@ -133,7 +156,13 @@ class MonthlyReportService
             // The narrative is built from practice totals only. Feeding the AI
             // a doctor-by-doctor table invites exactly the ranking and
             // performance-judgement output this report must not contain.
-            $narrative = self::generateNarrative($stats, $month, $prevStats, $prevMonth);
+            $narrative = self::generateNarrative(
+                $stats,
+                $month,
+                $prevStats,
+                $prevMonth,
+                MonthlyReport::SCOPE_PRACTICE_LABEL,
+            );
         }
 
         self::persist(null, $month, $stats + ['by_provider' => $byProvider], $narrative);
@@ -220,7 +249,9 @@ class MonthlyReportService
     {
         MonthlyReport::create([
             'provider_id' => $providerId,
-            'scope' => $providerId === null ? 'practice' : 'provider',
+            'scope' => $providerId === null
+                ? MonthlyReport::SCOPE_PRACTICE
+                : MonthlyReport::SCOPE_PROVIDER,
             'month' => $month,
             'stats' => $stats,
             'report_text' => $narrative,
@@ -680,8 +711,19 @@ class MonthlyReportService
         string $month,
         ?array $prevStats = null,
         ?string $prevMonth = null,
+        ?string $scopeLabel = null,
+        ?string $doctorName = null,
     ): ?string {
         $monthLabel = Carbon::createFromFormat('Y-m', $month)->format('F Y');
+
+        // Keep the narrative's framing aligned with the report scope so a
+        // personal report never reads like a clinic-wide summary.
+        $reportHeading = match (true) {
+            $scopeLabel === MonthlyReport::SCOPE_PROVIDER_LABEL => 'a formal Personal Monthly Clinical Report for '
+                .($doctorName ?? 'the attending cardiologist').' at Cardiovascular Care Center',
+            $scopeLabel === MonthlyReport::SCOPE_PRACTICE_LABEL => 'a formal Practice-Wide Monthly Clinical Report for Cardiovascular Care Center',
+            default => 'a formal Monthly Clinical Report for Cardiovascular Care Center',
+        };
 
         // ── Format current month lists ─────────────────────────────────────
         $dxList = collect($stats['top_diagnoses'])
@@ -883,7 +925,7 @@ CMP;
         $maxTokens = min(8000, $maxTokens);
 
         $prompt = <<<PROMPT
-You are a clinical administrator writing a formal Monthly Clinical Report for Cardiovascular Care Center for {$monthLabel}.
+You are a clinical administrator writing {$reportHeading} for {$monthLabel}.
 
 Using ONLY the verified database figures provided below, write exactly {$paragraphs} paragraphs in formal administrative prose.
 You MAY identify trends, patterns, and clinically relevant observations present in the data. Do NOT invent numbers, make predictions, or add any information not present in the provided data.

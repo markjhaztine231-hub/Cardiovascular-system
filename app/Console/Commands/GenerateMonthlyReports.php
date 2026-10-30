@@ -17,11 +17,13 @@ use Illuminate\Console\Command;
  * Usage:
  *   php artisan reports:generate-monthly              # last month (default)
  *   php artisan reports:generate-monthly --month=2026-04  # specific month
+ *   php artisan reports:generate-monthly --practice  # also build the practice-wide report
  */
 class GenerateMonthlyReports extends Command
 {
     protected $signature = 'reports:generate-monthly
-                            {--month= : Target month in Y-m format. Defaults to the previous calendar month.}';
+                            {--month= : Target month in Y-m format. Defaults to the previous calendar month.}
+                            {--practice : Also generate the practice-wide report for the month.}';
 
     protected $description = 'Auto-generates monthly performance statistics for every doctor.';
 
@@ -43,6 +45,18 @@ class GenerateMonthlyReports extends Command
         }
 
         $this->info("Generating monthly reports for: {$month}");
+
+        // The practice-wide report is a separate row in monthly_reports and is
+        // opt-in so a scheduled run does not silently start averaging every
+        // doctor's activity into a report where only personal reports existed.
+        if ($this->option('practice')) {
+            try {
+                MonthlyReportService::generatePracticeReport($month);
+                $this->info('Practice-wide report saved.');
+            } catch (\Throwable $e) {
+                $this->error('Practice-wide report failed: '.$e->getMessage());
+            }
+        }
 
         // Only doctors who actually have a provider profile can own a report;
         // monthly_reports.provider_id is a foreign key to providers. Skipping

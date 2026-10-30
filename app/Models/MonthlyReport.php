@@ -12,6 +12,10 @@ class MonthlyReport extends Model
 
     public const SCOPE_PRACTICE = 'practice';
 
+    public const SCOPE_PROVIDER_LABEL = 'Personal Monthly Report';
+
+    public const SCOPE_PRACTICE_LABEL = 'Practice-Wide Monthly Report';
+
     protected $fillable = [
         'provider_id',
         'scope',
@@ -61,5 +65,22 @@ class MonthlyReport extends Model
     public function isPracticeWide(): bool
     {
         return $this->scope === self::SCOPE_PRACTICE;
+    }
+
+    public function isPersonal(): bool
+    {
+        return $this->scope === self::SCOPE_PROVIDER;
+    }
+
+    /**
+     * Human-readable title for a report scope. Used by the Inertia payload,
+     * the PDF export, and the report history so the two report types are
+     * never presented as the same document.
+     */
+    public static function labelForScope(?string $scope): string
+    {
+        return $scope === self::SCOPE_PRACTICE
+            ? self::SCOPE_PRACTICE_LABEL
+            : self::SCOPE_PROVIDER_LABEL;
     }
 }

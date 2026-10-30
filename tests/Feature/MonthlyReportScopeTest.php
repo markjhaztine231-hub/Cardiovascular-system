@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
@@ -285,5 +286,70 @@ class MonthlyReportScopeTest extends TestCase
 
         $response->assertSessionHasErrors('month');
         $this->assertDatabaseHas('monthly_reports', ['month' => '2026-09']);
+    }
+
+    public function test_practice_scope_generates_one_combined_report_with_a_doctor_breakdown(): void
+    {
+        [$userA] = $this->doctorWithPatients([20]);
+        $this->doctorWithPatients([67, 81]);
+
+        MonthlyReportService::generate($userA->id, '2026-09', MonthlyReport::SCOPE_PRACTICE);
+
+        $practice = MonthlyReport::practice()->forMonth('2026-09')->firstOrFail();
+
+        $this->assertSame(3, $practice->stats['total']);
+        $this->assertCount(2, $practice->stats['by_provider']);
+
+        // The practice request must not also create a personal row for user A.
+        $this->assertSame(0, MonthlyReport::forDoctor($userA->id)->count());
+    }
+
+    public function test_personal_and_practice_scopes_are_generated_and_read_separately(): void
+    {
+        [$userA] = $this->doctorWithPatients([20]);
+        $this->doctorWithPatients([67, 81]);
+
+        $this->actingAs($userA)
+            ->post('/doctor/reports/monthly', ['month' => '2026-09', 'scope' => 'personal'])
+            ->assertOk();
+
+        $personal = MonthlyReport::forDoctor($userA->id)->forMonth('2026-09')->firstOrFail();
+        $this->assertSame(1, $personal->stats['total']);
+
+        $this->actingAs($userA)
+            ->post('/doctor/reports/monthly', ['month' => '2026-09', 'scope' => 'practice'])
+            ->assertOk();
+
+        $practice = MonthlyReport::practice()->forMonth('2026-09')->latest()->firstOrFail();
+        $this->assertSame(3, $practice->stats['total']);
+
+        // Loading with ?scope=practice must surface the practice row, and the
+        // default (no scope) must remain the doctor's personal report.
+        $this->actingAs($userA)
+            ->get('/doctor/reports/monthly?scope=practice')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/MonthlyReport')
+                ->where('currentScope', MonthlyReport::SCOPE_PRACTICE)
+                ->where('currentReportId', $practice->id));
+
+        $this->actingAs($userA)
+            ->get('/doctor/reports/monthly')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/MonthlyReport')
+                ->where('currentScope', MonthlyReport::SCOPE_PROVIDER)
+                ->where('currentReportId', $personal->id));
+    }
+
+    public function test_a_doctor_cannot_open_another_doctors_personal_report(): void
+    {
+        [$userA] = $this->doctorWithPatients([20]);
+        [$userB] = $this->doctorWithPatients([67]);
+
+        MonthlyReportService::generate($userB->id, '2026-09');
+        $bReport = MonthlyReport::forDoctor($userB->id)->forMonth('2026-09')->firstOrFail();
+
+        $this->actingAs($userA)
+            ->get('/doctor/reports/monthly?report='.$bReport->id)
+            ->assertNotFound();
     }
 }
