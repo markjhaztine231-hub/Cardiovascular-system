@@ -30,11 +30,39 @@ class AdminController extends Controller
         }
 
         $stats = Cache::remember('admin_dashboard_stats', 300, function () {
+            $totalUsers = User::count();
+            $doctors = User::where('role', 'doctor')->count();
+            $staff = User::where('role', 'receptionist')->count();
+            $admins = User::where('role', 'admin')->count();
+            $patientUsers = User::where('role', 'patient')->count();
+
+            // One query for the whole week, grouped in PHP so the dashboard
+            // stays portable across SQLite (tests) and PostgreSQL (production).
+            $trendStart = now()->subDays(6)->startOfDay();
+            $weekAppointments = Appointment::query()
+                ->whereDate('scheduled_date', '>=', $trendStart->toDateString())
+                ->whereDate('scheduled_date', '<=', today()->toDateString())
+                ->get(['scheduled_date', 'status']);
+
+            $appointmentsTrend = collect(range(6, 0))->map(function (int $daysAgo) use ($weekAppointments) {
+                $day = now()->subDays($daysAgo)->startOfDay();
+                $daily = $weekAppointments->filter(
+                    fn (Appointment $appointment) => $appointment->scheduled_date?->isSameDay($day)
+                );
+
+                return [
+                    'label' => $day->format('D'),
+                    'date' => $day->toDateString(),
+                    'total' => $daily->count(),
+                    'completed' => $daily->where('status', 'Completed')->count(),
+                ];
+            })->values()->all();
+
             return [
-                'total_users' => User::count(),
-                'total_doctors' => User::where('role', 'doctor')->count(),
+                'total_users' => $totalUsers,
+                'total_doctors' => $doctors,
                 'total_patients' => Patient::count(),
-                'total_staff' => User::where('role', 'receptionist')->count(),
+                'total_staff' => $staff,
                 'appointments_today' => Appointment::whereDate('scheduled_date', today())->count(),
                 'completed_today' => Appointment::whereDate('scheduled_date', today())->where('status', 'Completed')->count(),
                 'pending_today' => Appointment::whereDate('scheduled_date', today())->whereIn('status', ['Scheduled', 'Pending'])->count(),
@@ -42,6 +70,13 @@ class AdminController extends Controller
                 'total_appointments' => Appointment::count(),
                 'new_patients_month' => Patient::where('created_at', '>=', now()->startOfMonth())
                     ->count(),
+                'appointments_trend' => $appointmentsTrend,
+                'role_distribution' => [
+                    ['key' => 'doctor', 'label' => 'Cardiologists', 'value' => $doctors],
+                    ['key' => 'receptionist', 'label' => 'Reception', 'value' => $staff],
+                    ['key' => 'admin', 'label' => 'Admins', 'value' => $admins],
+                    ['key' => 'patient', 'label' => 'Patients', 'value' => $patientUsers],
+                ],
             ];
         });
 
