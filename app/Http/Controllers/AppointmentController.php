@@ -57,6 +57,23 @@ class AppointmentController extends Controller
         }
     }
 
+    /**
+     * A completed visit is a finished clinical record: it can still receive a
+     * reading-doctor update, but it cannot be cancelled, marked No-Show,
+     * rescheduled, or transferred, because those actions would reopen a visit
+     * that already produced EMR data.
+     */
+    private function assertNotCompleted(Appointment $appointment, string $message = ''): void
+    {
+        if ($appointment->status === 'Completed') {
+            throw ValidationException::withMessages([
+                'error' => $message !== ''
+                    ? $message
+                    : 'This appointment is already completed and can no longer be changed.',
+            ]);
+        }
+    }
+
     // 1. Patient books a new appointment (max 2 per day enforced)
     public function store(Request $request)
     {
@@ -242,6 +259,14 @@ class AppointmentController extends Controller
             'reader_provider_id' => 'nullable|exists:providers,id',
             'reading_date' => 'nullable|required_with:reader_provider_id|date',
         ]);
+
+        // Completed is terminal for cancellation / no-show / re-opening. The
+        // reading doctor's own save path is separate and still allowed.
+        if ($appointment->status === 'Completed' && $validated['status'] !== 'Completed') {
+            throw ValidationException::withMessages([
+                'status' => 'This appointment is already completed. Its status can no longer be changed to '.$validated['status'].'.',
+            ]);
+        }
 
         if (! empty($validated['reader_provider_id']) && ! $appointment->supportsReadingAssignment()) {
             throw ValidationException::withMessages([
@@ -622,23 +647,56 @@ class AppointmentController extends Controller
     public function completeConsultation(Request $request, Appointment $appointment)
     {
         $user = Auth::user();
-        $isDoctorOwner = $appointment->provider && $appointment->provider->user_id === $user->id;
+        $providerId = $user->provider?->id;
+        $isDoctorOwner = $providerId !== null && $appointment->provider_id === $providerId;
+        $isReadingDoctor = $providerId !== null
+            && ! $isDoctorOwner
+            && $appointment->reader_provider_id === $providerId;
+        $isStaff = in_array($user->role, ['receptionist', 'admin'], true);
+
+        // Receptionists use "Mark Complete" to close a visit that the doctor
+        // has already finished (or that needs no EMR entry). Only a full
+        // clinical payload still needs explicit doctor authorization; an empty
+        // payload is a status-only completion and must never touch the EMR.
+        $hasClinicalPayload = $this->hasConsultationPayload($request);
         $isReceptionistAuthorized = false;
 
-        if (! $isDoctorOwner && in_array($user->role, ['receptionist', 'admin'], true)) {
-            $authorized = $request->boolean('doctor_authorized') || $request->input('authorized_by_doctor') || $request->input('doctor_authorization');
-            if ($authorized) {
+        if (! $isDoctorOwner && ! $isReadingDoctor && $isStaff) {
+            if (! $hasClinicalPayload) {
                 $isReceptionistAuthorized = true;
-            } elseif ($appointment->notes && str_contains(strtolower($appointment->notes), 'receptionist_completion_authorized')) {
-                $isReceptionistAuthorized = true;
+            } else {
+                $authorized = $request->boolean('doctor_authorized') || $request->input('authorized_by_doctor') || $request->input('doctor_authorization');
+                $isReceptionistAuthorized = $authorized
+                    || ($appointment->notes && str_contains(strtolower($appointment->notes), 'receptionist_completion_authorized'));
             }
         }
 
-        if (! $isDoctorOwner && ! $isReceptionistAuthorized) {
+        if (! $isDoctorOwner && ! $isReadingDoctor && ! $isReceptionistAuthorized) {
             abort(403, 'Only the assigned doctor may complete this consultation.');
         }
 
         $this->assertNotNoShow($appointment);
+
+        if ($appointment->status === 'Cancelled') {
+            throw ValidationException::withMessages([
+                'error' => 'A cancelled appointment cannot be completed.',
+            ]);
+        }
+
+        // A reading is final once its doctor has submitted it. The attending
+        // doctor can still correct the visit, but the reading doctor cannot
+        // reopen a completed reading.
+        if ($isReadingDoctor && $appointment->reading_status === 'completed') {
+            throw ValidationException::withMessages([
+                'error' => 'This reading is already completed and can no longer be changed.',
+            ]);
+        }
+
+        // Status-only completion for reception/admin: close the appointment
+        // without creating a blank encounter or overwriting recorded SOAP data.
+        if ($isStaff && ! $isDoctorOwner && ! $isReadingDoctor && ! $hasClinicalPayload) {
+            return $this->completeAppointmentStatusOnly($appointment);
+        }
 
         // Comprehensive validation with required fields and constraints
         $validated = $request->validate([
@@ -813,6 +871,44 @@ class AppointmentController extends Controller
             ));
         }
 
+        // A reading doctor reviews an already-completed procedure. The
+        // consultation form only pre-fills the study/vitals blocks, so blank
+        // SOAP fields must fall back to the attending doctor's record rather
+        // than overwriting it with empty strings.
+        $existingEncounter = null;
+        $existingSoap = null;
+        if ($isReadingDoctor) {
+            $existingEncounter = $appointment->encounter()->with([
+                'soapNote',
+                'echocardiogram',
+                'treadmillTest',
+                'dopplerStudy',
+                'stressEcho',
+                'abpm',
+            ])->first();
+            $existingSoap = $existingEncounter?->soapNote;
+
+            if ($validated['symptoms'] === '') {
+                $validated['symptoms'] = $existingEncounter?->chief_complaint ?? $existingSoap?->subjective ?? '';
+            }
+
+            if ($validated['vitals'] === '') {
+                $validated['vitals'] = $existingSoap?->objective ?? '';
+            }
+
+            if ($validated['diagnosis'] === '') {
+                $validated['diagnosis'] = $existingSoap?->assessment ?? '';
+            }
+
+            if ($validated['plan'] === '') {
+                $validated['plan'] = $existingSoap?->plan ?? '';
+            }
+
+            if (empty($validated['ai_summary'])) {
+                $validated['ai_summary'] = $existingSoap?->ai_summary;
+            }
+        }
+
         $selectedTypes = $validated['consultation_type'] ?? [];
 
         if (! in_array('Type 1', $selectedTypes)) {
@@ -844,7 +940,9 @@ class AppointmentController extends Controller
             [
                 'patient_id' => $appointment->patient_id,
                 'provider_id' => $appointment->provider_id,
-                'encounter_type' => $this->resolveEncounterType($selectedTypes),
+                'encounter_type' => $isReadingDoctor && empty($selectedTypes) && $existingEncounter
+                    ? $existingEncounter->encounter_type
+                    : $this->resolveEncounterType($selectedTypes),
                 'status' => 'completed',
                 'chief_complaint' => $validated['symptoms'],
                 'started_at' => Carbon::parse($appointment->scheduled_date->format('Y-m-d').' '.($appointment->scheduled_time ?? '08:00:00')),
@@ -875,22 +973,46 @@ class AppointmentController extends Controller
         // Diagnosis rows (legacy single-string diagnosis → one ICD row).
         // Only real diagnoses get a row: clearance/request-only visits keep
         // their text in soap_notes.assessment and must not pollute report
-        // diagnosis statistics.
-        $encounter->diagnoses()->delete();
-        $diagnosis = DiagnosisText::asDiagnosis($validated['diagnosis']);
-        if ($diagnosis !== null) {
-            $encounter->diagnoses()->create([
-                'icd_code' => null,
-                'description' => $diagnosis,
-                'is_primary' => true,
-                'diagnosed_at' => now(),
-            ]);
+        // diagnosis statistics. A reading doctor only rewrites them when the
+        // assessment actually changed.
+        $diagnosisChanged = ! $isReadingDoctor
+            || $validated['diagnosis'] !== ($existingSoap?->assessment ?? '');
+
+        if ($diagnosisChanged) {
+            $encounter->diagnoses()->delete();
+            $diagnosis = DiagnosisText::asDiagnosis($validated['diagnosis']);
+            if ($diagnosis !== null) {
+                $encounter->diagnoses()->create([
+                    'icd_code' => null,
+                    'description' => $diagnosis,
+                    'is_primary' => true,
+                    'diagnosed_at' => now(),
+                ]);
+            }
         }
 
-        // Prescriptions (replaces the legacy JSON array; old adherence logs cascade)
-        $encounter->prescriptions()->delete();
+        // Prescriptions (replaces the legacy JSON array; old adherence logs
+        // cascade). A reading doctor may append a correction/order, but the
+        // attending doctor's existing prescriptions are never deleted by them.
+        $existingPrescriptionKeys = [];
+        if ($isReadingDoctor) {
+            $existingPrescriptionKeys = $encounter->prescriptions()
+                ->get(['medication_name', 'free_text', 'is_freeform'])
+                ->map(fn ($p) => mb_strtolower(trim((string) ($p->is_freeform ? $p->free_text : $p->medication_name))))
+                ->filter()
+                ->all();
+        } else {
+            $encounter->prescriptions()->delete();
+        }
+
         foreach ($validated['prescriptions'] ?? [] as $rx) {
             $isFreeform = ! empty($rx['is_freeform']);
+            $prescriptionKey = mb_strtolower(trim((string) ($isFreeform ? ($rx['free_text'] ?? '') : ($rx['medicine'] ?? ''))));
+
+            if ($isReadingDoctor && $prescriptionKey !== '' && in_array($prescriptionKey, $existingPrescriptionKeys, true)) {
+                continue;
+            }
+
             $startDate = Carbon::parse($appointment->scheduled_date);
             $days = null;
             if (! $isFreeform && ! empty($rx['duration'])) {
@@ -917,13 +1039,34 @@ class AppointmentController extends Controller
                 'free_text' => $isFreeform ? ($rx['free_text'] ?? null) : null,
                 'status' => 'active',
             ]);
+
+            if ($prescriptionKey !== '') {
+                $existingPrescriptionKeys[] = $prescriptionKey;
+            }
         }
 
         // Free-text clinical requests (lab / imaging / referral / other). The
-        // whole set is replaced on save so a re-submitted consultation cannot
-        // accumulate duplicate orders.
-        $encounter->clinicalRequests()->delete();
+        // whole set is replaced on a normal save so a re-submitted consultation
+        // cannot accumulate duplicate orders. A reading doctor only appends
+        // genuinely new requests.
+        $existingRequestKeys = [];
+        if ($isReadingDoctor) {
+            $existingRequestKeys = $encounter->clinicalRequests()
+                ->get(['type', 'body'])
+                ->map(fn ($r) => mb_strtolower(trim(($r->type ?? 'other').'|'.($r->body ?? ''))))
+                ->filter()
+                ->all();
+        } else {
+            $encounter->clinicalRequests()->delete();
+        }
+
         foreach ($validated['requests'] ?? [] as $requestRow) {
+            $requestKey = mb_strtolower(trim(($requestRow['type'] ?? 'other').'|'.($requestRow['body'] ?? '')));
+
+            if ($isReadingDoctor && in_array($requestKey, $existingRequestKeys, true)) {
+                continue;
+            }
+
             $encounter->clinicalRequests()->create([
                 'patient_id' => $appointment->patient_id,
                 'provider_id' => $appointment->provider_id,
@@ -933,6 +1076,33 @@ class AppointmentController extends Controller
                 'status' => 'requested',
                 'created_by' => Auth::id(),
             ]);
+
+            $existingRequestKeys[] = $requestKey;
+        }
+
+        // A reading doctor's form only edits the study blocks it loaded. Keep
+        // any study they did not submit instead of deleting the result they
+        // were asked to read.
+        if ($isReadingDoctor && $existingEncounter) {
+            if (empty($validated['echo_data']) && $existingEncounter->echocardiogram) {
+                $validated['echo_data'] = ClinicalRecordMapper::forPayload($existingEncounter->echocardiogram);
+            }
+
+            if (empty($validated['tmt_data']) && $existingEncounter->treadmillTest) {
+                $validated['tmt_data'] = ClinicalRecordMapper::forPayload(null, $existingEncounter->treadmillTest);
+            }
+
+            if (empty($validated['doppler_data']) && $existingEncounter->dopplerStudy) {
+                $validated['doppler_data'] = ClinicalRecordMapper::forPayload(null, null, $existingEncounter->dopplerStudy);
+            }
+
+            if (empty($validated['stress_echo_data']) && $existingEncounter->stressEcho) {
+                $validated['stress_echo_data'] = $existingEncounter->stressEcho->payload;
+            }
+
+            if (empty($validated['abpm_data']) && $existingEncounter->abpm) {
+                $validated['abpm_data'] = $existingEncounter->abpm->payload;
+            }
         }
 
         // Structured cardiac studies (1:1 with the encounter)
@@ -995,22 +1165,101 @@ class AppointmentController extends Controller
         $appointment->update(['status' => 'Completed']);
         $this->applyReadingAssignment($appointment, $validated);
 
+        // Saving from the reading doctor's review is the act of completing the
+        // reading; it removes the appointment from their queue and locks the
+        // study against further reading edits.
+        if ($isReadingDoctor) {
+            $appointment->update([
+                'reader_provider_id' => $appointment->reader_provider_id ?? $providerId,
+                'reading_status' => 'completed',
+                'reading_completed_at' => now(),
+            ]);
+        }
+
         // Mark event as completed in Google Calendar
         $this->calendar->updateStatus($appointment);
+
+        $action = $isReadingDoctor
+            ? 'Reading doctor '.$user->name.' updated the reading for Appointment #'.$appointment->id.' and completed the reading'
+            : 'Completed consultation and saved EMR for Appointment #'.$appointment->id;
 
         AuditLog::create([
             'user_id' => Auth::id(),
             'patient_id' => $appointment->patient_id,
-            'action' => 'Completed consultation and saved EMR for Appointment #'.$appointment->id,
+            'action' => $action,
         ]);
 
         Cache::forget('receptionist_stats');
         Cache::forget('admin_dashboard_stats');
         $appointment->refresh();
         event(new AppointmentStatusChanged($appointment));
-        event(new ConsultationCompleted($appointment));
 
-        return back()->with('success', 'Consultation record saved successfully! Patient history updated.');
+        if (! $isReadingDoctor) {
+            event(new ConsultationCompleted($appointment));
+        }
+
+        return back()->with(
+            'success',
+            $isReadingDoctor
+                ? 'Reading saved successfully. Your changes are recorded in the appointment history.'
+                : 'Consultation record saved successfully! Patient history updated.'
+        );
+    }
+
+    /**
+     * Close an appointment from the reception desk without touching the EMR.
+     * Used by "Mark Complete" when no clinical payload is submitted.
+     */
+    private function completeAppointmentStatusOnly(Appointment $appointment)
+    {
+        if ($appointment->status !== 'Completed') {
+            $appointment->update(['status' => 'Completed']);
+
+            $this->calendar->updateStatus($appointment);
+
+            AuditLog::create([
+                'user_id' => Auth::id(),
+                'patient_id' => $appointment->patient_id,
+                'action' => 'Marked Appointment #'.$appointment->id.' as completed (status only)',
+            ]);
+
+            Cache::forget('receptionist_stats');
+            Cache::forget('admin_dashboard_stats');
+            $appointment->refresh();
+            event(new AppointmentStatusChanged($appointment));
+            $this->broadcastQueueUpdated($appointment->provider_id);
+        }
+
+        return back()->with('success', 'Appointment marked as completed.');
+    }
+
+    /**
+     * A receptionist completion is status-only unless they submitted an actual
+     * clinical field. This keeps "Mark Complete" from creating a blank EMR.
+     */
+    private function hasConsultationPayload(Request $request): bool
+    {
+        foreach ([
+            'symptoms', 'vitals', 'diagnosis', 'plan', 'ai_summary',
+        ] as $field) {
+            if (trim((string) $request->input($field, '')) !== '') {
+                return true;
+            }
+        }
+
+        foreach ([
+            'prescriptions', 'requests', 'consultation_type',
+            'echo_data', 'tmt_data', 'doppler_data', 'manual_draft_data',
+            'stress_echo_data', 'abpm_data',
+        ] as $field) {
+            $value = $request->input($field);
+
+            if (is_array($value) && $this->hasClinicalData($value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1021,6 +1270,17 @@ class AppointmentController extends Controller
      */
     public function showStudyData(Request $request, Appointment $appointment)
     {
+        $user = Auth::user();
+
+        if ($user->role === 'doctor') {
+            $providerId = $user->provider?->id;
+            abort_unless(
+                $providerId !== null && in_array($providerId, [$appointment->provider_id, $appointment->reader_provider_id], true),
+                403,
+                'This appointment is not assigned to you.'
+            );
+        }
+
         $encounter = $appointment->encounter()->with([
             'echocardiogram', 'treadmillTest', 'dopplerStudy', 'stressEcho', 'abpm', 'vitalSigns',
         ])->first();
@@ -1676,6 +1936,7 @@ class AppointmentController extends Controller
     public function transfer(Request $request, Appointment $appointment)
     {
         $this->assertNotNoShow($appointment);
+        $this->assertNotCompleted($appointment, 'A completed appointment cannot be transferred to another doctor.');
 
         $request->validate(['doctor_id' => 'required|exists:providers,id']);
 
@@ -1844,6 +2105,7 @@ class AppointmentController extends Controller
         }
 
         $this->assertNotNoShow($appointment);
+        $this->assertNotCompleted($appointment, 'A completed appointment can no longer be rescheduled.');
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
@@ -1872,6 +2134,7 @@ class AppointmentController extends Controller
     public function approveReschedule(Appointment $appointment)
     {
         $this->assertNotNoShow($appointment);
+        $this->assertNotCompleted($appointment, 'A completed appointment cannot be rescheduled.');
 
         if (! $appointment->reschedule_requested_date) {
             return back()->withErrors(['error' => 'No pending reschedule request found.']);
@@ -1936,6 +2199,7 @@ class AppointmentController extends Controller
     public function editReschedule(Request $request, Appointment $appointment)
     {
         $this->assertNotNoShow($appointment);
+        $this->assertNotCompleted($appointment, 'A completed appointment cannot be rescheduled.');
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
@@ -2005,6 +2269,7 @@ class AppointmentController extends Controller
     public function denyReschedule(Appointment $appointment)
     {
         $this->assertNotNoShow($appointment);
+        $this->assertNotCompleted($appointment, 'A completed appointment has no pending schedule to deny.');
 
         $appointment->update([
             'status' => 'Scheduled',
@@ -2082,6 +2347,7 @@ class AppointmentController extends Controller
         }
 
         $this->assertNotNoShow($appointment);
+        $this->assertNotCompleted($appointment, 'A completed appointment can no longer be rescheduled.');
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',

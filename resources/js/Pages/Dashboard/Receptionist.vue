@@ -358,7 +358,13 @@
                                             No-Show — locked
                                         </span>
                                         <button
-                                            v-if="appt.status !== 'No-Show'"
+                                            v-if="
+                                                ![
+                                                    'Completed',
+                                                    'Cancelled',
+                                                    'No-Show',
+                                                ].includes(appt.status)
+                                            "
                                             @click="openTransfer(appt)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-600 hover:text-white"
                                         >
@@ -378,7 +384,13 @@
                                             Transfer
                                         </button>
                                         <button
-                                            v-if="appt.status !== 'No-Show'"
+                                            v-if="
+                                                ![
+                                                    'Completed',
+                                                    'Cancelled',
+                                                    'No-Show',
+                                                ].includes(appt.status)
+                                            "
                                             @click="openQueueReschedule(appt)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
                                         >
@@ -416,7 +428,13 @@
                                             Calendar
                                         </a>
                                         <button
-                                            v-if="appt.status !== 'No-Show'"
+                                            v-if="
+                                                appt.status !== 'Cancelled' &&
+                                                appt.status !== 'No-Show' &&
+                                                (appt.status !== 'Completed' ||
+                                                    appt.reading_status ===
+                                                        'pending')
+                                            "
                                             @click="openStudyForm(appt)"
                                             class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700 transition-all hover:bg-indigo-600 hover:text-white"
                                         >
@@ -436,7 +454,13 @@
                                             Study Form
                                         </button>
                                         <button
-                                            v-if="appt.status !== 'No-Show'"
+                                            v-if="
+                                                appt.status !== 'Cancelled' &&
+                                                appt.status !== 'No-Show' &&
+                                                (appt.status !== 'Completed' ||
+                                                    appt.reading_status ===
+                                                        'pending')
+                                            "
                                             @click="openScanModal(appt)"
                                             class="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-[11px] font-bold text-teal-700 transition-all hover:bg-teal-600 hover:text-white"
                                         >
@@ -471,7 +495,11 @@
                                             </span>
                                         </button>
                                         <button
-                                            v-if="appt.status !== 'Completed' && appt.status !== 'Cancelled' && appt.status !== 'No-Show'"
+                                            v-if="
+                                                appt.status !== 'Completed' &&
+                                                appt.status !== 'Cancelled' &&
+                                                appt.status !== 'No-Show'
+                                            "
                                             @click="markComplete(appt.id)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
                                         >
@@ -491,7 +519,13 @@
                                             Mark Complete
                                         </button>
                                         <button
-                                            v-if="appt.status !== 'No-Show'"
+                                            v-if="
+                                                ![
+                                                    'Completed',
+                                                    'Cancelled',
+                                                    'No-Show',
+                                                ].includes(appt.status)
+                                            "
                                             @click="markNoShow(appt.id)"
                                             class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-600 hover:text-white"
                                         >
@@ -809,24 +843,52 @@
                                 </div>
                                 <div class="flex flex-wrap gap-1.5">
                                     <button
+                                        v-if="
+                                            ![
+                                                'Completed',
+                                                'Cancelled',
+                                                'No-Show',
+                                            ].includes(appt.status)
+                                        "
                                         @click="openTransfer(appt)"
                                         class="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-600 hover:text-white"
                                     >
                                         Transfer
                                     </button>
                                     <button
+                                        v-if="
+                                            ![
+                                                'Completed',
+                                                'Cancelled',
+                                                'No-Show',
+                                            ].includes(appt.status)
+                                        "
                                         @click="openQueueReschedule(appt)"
                                         class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-600 hover:text-white"
                                     >
                                         Reschedule
                                     </button>
                                     <button
+                                        v-if="
+                                            appt.status !== 'Cancelled' &&
+                                            appt.status !== 'No-Show' &&
+                                            (appt.status !== 'Completed' ||
+                                                appt.reading_status ===
+                                                    'pending')
+                                        "
                                         @click="openScanModal(appt)"
                                         class="rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-700 transition-colors hover:bg-teal-600 hover:text-white"
                                     >
                                         Upload Image
                                     </button>
                                     <button
+                                        v-if="
+                                            ![
+                                                'Completed',
+                                                'Cancelled',
+                                                'No-Show',
+                                            ].includes(appt.status)
+                                        "
                                         @click="cancelAppointment(appt.id)"
                                         class="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-600 hover:text-white"
                                     >
@@ -850,12 +912,15 @@
                 class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
             >
                 <div class="border-b border-gray-100 bg-gray-50/50 px-6 py-5">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-3"
+                    >
                         <h3 class="text-lg font-black text-gray-800">
                             Reading Requests
                         </h3>
                         <p class="text-xs font-semibold text-gray-500">
-                            Completed Procedure / Consultation and Procedure appointments
+                            Completed Procedure / Consultation and Procedure
+                            appointments
                         </p>
                     </div>
                 </div>
@@ -863,67 +928,123 @@
                     <table class="min-w-full border-collapse text-left">
                         <thead>
                             <tr class="border-b border-gray-100 bg-white">
-                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Patient
                                 </th>
-                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Requesting Doctor
                                 </th>
-                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Reading Doctor
                                 </th>
-                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Service Type
                                 </th>
-                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Reading Date
                                 </th>
-                                <th class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Reading Status
                                 </th>
-                                <th class="px-6 py-4 text-right text-xs font-extrabold tracking-widest text-gray-400 uppercase">
+                                <th
+                                    class="px-6 py-4 text-right text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                >
                                     Actions
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             <tr
-                                v-for="appt in masterQueue.filter((a:any) => a.status === 'Completed' && ['Procedure', 'Consultation and Procedure'].includes(a.service_type))"
+                                v-for="appt in masterQueue.filter(
+                                    (a: any) =>
+                                        a.status === 'Completed' &&
+                                        [
+                                            'Procedure',
+                                            'Consultation and Procedure',
+                                        ].includes(a.service_type),
+                                )"
                                 :key="appt.id"
                                 class="transition-colors hover:bg-gray-50"
                             >
                                 <td class="px-6 py-4">
-                                    <div class="text-sm font-bold text-gray-700">
+                                    <div
+                                        class="text-sm font-bold text-gray-700"
+                                    >
                                         {{ appt.patient?.name || 'Unknown' }}
                                     </div>
-                                    <div v-if="appt.patient?.mrn" class="mt-0.5 text-[11px] font-semibold text-gray-400">
+                                    <div
+                                        v-if="appt.patient?.mrn"
+                                        class="mt-0.5 text-[11px] font-semibold text-gray-400"
+                                    >
                                         MRN {{ appt.patient.mrn }}
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 text-sm font-bold text-[#0f8c8e]">
+                                <td
+                                    class="px-6 py-4 text-sm font-bold text-[#0f8c8e]"
+                                >
                                     {{ appt.doctor?.name || 'Unassigned' }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <select
-                                        class="w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none"
+                                        class="w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100"
                                         :value="appt.reader_provider_id || ''"
-                                        @change="assignReading(appt.id, ($event.target as HTMLSelectElement).value, appt.reading_date || '')"
+                                        :disabled="
+                                            appt.reading_status === 'completed'
+                                        "
+                                        @change="
+                                            assignReading(
+                                                appt.id,
+                                                (
+                                                    $event.target as HTMLSelectElement
+                                                ).value,
+                                                appt.reading_date || '',
+                                            )
+                                        "
                                     >
                                         <option value="">Not Assigned</option>
-                                        <option v-for="doc in doctors" :key="doc.id" :value="doc.id">
+                                        <option
+                                            v-for="doc in doctors"
+                                            :key="doc.id"
+                                            :value="doc.id"
+                                        >
                                             {{ doc.name }}
                                         </option>
                                     </select>
                                 </td>
-                                <td class="px-6 py-4 text-sm font-semibold text-gray-700">
+                                <td
+                                    class="px-6 py-4 text-sm font-semibold text-gray-700"
+                                >
                                     {{ appt.service_type }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <input
                                         type="date"
-                                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none"
+                                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm focus:border-[#0f8c8e] focus:ring-1 focus:ring-[#0f8c8e] focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100"
                                         :value="appt.reading_date || ''"
-                                        @change="assignReading(appt.id, appt.reader_provider_id || '', ($event.target as HTMLInputElement).value)"
+                                        :disabled="
+                                            appt.reading_status === 'completed'
+                                        "
+                                        @change="
+                                            assignReading(
+                                                appt.id,
+                                                appt.reader_provider_id || '',
+                                                (
+                                                    $event.target as HTMLInputElement
+                                                ).value,
+                                            )
+                                        "
                                     />
                                 </td>
                                 <td class="px-6 py-4">
@@ -932,28 +1053,81 @@
                                         :class="
                                             appt.reading_status === 'completed'
                                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                                : appt.reading_status === 'pending'
+                                                : appt.reading_status ===
+                                                    'pending'
                                                   ? 'border-amber-200 bg-amber-50 text-amber-700'
                                                   : 'border-gray-200 bg-gray-50 text-gray-600'
                                         "
                                     >
-                                        {{ appt.reading_status || 'Not Assigned' }}
+                                        {{
+                                            appt.reading_status ||
+                                            'Not Assigned'
+                                        }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end gap-2">
                                         <button
-                                            v-if="appt.reading_status === 'pending' && appt.reader_provider_id"
-                                            @click="markReadingComplete(appt.id)"
+                                            @click="openStudyForm(appt)"
+                                            class="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700 transition-colors hover:bg-indigo-600 hover:text-white"
+                                        >
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                />
+                                            </svg>
+                                            {{
+                                                appt.reading_status ===
+                                                'completed'
+                                                    ? 'View Reading'
+                                                    : 'View / Edit Reading'
+                                            }}
+                                        </button>
+                                        <button
+                                            v-if="
+                                                appt.reading_status ===
+                                                    'pending' &&
+                                                appt.reader_provider_id
+                                            "
+                                            @click="
+                                                markReadingComplete(appt.id)
+                                            "
                                             class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
                                         >
-                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            <svg
+                                                class="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 13l4 4L19 7"
+                                                />
                                             </svg>
                                             Mark Reading Complete
                                         </button>
                                         <span
-                                            v-if="appt.reading_status === 'completed'"
+                                            v-if="
+                                                appt.reading_status ===
+                                                'completed'
+                                            "
                                             class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-gray-500"
                                         >
                                             Completed
@@ -962,9 +1136,21 @@
                                 </td>
                             </tr>
                             <tr
-                                v-if="masterQueue.filter((a:any) => a.status === 'Completed' && ['Procedure', 'Consultation and Procedure'].includes(a.service_type)).length === 0"
+                                v-if="
+                                    masterQueue.filter(
+                                        (a: any) =>
+                                            a.status === 'Completed' &&
+                                            [
+                                                'Procedure',
+                                                'Consultation and Procedure',
+                                            ].includes(a.service_type),
+                                    ).length === 0
+                                "
                             >
-                                <td colspan="7" class="px-6 py-8 text-center font-medium text-gray-500">
+                                <td
+                                    colspan="7"
+                                    class="px-6 py-8 text-center font-medium text-gray-500"
+                                >
                                     No reading requests at this time.
                                 </td>
                             </tr>
@@ -1873,9 +2059,21 @@
                                 v-if="studyLocked"
                                 class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
                             >
-                                This appointment has already been completed by
-                                the doctor, so its study records are final and
-                                can no longer be edited.
+                                This record is locked. Study data can only be
+                                changed while a reading is pending; completed
+                                readings and closed appointments are final.
+                            </div>
+
+                            <div
+                                v-else-if="
+                                    studyAppt?.status === 'Completed' &&
+                                    studyAppt?.reading_status === 'pending'
+                                "
+                                class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+                            >
+                                This reading is still pending — you can correct
+                                the study measurements before the reading doctor
+                                submits it.
                             </div>
 
                             <div
@@ -2284,7 +2482,10 @@
                             {{ selectedPatient?.name }}
                         </h3>
                         <p class="mt-1 text-xs font-medium text-gray-500">
-                            {{ selectedPatient?.mrn || selectedPatient?.system_id }}
+                            {{
+                                selectedPatient?.mrn ||
+                                selectedPatient?.system_id
+                            }}
                             <template v-if="selectedPatient?.date_of_birth">
                                 · {{ selectedPatient.date_of_birth }}
                             </template>
@@ -2337,7 +2538,9 @@
                                 class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
                             >
                                 <div>
-                                    <div class="flex flex-wrap items-center gap-2">
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
+                                    >
                                         <p class="font-bold text-gray-800">
                                             {{ record.date }}
                                         </p>
@@ -2348,7 +2551,8 @@
                                         </span>
                                     </div>
                                     <p class="mt-1 text-xs text-gray-500">
-                                        {{ record.doctor }} · {{ record.service }}
+                                        {{ record.doctor }} ·
+                                        {{ record.service }}
                                     </p>
                                 </div>
                                 <span
@@ -2359,9 +2563,7 @@
                             <div
                                 class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2"
                             >
-                                <div
-                                    class="rounded-lg bg-gray-50 px-3 py-2"
-                                >
+                                <div class="rounded-lg bg-gray-50 px-3 py-2">
                                     <p
                                         class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
@@ -2373,9 +2575,7 @@
                                         {{ record.symptoms || 'Not recorded' }}
                                     </p>
                                 </div>
-                                <div
-                                    class="rounded-lg bg-gray-50 px-3 py-2"
-                                >
+                                <div class="rounded-lg bg-gray-50 px-3 py-2">
                                     <p
                                         class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
@@ -2387,9 +2587,7 @@
                                         {{ record.vitals || 'Not recorded' }}
                                     </p>
                                 </div>
-                                <div
-                                    class="rounded-lg bg-gray-50 px-3 py-2"
-                                >
+                                <div class="rounded-lg bg-gray-50 px-3 py-2">
                                     <p
                                         class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
@@ -2401,9 +2599,7 @@
                                         {{ record.diagnosis || 'Not recorded' }}
                                     </p>
                                 </div>
-                                <div
-                                    class="rounded-lg bg-gray-50 px-3 py-2"
-                                >
+                                <div class="rounded-lg bg-gray-50 px-3 py-2">
                                     <p
                                         class="text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
@@ -2427,7 +2623,9 @@
                                 </p>
                                 <ul class="mt-2 space-y-1.5">
                                     <li
-                                        v-for="(med, idx) in record.prescriptions"
+                                        v-for="(
+                                            med, idx
+                                        ) in record.prescriptions"
                                         :key="idx"
                                         class="text-xs font-medium text-gray-700"
                                     >
@@ -2475,9 +2673,10 @@
                                         class="grid grid-cols-1 gap-x-4 gap-y-1 border-t border-gray-100 px-3 py-2 sm:grid-cols-2"
                                     >
                                         <div
-                                            v-for="[key, value] in visibleStudyFields(
-                                                study.data,
-                                            )"
+                                            v-for="[
+                                                key,
+                                                value,
+                                            ] in visibleStudyFields(study.data)"
                                             :key="key"
                                         >
                                             <dt
@@ -2635,10 +2834,7 @@ const patientPageStart = computed(() =>
 );
 
 const patientPageEnd = computed(() =>
-    Math.min(
-        patientPage.value * patientPerPage,
-        filteredPatients.value.length,
-    ),
+    Math.min(patientPage.value * patientPerPage, filteredPatients.value.length),
 );
 
 watch(patientSearch, () => {
@@ -2667,9 +2863,7 @@ const openPatientRecords = async (patient: any) => {
         }
 
         const data = await response.json();
-        patientHistory.value = Array.isArray(data.records)
-            ? data.records
-            : [];
+        patientHistory.value = Array.isArray(data.records) ? data.records : [];
     } catch {
         showError('Unable to load patient history.');
     } finally {
@@ -2727,9 +2921,7 @@ const visibleStudyFields = (data: Record<string, any>) =>
     });
 
 const fieldLabel = (key: string) =>
-    key
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    key.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const displayStudyValue = (value: unknown) => {
     if (typeof value === 'boolean') {
@@ -3034,7 +3226,7 @@ async function openStudyForm(appt: any): Promise<void> {
 
         const data = await res.json();
 
-        studyLocked.value = data.status === 'completed';
+        studyLocked.value = data.is_locked === true;
         studySavedAt.value = data.saved === true;
 
         const blank = studyForm.data();
@@ -3630,7 +3822,11 @@ const markComplete = (id: number) => {
     );
 };
 
-const assignReading = (id: number, readerId: string | number, readingDate: string) => {
+const assignReading = (
+    id: number,
+    readerId: string | number,
+    readingDate: string,
+) => {
     router.put(
         `/appointments/${id}/reading`,
         {

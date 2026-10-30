@@ -21,10 +21,18 @@ class DoctorConsultationController extends Controller
     {
         $this->authorizeDoctor($appointment);
 
+        $providerId = Auth::user()?->provider?->id;
+        $isReadingDoctor = $providerId !== null
+            && $appointment->reader_provider_id === $providerId
+            && $appointment->provider_id !== $providerId;
+
         $appointment->load([
             'patient:id,user_id,mrn,date_of_birth,sex,blood_type,allergies,insurance_provider',
             'patient.user:id,name,email',
             'provider:id,user_id,credentials,specialty',
+            'provider.user:id,name',
+            'readerProvider:id,user_id',
+            'readerProvider.user:id,name',
             'documents' => fn ($query) => $query->with('uploader:id,name')->latest(),
             'encounter.echocardiogram',
             'encounter.treadmillTest',
@@ -45,10 +53,22 @@ class DoctorConsultationController extends Controller
                 'consultation_started_at' => $appointment->consultation_started_at?->toIso8601String(),
                 'service_type' => $appointment->service_type,
                 'reason_for_visit' => $appointment->reason_for_visit,
+                'requesting_doctor' => $appointment->provider?->user?->name,
+                'reader_provider_id' => $appointment->reader_provider_id,
+                'reader' => $appointment->readerProvider?->user?->name,
+                'reading_date' => $appointment->reading_date?->toDateString(),
+                'reading_status' => $appointment->reading_status,
+                'reading_completed_at' => $appointment->reading_completed_at?->toIso8601String(),
+                'is_reading_doctor' => $isReadingDoctor,
+                // A reading doctor may only save while the reading is pending.
+                'can_edit_reading' => $appointment->status === 'Completed'
+                    && $appointment->reading_status !== 'completed'
+                    && ($isReadingDoctor || $appointment->provider_id === $providerId),
             ],
             'patient' => $patient,
             'documents' => $appointment->documents->map(fn (Document $d) => $this->summarise($d)),
             'history' => $this->history($patient),
+            'audit' => $this->auditHistory($appointment),
             // Study measurements the receptionist already recorded on a draft
             // encounter (or a completed record on a revisit) so the doctor's
             // forms can be pre-filled instead of re-keyed.
@@ -67,6 +87,16 @@ class DoctorConsultationController extends Controller
             abort(422, 'This appointment was marked as No-Show and can no longer be edited.');
         }
 
+        if ($appointment->status === 'Cancelled') {
+            abort(422, 'This appointment was cancelled and can no longer be edited.');
+        }
+
+        // Opening a completed visit (typically from the reading queue) is a
+        // review, not a new consultation. Do not push it back to In Progress.
+        if ($appointment->status === 'Completed') {
+            return $this->show($appointment->fresh());
+        }
+
         if ($appointment->status !== self::IN_PROGRESS) {
             $appointment->update([
                 'status' => self::IN_PROGRESS,
@@ -80,6 +110,26 @@ class DoctorConsultationController extends Controller
         }
 
         return $this->show($appointment->fresh());
+    }
+
+    /**
+     * Recent audit entries for this appointment, newest first. Reading-doctor
+     * saves and reading assignments both land here so the panel shows who
+     * touched the record and when.
+     */
+    private function auditHistory(Appointment $appointment)
+    {
+        return AuditLog::with('user:id,name')
+            ->where('action', 'like', '%#'.$appointment->id.'%')
+            ->latest('created_at')
+            ->limit(30)
+            ->get()
+            ->map(fn (AuditLog $log) => [
+                'id' => $log->id,
+                'action' => $log->action,
+                'user' => $log->user?->name ?? 'System',
+                'created_at' => $log->created_at?->toIso8601String(),
+            ]);
     }
 
     /**
@@ -197,7 +247,7 @@ class DoctorConsultationController extends Controller
     {
         $providerId = Auth::user()?->provider?->id;
 
-        if ($providerId === null || $appointment->provider_id !== $providerId) {
+        if ($providerId === null || ! in_array($providerId, [$appointment->provider_id, $appointment->reader_provider_id], true)) {
             abort(403, 'This appointment belongs to another doctor.');
         }
     }

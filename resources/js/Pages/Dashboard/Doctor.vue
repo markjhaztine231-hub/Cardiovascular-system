@@ -364,7 +364,10 @@
                                 class="text-lg font-medium text-teal-100"
                                 v-if="nextPatient"
                             >
-                                {{ nextPatient.service ?? 'General Checkup' }} �?�
+                                {{
+                                    nextPatient.service ?? 'General Checkup'
+                                }}
+                                �?�
                                 {{ getTimeSlotLabel(nextPatient.time) }}
                             </p>
                         </div>
@@ -501,6 +504,126 @@
                                             class="px-6 py-12 text-center font-medium text-gray-500"
                                         >
                                             No patients currently in queue.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Readings assigned to this doctor -->
+                    <div
+                        v-if="readingQueue.length > 0"
+                        class="mt-6 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm"
+                    >
+                        <div
+                            class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 p-6"
+                        >
+                            <div>
+                                <h3
+                                    class="flex items-center text-lg font-bold text-gray-800"
+                                >
+                                    <svg
+                                        class="mr-2 h-5 w-5 text-amber-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    Readings Assigned to Me
+                                </h3>
+                                <p
+                                    class="mt-0.5 text-xs font-medium text-gray-500"
+                                >
+                                    Completed procedures waiting for your
+                                    reading.
+                                </p>
+                            </div>
+                            <span
+                                class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-1.5 text-xs font-bold text-amber-700"
+                            >
+                                {{ readingQueue.length }} pending
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse text-left">
+                                <thead>
+                                    <tr class="border-b border-gray-100">
+                                        <th
+                                            class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                        >
+                                            Reading Date
+                                        </th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                        >
+                                            Patient
+                                        </th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                        >
+                                            Requested By
+                                        </th>
+                                        <th
+                                            class="px-6 py-4 text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                        >
+                                            Service
+                                        </th>
+                                        <th
+                                            class="px-6 py-4 text-right text-xs font-extrabold tracking-widest text-gray-400 uppercase"
+                                        >
+                                            Action
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-50">
+                                    <tr
+                                        v-for="appt in readingQueue"
+                                        :key="appt.id"
+                                        class="transition-colors hover:bg-amber-50/40"
+                                    >
+                                        <td
+                                            class="px-6 py-5 text-sm font-bold whitespace-nowrap text-amber-700"
+                                        >
+                                            {{
+                                                appt.reading_date ??
+                                                appt.scheduled_date ??
+                                                'N/A'
+                                            }}
+                                        </td>
+                                        <td
+                                            class="px-6 py-5 text-sm font-bold whitespace-nowrap text-gray-900"
+                                        >
+                                            {{ appt.name }}
+                                        </td>
+                                        <td
+                                            class="px-6 py-5 text-sm font-semibold whitespace-nowrap text-gray-600"
+                                        >
+                                            {{
+                                                appt.requested_by ??
+                                                'Unassigned'
+                                            }}
+                                        </td>
+                                        <td
+                                            class="px-6 py-5 text-sm font-semibold whitespace-nowrap text-gray-600"
+                                        >
+                                            {{ appt.service }}
+                                        </td>
+                                        <td
+                                            class="px-6 py-5 text-right whitespace-nowrap"
+                                        >
+                                            <button
+                                                @click="openReadingModal(appt)"
+                                                class="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-amber-700"
+                                            >
+                                                Open Reading
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -787,13 +910,109 @@
                                     View Full History
                                 </Link>
                             </div>
+
+                            <!-- Activity History -->
+                            <div
+                                class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                            >
+                                <div
+                                    class="mb-4 flex items-center justify-between"
+                                >
+                                    <h3
+                                        class="flex items-center text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
+                                    >
+                                        <svg
+                                            class="mr-2 h-4 w-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            />
+                                        </svg>
+                                        Activity History
+                                    </h3>
+                                    <span
+                                        class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-500"
+                                        >{{ consultAudit.length }}</span
+                                    >
+                                </div>
+
+                                <div
+                                    v-if="consultAudit.length === 0"
+                                    class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-xs font-medium text-gray-400"
+                                >
+                                    No activity recorded yet.
+                                </div>
+
+                                <div
+                                    v-else
+                                    class="max-h-64 space-y-2 overflow-y-auto pr-1"
+                                >
+                                    <div
+                                        v-for="entry in consultAudit"
+                                        :key="entry.id"
+                                        class="rounded-lg border border-gray-100 bg-gray-50 p-2.5"
+                                    >
+                                        <p
+                                            class="text-[11px] leading-snug font-semibold text-gray-700"
+                                        >
+                                            {{ entry.action }}
+                                        </p>
+                                        <p
+                                            class="mt-1 text-[10px] font-bold tracking-wide text-gray-400 uppercase"
+                                        >
+                                            {{ entry.user }} ·
+                                            {{
+                                                entry.created_at
+                                                    ? new Date(
+                                                          entry.created_at,
+                                                      ).toLocaleString()
+                                                    : ''
+                                            }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- RIGHT COLUMN: SOAP & FORM -->
                     <div
                         class="relative min-w-0 flex-1 overflow-y-auto bg-white p-8"
                     >
+                        <!-- Reading-mode banner -->
+                        <div
+                            v-if="isReadingMode"
+                            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+                        >
+                            <p
+                                class="text-xs font-extrabold tracking-widest text-amber-700 uppercase"
+                            >
+                                Reading Review
+                            </p>
+                            <p
+                                class="mt-1 text-sm font-semibold text-amber-900"
+                            >
+                                Requested by
+                                {{
+                                    readingInfo?.requesting_doctor ??
+                                    'Attending doctor'
+                                }}
+                                <span v-if="readingInfo?.reading_date">
+                                    · Reading date
+                                    {{ readingInfo.reading_date }}
+                                </span>
+                            </p>
+                            <p class="mt-1 text-xs font-medium text-amber-800">
+                                Saving records your changes in the appointment
+                                history and marks this reading as completed.
+                            </p>
+                        </div>
+
                         <form @submit.prevent="saveConsultation">
                             <div
                                 class="mb-6 flex items-center justify-between border-b border-gray-100 pb-4"
@@ -1034,15 +1253,18 @@
                                 <div>
                                     <label
                                         class="mb-2 block text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
-                                        >Assessment (Diagnosis — optional)</label
+                                        >Assessment (Diagnosis —
+                                        optional)</label
                                     >
                                     <textarea
                                         v-model="consultForm.diagnosis"
                                         rows="2"
                                         placeholder="e.g. Acute Viral Infection. Leave blank if this visit is for clearance or a doctor-requested review."
-                                        class="min-h-20 w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-relaxed font-medium text-gray-900 outline-none field-sizing:content focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
+                                        class="field-sizing:content min-h-20 w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-relaxed font-medium text-gray-900 outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
                                     ></textarea>
-                                    <p class="mt-1 text-[11px] leading-snug text-gray-500">
+                                    <p
+                                        class="mt-1 text-[11px] leading-snug text-gray-500"
+                                    >
                                         Optional. Avoid N/A or none — use this
                                         box for the clinical diagnosis only.
                                     </p>
@@ -1391,10 +1613,14 @@
 
                                             <!-- Free-text mode: one textarea, no
                                                  dosage/frequency/duration fields -->
-                                            <div v-if="med.is_freeform" class="pr-10">
+                                            <div
+                                                v-if="med.is_freeform"
+                                                class="pr-10"
+                                            >
                                                 <label
                                                     class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
-                                                    >Free-text prescription</label
+                                                    >Free-text
+                                                    prescription</label
                                                 >
                                                 <textarea
                                                     v-model="med.free_text"
@@ -1521,9 +1747,7 @@
                                     </div>
 
                                     <p
-                                        v-if="
-                                            consultForm.requests.length === 0
-                                        "
+                                        v-if="consultForm.requests.length === 0"
                                         class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-xs font-medium text-gray-400 italic"
                                     >
                                         No requests added.
@@ -1538,7 +1762,9 @@
                                     >
                                         <button
                                             type="button"
-                                            @click.prevent="removeRequest(index)"
+                                            @click.prevent="
+                                                removeRequest(index)
+                                            "
                                             title="Remove Request"
                                             class="absolute top-4 right-4 rounded-lg border border-red-100 bg-white p-1.5 text-red-400 shadow-sm transition-all hover:scale-105 hover:text-red-600"
                                         >
@@ -1646,7 +1872,6 @@
                                         Add Request
                                     </button>
                                 </div>
-
                             </div>
                         </form>
                     </div>
@@ -2121,7 +2346,10 @@
                 </div>
 
                 <!-- Follow-up Appointment Section -->
-                <div class="border-t border-gray-100 bg-gray-50/50 px-8 py-5">
+                <div
+                    v-if="!isReadingMode"
+                    class="border-t border-gray-100 bg-gray-50/50 px-8 py-5"
+                >
                     <div class="mb-3 flex items-center gap-3">
                         <input
                             type="checkbox"
@@ -2214,7 +2442,13 @@
                                     d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
                                 />
                             </svg>
-                            {{ isSaving ? 'Saving...' : 'Save Record' }}
+                            {{
+                                isSaving
+                                    ? 'Saving...'
+                                    : isReadingMode
+                                      ? 'Save Reading'
+                                      : 'Save Record'
+                            }}
                         </button>
                     </div>
                 </div>
@@ -2224,7 +2458,6 @@
 </template>
 
 <script setup lang="ts">
-
 import { Link, useForm, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
@@ -2327,8 +2560,14 @@ interface DoctorOptionItem {
 const props = defineProps({
     user: { type: Object, required: true },
     queue: { type: Array as PropType<DoctorQueueItem[]>, required: true },
-    readingQueue: { type: Array as PropType<ReadingQueueItem[]>, default: () => [] as ReadingQueueItem[] },
-    doctors: { type: Array as PropType<DoctorOptionItem[]>, default: () => [] as DoctorOptionItem[] },
+    readingQueue: {
+        type: Array as PropType<ReadingQueueItem[]>,
+        default: () => [] as ReadingQueueItem[],
+    },
+    doctors: {
+        type: Array as PropType<DoctorOptionItem[]>,
+        default: () => [] as DoctorOptionItem[],
+    },
 });
 
 const nextPatient = computed(() =>
@@ -2345,13 +2584,13 @@ onMounted(() => {
     if (echo && props.user?.id) {
         echoChannel = echo.channel(`doctor.${props.user.id}`);
         echoChannel.listen('QueueUpdated', () => {
-            router.reload({ only: ['queue'] });
+            router.reload({ only: ['queue', 'readingQueue'] });
         });
     }
 
     // Polling fallback — refreshes queue every 15 seconds
     pollTimer = setInterval(() => {
-        router.reload({ only: ['queue'] });
+        router.reload({ only: ['queue', 'readingQueue'] });
     }, 15000);
 });
 
@@ -2429,6 +2668,19 @@ const prefillFailed = ref(false);
 const prefillApplied = ref(false);
 // A save that reached the server (or IndexedDB); only then may the draft go.
 const consultSaved = ref(false);
+// True when this doctor opened the visit from their reading queue. The same
+// consultation form is reused, but saving marks the reading complete instead
+// of writing a new consultation.
+const isReadingMode = ref(false);
+const readingInfo = ref<Record<string, any> | null>(null);
+const consultAudit = ref<
+    Array<{
+        id: number;
+        action: string;
+        user: string;
+        created_at: string | null;
+    }>
+>([]);
 
 /**
  * History URL for the appointment currently in the consultation modal.
@@ -2818,9 +3070,7 @@ const interactionWarnings = computed(() => {
 
     const pending = consultForm.prescriptions
         .map((med) => ({
-            medicine: med.is_freeform
-                ? (med.free_text ?? '')
-                : med.medicine,
+            medicine: med.is_freeform ? (med.free_text ?? '') : med.medicine,
             dosage: med.dosage ?? '',
         }))
         .filter((med) => med.medicine.trim() !== '');
@@ -2965,18 +3215,26 @@ function formatPatientIdentifier(): string {
     return `PT-${activeAppt.value.id}`;
 }
 
-function openConsultModal(appt: Appointment | null) {
+function openConsultModal(appt: Appointment | null, reading = false) {
     if (!appt) {
         return;
     }
 
     activeAppt.value = appt;
     isModalOpen.value = true;
+    isReadingMode.value = reading;
+    readingInfo.value = null;
+    consultAudit.value = [];
     stopScanPolling();
     prefillFailed.value = false;
     prefillApplied.value = false;
     consultSaved.value = false;
-    loadDraft();
+
+    // A reading doctor must not inherit the attending doctor's local draft:
+    // saving it would look like their own clinical edit.
+    if (!reading) {
+        loadDraft();
+    }
 
     // Polling is owned by the caller: scheduleScanPoll() starts the loop when
     // the first load reports unfinished OCR, and each tick re-arms it.
@@ -2989,6 +3247,10 @@ function openConsultModal(appt: Appointment | null) {
     // Auto-generate file number (e.g., Year 26 + Appt ID)
     const currentYear = new Date().getFullYear().toString().substring(2);
     consultForm.echo_data.file_no = `${currentYear}-${String(appt.id).padStart(4, '0')}`;
+}
+
+function openReadingModal(appt: ReadingQueueItem): void {
+    openConsultModal(appt as unknown as Appointment, true);
 }
 
 // ---------------------------------------------------------------------------
@@ -3090,11 +3352,18 @@ async function loadScans(): Promise<void> {
     try {
         // Starting the consultation is what flips the visit to In Progress, so
         // this also records the transition the old modal-only flow missed.
-        const { data } = await axios.post(
-            `/doctor/appointments/${appt.id}/consultation/start`,
-        );
+        // Completed visits (including readings) are review-only and are read
+        // with GET so they are never reopened.
+        const isReview = isReadingMode.value || appt.status === 'Completed';
+        const { data } = isReview
+            ? await axios.get(`/doctor/appointments/${appt.id}/consultation`)
+            : await axios.post(
+                  `/doctor/appointments/${appt.id}/consultation/start`,
+              );
 
         scans.value = data?.documents ?? [];
+        readingInfo.value = data?.appointment ?? null;
+        consultAudit.value = data?.audit ?? [];
 
         // Reception may already have recorded the Echo/TMT/Doppler measurements
         // for this visit. Pre-fill those into the forms so the doctor confirms
@@ -3518,8 +3787,9 @@ watch(
 
 const closeConsultModal = () => {
     // Keep unsaved work recoverable: an accidental close still leaves the
-    // local draft (cleared only once a save actually succeeded).
-    if (!consultSaved.value && activeAppt.value) {
+    // local draft (cleared only once a save actually succeeded). Reading
+    // doctors never write the attending doctor's draft.
+    if (!consultSaved.value && activeAppt.value && !isReadingMode.value) {
         saveDraft();
     }
 
@@ -3536,6 +3806,9 @@ const closeConsultModal = () => {
     prefilledByReception.value = false;
     prefillFailed.value = false;
     prefillApplied.value = false;
+    isReadingMode.value = false;
+    readingInfo.value = null;
+    consultAudit.value = [];
 };
 
 const addMedication = () => {
@@ -3893,7 +4166,9 @@ const saveConsultation = async () => {
                             );
                         } else {
                             showSuccess(
-                                `Consultation record saved successfully!${clinicalNote}`,
+                                isReadingMode.value
+                                    ? `Reading saved and marked complete!${clinicalNote}`
+                                    : `Consultation record saved successfully!${clinicalNote}`,
                             );
                             resolve(null);
                         }
