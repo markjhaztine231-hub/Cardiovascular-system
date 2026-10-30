@@ -17,10 +17,10 @@
                             class="pointer-events-none absolute -top-24 -right-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl"
                         ></div>
                         <div
-                            class="pointer-events-none absolute right-24 -bottom-28 h-64 w-64 rounded-full border-[24px] border-white/5"
+                            class="pointer-events-none absolute right-24 -bottom-28 h-64 w-64 rounded-full border-24px border-white/5"
                         ></div>
                         <div
-                            class="pointer-events-none absolute -top-10 left-1/3 h-24 w-24 rounded-full border-[14px] border-white/5"
+                            class="pointer-events-none absolute -top-10 left-1/3 h-24 w-24 rounded-full border-14px border-white/5"
                         ></div>
 
                         <div
@@ -372,7 +372,7 @@
                                     }"
                                 >
                                     <div
-                                        class="flex h-[74px] w-[74px] flex-col items-center justify-center rounded-full bg-white"
+                                        class="flex h-18.5 w-18.5 flex-col items-center justify-center rounded-full bg-white"
                                     >
                                         <span
                                             class="text-xl font-black text-slate-800"

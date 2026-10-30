@@ -1,0 +1,17 @@
+@use './variables';
+@use 'vuetify/styles/main.sass';
+@use './override';
+@use './layout/container';
+@use './layout/sidebar';
+@use './layout/topbar';
+
+@use './components/VButtons';
+@use './components/VCard';
+@use './components/VInput';
+@use './components/VNavigationDrawer';
+@use './components/VTextField';
+@use './components/VTabs';
+
+@use './pages/dashboards';
+
+@use 'vue3-perfect-scrollbar/style.css';
