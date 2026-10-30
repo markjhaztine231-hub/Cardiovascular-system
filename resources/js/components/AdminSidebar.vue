@@ -90,51 +90,6 @@
                             "
                         />
                         <span v-show="!collapsed">{{ item.label }}</span>
-                        <span
-                            v-if="item.chip && !collapsed"
-                            class="ml-auto rounded-md bg-white/60 px-1.5 py-0.5 text-[9px] font-black tracking-wide text-indigo-500 uppercase ring-1 ring-indigo-100"
-                            >{{ item.chip }}</span
-                        >
-                    </Link>
-                </li>
-            </ul>
-
-            <p
-                v-show="!collapsed"
-                class="mt-6 px-3 pb-2 text-[9px] font-black tracking-[0.22em] text-slate-400 uppercase"
-            >
-                Security &amp; records
-            </p>
-            <div
-                v-show="collapsed"
-                class="my-4 border-t border-slate-100"
-            ></div>
-            <ul class="space-y-1">
-                <li v-for="item in securityNav" :key="item.href">
-                    <Link
-                        :href="item.href"
-                        :title="collapsed ? item.label : undefined"
-                        class="group flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
-                        :class="[
-                            isActive(item.href)
-                                ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
-                            collapsed
-                                ? 'md:justify-center md:px-0'
-                                : 'gap-3 px-3',
-                        ]"
-                        @click="closeMobile"
-                    >
-                        <component
-                            :is="item.icon"
-                            class="h-[18px] w-[18px] shrink-0"
-                            :class="
-                                isActive(item.href)
-                                    ? 'text-indigo-600'
-                                    : 'text-slate-400 group-hover:text-slate-600'
-                            "
-                        />
-                        <span v-show="!collapsed">{{ item.label }}</span>
                     </Link>
                 </li>
             </ul>
@@ -179,47 +134,6 @@
                 </li>
             </ul>
         </nav>
-
-        <!-- Status card -->
-        <div v-show="!collapsed" class="px-3 pb-3">
-            <div
-                class="relative overflow-hidden rounded-2xl bg-linear-to-br from-indigo-600 to-violet-700 p-4 text-white shadow-lg shadow-indigo-600/20"
-            >
-                <div
-                    class="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full border-[14px] border-white/10"
-                ></div>
-                <div class="relative flex items-center gap-2">
-                    <ShieldCheck class="h-4 w-4 text-indigo-200" />
-                    <span class="text-xs font-black tracking-wide uppercase"
-                        >System healthy</span
-                    >
-                </div>
-                <p
-                    class="relative mt-1.5 text-[11px] leading-snug text-indigo-100"
-                >
-                    All administrative services are operational.
-                </p>
-                <Link
-                    href="/admin/audit-log"
-                    class="relative mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-white/90 transition hover:text-white"
-                    @click="closeMobile"
-                >
-                    View audit trail
-                    <ArrowUpRight class="h-3 w-3" />
-                </Link>
-            </div>
-        </div>
-
-        <div v-if="collapsed" class="px-3 pb-3">
-            <Link
-                href="/admin/audit-log"
-                class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition hover:bg-indigo-100"
-                title="System healthy - view audit trail"
-                @click="closeMobile"
-            >
-                <ShieldCheck class="h-4 w-4" />
-            </Link>
-        </div>
 
         <!-- User -->
         <div class="border-t border-slate-100 p-3">
@@ -278,13 +192,11 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
-    ArrowUpRight,
     HeartPulse,
     LayoutDashboard,
     LogOut,
     PanelLeftClose,
     ScrollText,
-    ShieldCheck,
     UserPlus,
     UserRound,
     Users,
@@ -327,15 +239,6 @@ const workspaceNav = [
         label: 'Create account',
         href: '/admin/create-account',
         icon: UserPlus,
-        chip: 'New',
-    },
-];
-
-const securityNav = [
-    {
-        label: 'Audit log',
-        href: '/admin/audit-log',
-        icon: ScrollText,
     },
 ];
 
@@ -344,6 +247,11 @@ const accountNav = [
         label: 'My profile',
         href: '/profile',
         icon: UserRound,
+    },
+    {
+        label: 'Audit log',
+        href: '/admin/audit-log',
+        icon: ScrollText,
     },
 ];
 </script>

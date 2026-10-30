@@ -9,7 +9,7 @@
 
             <div class="relative flex-1 overflow-y-auto">
                 <div class="mx-auto max-w-7xl space-y-6 p-5 lg:p-8">
-                    <!-- Hero / quick actions -->
+                    <!-- Hero -->
                     <section
                         class="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-900 via-slate-800 to-indigo-900 p-6 text-white shadow-xl shadow-slate-900/10 lg:p-8"
                     >
@@ -45,30 +45,6 @@
                                     one console.
                                 </p>
                             </div>
-
-                            <div class="flex flex-wrap items-center gap-2.5">
-                                <Link
-                                    href="/admin/create-account"
-                                    class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-indigo-50"
-                                >
-                                    <UserPlus class="h-4 w-4" />
-                                    Create account
-                                </Link>
-                                <Link
-                                    href="/admin/users-directory"
-                                    class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
-                                >
-                                    <Users class="h-4 w-4" />
-                                    Users directory
-                                </Link>
-                                <Link
-                                    href="/admin/audit-log"
-                                    class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
-                                >
-                                    <FileClock class="h-4 w-4" />
-                                    Audit log
-                                </Link>
-                            </div>
                         </div>
                     </section>
 
@@ -76,10 +52,11 @@
                     <section
                         class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
                     >
-                        <div
+                        <Link
                             v-for="card in overviewCards"
                             :key="card.label"
-                            class="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                            :href="card.href"
+                            class="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         >
                             <div class="flex items-start justify-between">
                                 <div
@@ -103,15 +80,18 @@
                                 {{ card.value }}
                             </p>
                             <p
-                                class="mt-1 text-[10px] font-black tracking-[0.16em] text-slate-400 uppercase"
+                                class="mt-1 flex items-center gap-1.5 text-[10px] font-black tracking-[0.16em] text-slate-400 uppercase"
                             >
                                 {{ card.label }}
+                                <ArrowUpRight
+                                    class="h-3 w-3 text-gray-300 transition group-hover:text-indigo-500"
+                                />
                             </p>
                             <span
                                 class="absolute inset-x-0 bottom-0 h-1"
                                 :class="card.accentClass"
                             ></span>
-                        </div>
+                        </Link>
                     </section>
 
                     <!-- Today's clinic pulse -->
@@ -192,7 +172,8 @@
                                     <p
                                         class="mt-0.5 text-xs font-medium text-gray-500"
                                     >
-                                        Scheduled visits over the last 7 days
+                                        Scheduled and completed visits over the
+                                        last 7 days
                                     </p>
                                 </div>
                                 <div
@@ -202,7 +183,7 @@
                                         class="inline-flex items-center gap-1.5"
                                     >
                                         <span
-                                            class="h-2.5 w-2.5 rounded-full bg-indigo-200"
+                                            class="h-2.5 w-2.5 rounded-sm bg-indigo-200"
                                         ></span>
                                         All visits
                                     </span>
@@ -210,7 +191,7 @@
                                         class="inline-flex items-center gap-1.5"
                                     >
                                         <span
-                                            class="h-2.5 w-2.5 rounded-full bg-indigo-600"
+                                            class="h-2.5 w-2.5 rounded-sm bg-indigo-600"
                                         ></span>
                                         Completed
                                     </span>
@@ -294,8 +275,8 @@
                         </div>
                     </section>
 
-                    <!-- Account mix / completion / shortcuts -->
-                    <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <!-- Account mix / completion -->
+                    <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                         <div
                             class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
                         >
@@ -458,62 +439,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div
-                            class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
-                        >
-                            <div class="flex items-start justify-between">
-                                <div>
-                                    <h2
-                                        class="text-base font-black tracking-tight text-slate-800"
-                                    >
-                                        Admin shortcuts
-                                    </h2>
-                                    <p
-                                        class="mt-0.5 text-xs font-medium text-gray-500"
-                                    >
-                                        Common console tasks
-                                    </p>
-                                </div>
-                                <span
-                                    class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"
-                                >
-                                    <Activity class="h-4 w-4" />
-                                </span>
-                            </div>
-
-                            <div class="mt-5 space-y-2.5">
-                                <Link
-                                    v-for="action in shortcuts"
-                                    :key="action.title"
-                                    :href="action.href"
-                                    class="group flex items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/60"
-                                >
-                                    <span
-                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                                        :class="action.iconClass"
-                                    >
-                                        <component
-                                            :is="action.icon"
-                                            class="h-4 w-4"
-                                        />
-                                    </span>
-                                    <span class="min-w-0 flex-1">
-                                        <span
-                                            class="block text-sm font-bold text-slate-700"
-                                            >{{ action.title }}</span
-                                        >
-                                        <span
-                                            class="block truncate text-[11px] text-gray-400"
-                                            >{{ action.description }}</span
-                                        >
-                                    </span>
-                                    <ArrowUpRight
-                                        class="h-4 w-4 text-gray-300 transition group-hover:text-indigo-500"
-                                    />
-                                </Link>
-                            </div>
-                        </div>
                     </section>
                 </div>
             </div>
@@ -525,16 +450,13 @@
 import { Link } from '@inertiajs/vue3';
 import { Chart, registerables } from 'chart.js';
 import {
-    Activity,
     ArrowUpRight,
     CalendarDays,
     CheckCircle2,
     Clock,
-    FileClock,
     HeartPulse,
     ShieldCheck,
     TrendingUp,
-    UserPlus,
     UserRound,
     Users,
     XCircle,
@@ -587,6 +509,7 @@ interface OverviewCard {
     value: number;
     icon: Component;
     badge: string;
+    href: string;
     iconClass: string;
     badgeClass: string;
     accentClass: string;
@@ -651,6 +574,7 @@ const overviewCards = computed<OverviewCard[]>(() => [
         value: props.stats.total_users,
         icon: Users,
         badge: 'All accounts',
+        href: '/admin/users-directory',
         iconClass: 'bg-indigo-50 text-indigo-600',
         badgeClass: 'bg-indigo-50 text-indigo-600',
         accentClass: 'bg-indigo-500',
@@ -660,6 +584,7 @@ const overviewCards = computed<OverviewCard[]>(() => [
         value: props.stats.total_doctors,
         icon: HeartPulse,
         badge: 'Clinical',
+        href: '/admin/users-directory?role=doctor',
         iconClass: 'bg-emerald-50 text-emerald-600',
         badgeClass: 'bg-emerald-50 text-emerald-600',
         accentClass: 'bg-emerald-500',
@@ -669,6 +594,7 @@ const overviewCards = computed<OverviewCard[]>(() => [
         value: props.stats.total_staff,
         icon: UserRound,
         badge: 'Front desk',
+        href: '/admin/users-directory?role=receptionist',
         iconClass: 'bg-sky-50 text-sky-600',
         badgeClass: 'bg-sky-50 text-sky-600',
         accentClass: 'bg-sky-500',
@@ -678,6 +604,7 @@ const overviewCards = computed<OverviewCard[]>(() => [
         value: props.stats.total_patients,
         icon: Users,
         badge: `+${props.stats.new_patients_month} this month`,
+        href: '/admin/users-directory?role=patient',
         iconClass: 'bg-amber-50 text-amber-600',
         badgeClass: 'bg-amber-50 text-amber-700',
         accentClass: 'bg-amber-400',
@@ -727,30 +654,6 @@ const roleBreakdown = computed(() => {
         percent: Math.round((role.value / total) * 100),
     }));
 });
-
-const shortcuts = [
-    {
-        title: 'Create an account',
-        description: 'Provision staff or patient access',
-        href: '/admin/create-account',
-        icon: UserPlus,
-        iconClass: 'bg-indigo-50 text-indigo-600',
-    },
-    {
-        title: 'Users directory',
-        description: 'Search, edit, or remove accounts',
-        href: '/admin/users-directory',
-        icon: Users,
-        iconClass: 'bg-sky-50 text-sky-600',
-    },
-    {
-        title: 'Audit log',
-        description: 'Review recent system activity',
-        href: '/admin/audit-log',
-        icon: FileClock,
-        iconClass: 'bg-slate-100 text-slate-600',
-    },
-];
 
 const roleTone = (key: string) => {
     const tones: Record<string, { bar: string; dot: string }> = {
@@ -820,19 +723,14 @@ function renderTrendChart() {
                     categoryPercentage: 0.7,
                 },
                 {
-                    type: 'line',
                     label: 'Completed',
                     data: points.map((point) => point.completed),
-                    borderColor: '#4f46e5',
                     backgroundColor: '#4f46e5',
-                    borderWidth: 2.5,
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#4f46e5',
-                    pointBorderWidth: 2,
-                    tension: 0.35,
-                    fill: false,
+                    hoverBackgroundColor: '#4338ca',
+                    borderRadius: 7,
+                    borderSkipped: false,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7,
                 },
             ],
         },

@@ -46,15 +46,6 @@
             </form>
 
             <Link
-                href="/admin/audit-log"
-                class="hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 sm:inline-flex"
-                title="Audit log"
-                aria-label="Audit log"
-            >
-                <ScrollText class="h-[18px] w-[18px]" />
-            </Link>
-
-            <Link
                 href="/profile"
                 class="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1 pr-2.5 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/50 sm:pr-3"
                 :title="user?.name ?? 'Administrator'"
@@ -82,7 +73,7 @@
 
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { PanelLeft, Search, ScrollText, Settings } from 'lucide-vue-next';
+import { PanelLeft, Search, Settings } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useSidebar } from '@/composables/useSidebar';
 
