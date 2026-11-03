@@ -82,7 +82,6 @@ h2 { text-align: center; font-size: 11pt; margin: 6px 0; text-transform: upperca
     <tr>
       <td style="width:50%;"></td>
       <td style="width:50%;" class="signature-line">
-        <span>Read by: {{ $reader ?? '' }}</span><br>
         <strong>{{ $doctor }}</strong><br>Cardiologist
       </td>
     </tr>

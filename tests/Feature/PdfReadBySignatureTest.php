@@ -6,10 +6,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Every exported clinical form prints the assigned reading cardiologist above
+ * The procedure/imaging exports print the assigned reading cardiologist above
  * the signature as "Read by: <name>". The name is passed to the blade views by
- * PdfController, so render each view directly with a representative payload and
- * assert both the label and the resolved reader name are present.
+ * PdfController, so render each view directly with a representative payload.
+ * Prescription and Clinical Requests deliberately omit the line because they
+ * are signed by the attending physician only.
  */
 class PdfReadBySignatureTest extends TestCase
 {
@@ -20,7 +21,7 @@ class PdfReadBySignatureTest extends TestCase
     /**
      * @return array<string, array{0: string, 1: array<string, mixed>}>
      */
-    public static function clinicalFormProvider(): array
+    public static function readByFormProvider(): array
     {
         $base = [
             'patient' => 'Test Patient',
@@ -36,12 +37,28 @@ class PdfReadBySignatureTest extends TestCase
             'manual draft' => ['pdfs.manual-draft', $base + ['draft' => (object) [], 'attachments' => []]],
             'stress echo' => ['pdfs.stress-echo', $base + ['data' => []]],
             'abpm' => ['pdfs.abpm', $base + ['data' => []]],
+        ];
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: array<string, mixed>}>
+     */
+    public static function attendingOnlyFormProvider(): array
+    {
+        $base = [
+            'patient' => 'Test Patient',
+            'date' => 'Jan 01, 2026',
+            'doctor' => self::DOCTOR,
+            'reader' => self::READER,
+        ];
+
+        return [
             'prescription' => ['pdfs.prescription', $base + ['prescriptions' => []]],
             'clinical requests' => ['pdfs.clinical-requests', $base + ['requests' => []]],
         ];
     }
 
-    #[DataProvider('clinicalFormProvider')]
+    #[DataProvider('readByFormProvider')]
     public function test_form_prints_read_by_above_the_signature(string $view, array $data): void
     {
         $html = view($view, $data)->render();
@@ -51,7 +68,7 @@ class PdfReadBySignatureTest extends TestCase
         $this->assertStringContainsString('Cardiologist', $html);
     }
 
-    #[DataProvider('clinicalFormProvider')]
+    #[DataProvider('readByFormProvider')]
     public function test_form_still_renders_when_no_reader_is_assigned(string $view, array $data): void
     {
         $data['reader'] = null;
@@ -61,5 +78,15 @@ class PdfReadBySignatureTest extends TestCase
         // The label is always present; only the name is left blank.
         $this->assertStringContainsString('Read by:', $html);
         $this->assertStringNotContainsString(self::READER, $html);
+    }
+
+    #[DataProvider('attendingOnlyFormProvider')]
+    public function test_attending_only_form_has_no_read_by_line(string $view, array $data): void
+    {
+        $html = view($view, $data)->render();
+
+        $this->assertStringNotContainsString('Read by:', $html);
+        $this->assertStringContainsString(self::DOCTOR, $html);
+        $this->assertStringContainsString('Cardiologist', $html);
     }
 }

@@ -117,7 +117,6 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
-                'reader' => $readerName,
             ])
                 ->setPaper('a5')
                 ->download("Prescription_{$slug}_{$date}.pdf"),
@@ -135,7 +134,6 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
-                'reader' => $readerName,
             ])
                 ->setPaper('a5')
                 ->download("Clinical_Requests_{$slug}_{$date}.pdf"),
