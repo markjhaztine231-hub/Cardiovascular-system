@@ -140,7 +140,10 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 <table class="no-border" style="margin-top:40px;">
   <tr>
     <td style="width:60%;border:none;"></td>
-    <td style="width:40%;border-top:1px solid #000;text-align:center;border-left:none;border-right:none;border-bottom:none;"><strong>Cardiologist</strong></td>
+    <td style="width:40%;border:none;border-top:1px solid #000;text-align:center;padding-top:5px;">
+      <span style="font-size:7pt;">Read by: {{ $reader ?? '' }}</span><br>
+      <strong>{{ $doctor }}</strong><br><strong>Cardiologist</strong>
+    </td>
   </tr>
 </table>
 </body>

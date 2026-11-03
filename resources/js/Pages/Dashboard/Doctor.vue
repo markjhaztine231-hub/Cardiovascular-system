@@ -819,65 +819,6 @@
                                                 Dx: {{ record.diagnosis }}
                                             </p>
                                         </div>
-                                        <!-- Quick PDF links per record type -->
-                                        <div
-                                            class="ml-2 flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100"
-                                        >
-                                            <a
-                                                v-if="record.echo_data"
-                                                :href="`/doctor/pdf/${record.id}/echo`"
-                                                target="_blank"
-                                                @click.stop
-                                                class="rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-blue-700"
-                                                title="Download Echo PDF"
-                                                >PDF</a
-                                            >
-                                            <a
-                                                v-if="record.tmt_data"
-                                                :href="`/doctor/pdf/${record.id}/tmt`"
-                                                target="_blank"
-                                                @click.stop
-                                                class="rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-purple-700"
-                                                title="Download TMT PDF"
-                                                >PDF</a
-                                            >
-                                            <a
-                                                v-if="record.doppler_data"
-                                                :href="`/doctor/pdf/${record.id}/doppler`"
-                                                target="_blank"
-                                                @click.stop
-                                                class="rounded bg-teal-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-teal-700"
-                                                title="Download Doppler PDF"
-                                                >PDF</a
-                                            >
-                                            <a
-                                                v-if="record.manual_draft_data"
-                                                :href="`/doctor/pdf/${record.id}/manual_draft`"
-                                                target="_blank"
-                                                @click.stop
-                                                class="rounded bg-amber-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-amber-700"
-                                                title="Download Manual Draft PDF"
-                                                >PDF</a
-                                            >
-                                            <a
-                                                v-if="record.stress_echo_data"
-                                                :href="`/doctor/pdf/${record.id}/stress_echo`"
-                                                target="_blank"
-                                                @click.stop
-                                                class="rounded bg-rose-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-rose-700"
-                                                title="Download Stress Echo PDF"
-                                                >PDF</a
-                                            >
-                                            <a
-                                                v-if="record.abpm_data"
-                                                :href="`/doctor/pdf/${record.id}/abpm`"
-                                                target="_blank"
-                                                @click.stop
-                                                class="rounded bg-emerald-600 px-1.5 py-0.5 text-[8px] font-bold text-white hover:bg-emerald-700"
-                                                title="Download ABPM PDF"
-                                                >PDF</a
-                                            >
-                                        </div>
                                     </div>
                                 </div>
                                 <!-- View Full History link -->

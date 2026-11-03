@@ -40,12 +40,16 @@ class PdfController extends Controller
 
         $appointment->loadMissing([
             'provider.user:id,name',
+            'readerProvider.user:id,name',
             'patient.user:id,name,email',
             'patient:id,user_id,sex,date_of_birth,allergies',
         ]);
         $patient = $appointment->patient;
         $patientName = $patient?->user?->name ?? 'Patient';
         $doctorName = $appointment->provider?->user?->name ?? 'Cardiologist';
+        // The reading cardiologist assigned to this visit, if any. Printed as
+        // "Read by" above the signature so the exported form shows who read it.
+        $readerName = $appointment->readerProvider?->user?->name;
         $date = Carbon::parse($appointment->scheduled_date)->format('M d, Y');
         $slug = str_replace(' ', '_', $patientName);
 
@@ -79,6 +83,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('letter')
                 ->download("Echo_{$slug}_{$date}.pdf"),
@@ -88,6 +93,8 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'sex' => $patient?->sex ?? '',
+                'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('letter')
                 ->download("TMT_{$slug}_{$date}.pdf"),
@@ -100,6 +107,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('letter')
                 ->download("Doppler_{$slug}_{$date}.pdf"),
@@ -109,6 +117,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('a5')
                 ->download("Prescription_{$slug}_{$date}.pdf"),
@@ -126,6 +135,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('a5')
                 ->download("Clinical_Requests_{$slug}_{$date}.pdf"),
@@ -136,6 +146,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('letter')
                 ->download("Manual_Draft_{$slug}_{$date}.pdf"),
@@ -145,6 +156,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('letter')
                 ->download("Stress_Echo_{$slug}_{$date}.pdf"),
@@ -154,6 +166,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
+                'reader' => $readerName,
             ])
                 ->setPaper('letter')
                 ->download("ABPM_{$slug}_{$date}.pdf"),
