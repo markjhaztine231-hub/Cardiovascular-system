@@ -364,9 +364,7 @@
                                 class="text-lg font-medium text-teal-100"
                                 v-if="nextPatient"
                             >
-                                {{
-                                    nextPatient.service ?? 'General Checkup'
-                                }}
+                                {{ nextPatient.service ?? 'General Checkup' }}
                                 �?�
                                 {{ getTimeSlotLabel(nextPatient.time) }}
                             </p>
@@ -2454,6 +2452,127 @@
                 </div>
             </div>
         </div>
+
+        <!-- Reading assignment prompt shown after a procedure is saved -->
+        <div
+            v-if="readerPromptOpen"
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="reading-assignment-title"
+                class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            >
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3
+                            id="reading-assignment-title"
+                            class="text-base font-extrabold text-gray-900"
+                        >
+                            Consultation saved
+                        </h3>
+                        <p class="mt-1 text-sm font-medium text-gray-500">
+                            Choose a doctor who can read this consultation. It
+                            will appear in their reading queue.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                        aria-label="Close"
+                        @click="closeReaderPrompt"
+                    >
+                        <svg
+                            class="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
+
+                <div
+                    v-if="availableReaders.length === 0"
+                    class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+                >
+                    No other doctor is available to read this consultation.
+                </div>
+
+                <div v-else class="mt-5 space-y-4">
+                    <div>
+                        <label
+                            for="reader-provider"
+                            class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                        >
+                            Reading doctor
+                        </label>
+                        <select
+                            id="reader-provider"
+                            v-model="readerForm.reader_provider_id"
+                            class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-[#146b8a] focus:ring-1 focus:ring-[#146b8a]"
+                        >
+                            <option value="">No reading needed</option>
+                            <option
+                                v-for="doctor in availableReaders"
+                                :key="doctor.id"
+                                :value="doctor.id"
+                            >
+                                {{ doctor.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div v-if="readerForm.reader_provider_id">
+                        <label
+                            for="reading-date"
+                            class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
+                        >
+                            Reading date
+                        </label>
+                        <input
+                            id="reading-date"
+                            type="date"
+                            v-model="readerForm.reading_date"
+                            class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-[#146b8a] focus:ring-1 focus:ring-[#146b8a]"
+                        />
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        class="px-4 py-2 text-sm font-bold text-gray-500 transition hover:text-gray-800"
+                        @click="closeReaderPrompt"
+                    >
+                        Skip
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="
+                            !readerForm.reader_provider_id ||
+                            !readerForm.reading_date ||
+                            readerSaving
+                        "
+                        class="rounded-xl bg-[#059669] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#047857] disabled:cursor-not-allowed disabled:opacity-50"
+                        @click="assignReader"
+                    >
+                        {{
+                            readerSaving
+                                ? 'Assigning...'
+                                : 'Assign Reading Doctor'
+                        }}
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -2568,6 +2687,10 @@ const props = defineProps({
         type: Array as PropType<DoctorOptionItem[]>,
         default: () => [] as DoctorOptionItem[],
     },
+    currentProviderId: {
+        type: Number as PropType<number | null>,
+        default: null,
+    },
 });
 
 const nextPatient = computed(() =>
@@ -2681,6 +2804,21 @@ const consultAudit = ref<
         created_at: string | null;
     }>
 >([]);
+
+// After a procedure consultation is saved, the attending doctor can hand the
+// result to another doctor for reading. A doctor cannot read their own work,
+// so the current provider is filtered out of the picker.
+const readerPromptOpen = ref(false);
+const savedAppointmentId = ref<number | null>(null);
+const readerSaving = ref(false);
+const readerForm = reactive({
+    reader_provider_id: '' as number | string,
+    reading_date: '',
+});
+
+const availableReaders = computed(() =>
+    props.doctors.filter((doctor) => doctor.id !== props.currentProviderId),
+);
 
 /**
  * History URL for the appointment currently in the consultation modal.
@@ -3930,6 +4068,62 @@ const buildConsultationPayload = (
     };
 };
 
+const localDateString = (date = new Date()): string => {
+    const offset = date.getTimezoneOffset();
+
+    return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+};
+
+const openReaderPrompt = (appointmentId: number | string) => {
+    savedAppointmentId.value = Number(appointmentId);
+    readerForm.reader_provider_id = '';
+    readerForm.reading_date = localDateString();
+    readerPromptOpen.value = true;
+};
+
+const closeReaderPrompt = () => {
+    readerPromptOpen.value = false;
+    savedAppointmentId.value = null;
+    readerSaving.value = false;
+};
+
+const assignReader = () => {
+    if (!savedAppointmentId.value || !readerForm.reader_provider_id) {
+        return;
+    }
+
+    const readerName =
+        availableReaders.value.find(
+            (doctor) => doctor.id === Number(readerForm.reader_provider_id),
+        )?.name ?? 'the selected doctor';
+
+    readerSaving.value = true;
+
+    router.put(
+        `/appointments/${savedAppointmentId.value}/reading`,
+        {
+            reader_provider_id: readerForm.reader_provider_id,
+            reading_date: readerForm.reading_date,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showSuccess(`Reading assigned to ${readerName}.`);
+                closeReaderPrompt();
+            },
+            onError: (errors) => {
+                const message =
+                    Object.values(errors)[0] ??
+                    'Could not assign the reading doctor. Please try again.';
+                showError(String(message));
+            },
+            onFinish: () => {
+                readerSaving.value = false;
+            },
+        },
+    );
+};
+
 const saveConsultation = async () => {
     const appt = activeAppt.value;
 
@@ -3938,6 +4132,13 @@ const saveConsultation = async () => {
 
         return;
     }
+
+    // Only procedure visits produce a result that another doctor can read.
+    const canAssignReader =
+        !isReadingMode.value &&
+        ['Procedure', 'Consultation and Procedure'].includes(
+            appt.service ?? '',
+        );
 
     // 1. Sanitize and validate form data
     const sanitizedForm = {
@@ -4139,6 +4340,13 @@ const saveConsultation = async () => {
                             savedLabels.length > 0
                                 ? ` ${savedLabels.join(' + ')} data saved — exportable from patient history.`
                                 : '';
+
+                        // Offer to hand the saved procedure to a reading
+                        // doctor. The visit is already completed, so this is
+                        // a separate reading-assignment request.
+                        if (canAssignReader) {
+                            openReaderPrompt(appt.id);
+                        }
 
                         // If doctor wants follow-up, schedule it
                         if (

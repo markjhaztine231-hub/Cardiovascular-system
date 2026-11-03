@@ -125,6 +125,7 @@ class DoctorController extends Controller
             'queue' => $queue,
             'readingQueue' => $readingQueue,
             'doctors' => $doctors,
+            'currentProviderId' => $providerId,
         ]);
     }
 

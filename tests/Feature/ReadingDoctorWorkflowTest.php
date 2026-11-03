@@ -293,4 +293,54 @@ class ReadingDoctorWorkflowTest extends TestCase
             'reading_status' => 'pending',
         ]);
     }
+
+    public function test_attending_doctor_can_assign_a_reading_doctor_after_saving(): void
+    {
+        [$attendingUser, $attendingProvider] = $this->makeDoctor();
+        [$readerUser, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'Completed', 'Procedure');
+
+        $this->actingAs($attendingUser)
+            ->put(route('appointments.reading', $appointment), [
+                'reader_provider_id' => $readerProvider->id,
+                'reading_date' => now()->format('Y-m-d'),
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $appointment->refresh();
+        $this->assertSame($readerProvider->id, $appointment->reader_provider_id);
+        $this->assertSame('pending', $appointment->reading_status);
+
+        $this->actingAs($readerUser)
+            ->get(route('doctor.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('readingQueue', 1)
+                ->where('readingQueue.0.id', $appointment->id)
+            );
+    }
+
+    public function test_another_doctor_cannot_assign_a_reader_to_an_unrelated_visit(): void
+    {
+        [, $attendingProvider] = $this->makeDoctor();
+        [$otherUser] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'Completed', 'Procedure');
+
+        $this->actingAs($otherUser)
+            ->put(route('appointments.reading', $appointment), [
+                'reader_provider_id' => $readerProvider->id,
+                'reading_date' => now()->format('Y-m-d'),
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'reader_provider_id' => null,
+            'reading_status' => null,
+        ]);
+    }
 }
