@@ -137,6 +137,29 @@
 
         <!-- User -->
         <div class="border-t border-slate-100 p-3">
+            <Link
+                href="/admin/audit-log"
+                :title="collapsed ? 'Audit log' : undefined"
+                class="group mb-2 flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
+                :class="[
+                    isActive('/admin/audit-log')
+                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                    collapsed ? 'md:justify-center md:px-0' : 'gap-3 px-3',
+                ]"
+                @click="closeMobile"
+            >
+                <ScrollText
+                    class="h-[18px] w-[18px] shrink-0"
+                    :class="
+                        isActive('/admin/audit-log')
+                            ? 'text-indigo-600'
+                            : 'text-slate-400 group-hover:text-slate-600'
+                    "
+                />
+                <span v-show="!collapsed">Audit log</span>
+            </Link>
+
             <div
                 class="flex items-center gap-2.5"
                 :class="collapsed ? 'md:flex-col' : ''"
@@ -163,7 +186,7 @@
                         System administrator
                     </p>
                 </div>
-                <LogoutButton v-show="!collapsed">
+                <LogoutButton v-if="!collapsed">
                     <button
                         type="button"
                         class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
@@ -247,11 +270,6 @@ const accountNav = [
         label: 'My profile',
         href: '/profile',
         icon: UserRound,
-    },
-    {
-        label: 'Audit log',
-        href: '/admin/audit-log',
-        icon: ScrollText,
     },
 ];
 </script>

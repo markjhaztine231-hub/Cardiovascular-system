@@ -26,25 +26,6 @@
         </div>
 
         <div class="ml-auto flex items-center gap-2">
-            <form
-                class="hidden md:block"
-                role="search"
-                @submit.prevent="searchUsers"
-            >
-                <div class="relative">
-                    <Search
-                        class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
-                    />
-                    <input
-                        v-model="query"
-                        type="search"
-                        placeholder="Search users by name or email..."
-                        class="w-56 rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm font-medium text-slate-700 transition outline-none placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/15 xl:w-72"
-                        aria-label="Search users"
-                    />
-                </div>
-            </form>
-
             <Link
                 href="/profile"
                 class="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1 pr-2.5 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/50 sm:pr-3"
@@ -72,9 +53,9 @@
 </template>
 
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
-import { PanelLeft, Search, Settings } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Link } from '@inertiajs/vue3';
+import { PanelLeft, Settings } from 'lucide-vue-next';
+import { computed } from 'vue';
 import { useSidebar } from '@/composables/useSidebar';
 
 const props = defineProps<{
@@ -84,17 +65,7 @@ const props = defineProps<{
 
 const { toggle } = useSidebar('admin');
 
-const query = ref('');
-
 const initial = computed(() =>
     (props.user?.name ?? 'A').charAt(0).toUpperCase(),
 );
-
-const searchUsers = () => {
-    const search = query.value.trim();
-
-    router.get('/admin/users-directory', search ? { search } : {}, {
-        preserveState: false,
-    });
-};
 </script>
