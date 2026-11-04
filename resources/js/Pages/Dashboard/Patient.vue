@@ -527,7 +527,7 @@
                                                 class="mt-1 font-medium text-gray-600"
                                             >
                                                 {{
-                                                    formatTime(
+                                                    appointmentSlotLabel(
                                                         nextAppointment.time,
                                                     )
                                                 }}
@@ -773,7 +773,7 @@
                                         <div>
                                             <label
                                                 class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                                >Time</label
+                                                >Time Slot</label
                                             >
                                             <select
                                                 v-model="bookingForm.time"
@@ -1671,7 +1671,7 @@
                             <div>
                                 <label
                                     class="mb-1.5 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                    >New Time</label
+                                    >New Time Slot</label
                                 >
                                 <select
                                     v-model="rescheduleForm.time"
@@ -1751,6 +1751,7 @@ import { useModalA11y } from '@/composables/useModalA11y';
 import { useSidebar } from '@/composables/useSidebar';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
+import { appointmentSlotLabel } from '@/utils/appointmentTime';
 import {
     sanitizeText,
     checkMedicationInteractions,
@@ -2595,7 +2596,9 @@ function buildNotifications(): Notification[] {
         const docName =
             props.nextAppointment.doctor?.name?.replace('Dr. ', '') ||
             'your doctor';
-        const apptTime = formatTime(props.nextAppointment.time);
+        const apptTime = appointmentSlotLabel(
+            props.nextAppointment.time,
+        );
 
         if (apptDate === todayStr) {
             list.push({

@@ -233,26 +233,33 @@
                         <div>
                             <label
                                 class="mb-2 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Slot Time</label
+                                >Time Slot</label
                             >
-                            <input
-                                type="time"
-                                v-model="form.time"
-                                :min="minTime"
+                            <select
+                                v-model="form.time_slot"
                                 class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800 transition-all outline-none focus:border-[#0f8c8e] focus:ring-2 focus:ring-[#0f8c8e]/20"
                                 required
-                            />
+                            >
+                                <option value="" disabled>Select a time slot...</option>
+                                <option
+                                    v-for="option in APPOINTMENT_SLOTS"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                            <p
+                                v-if="form.errors.time_slot"
+                                class="mt-1 text-xs font-bold text-red-500"
+                            >
+                                {{ form.errors.time_slot }}
+                            </p>
                             <p
                                 v-if="timeError"
                                 class="mt-1 text-xs font-bold text-red-500"
                             >
                                 {{ timeError }}
-                            </p>
-                            <p
-                                v-if="form.errors.time"
-                                class="mt-1 text-xs font-bold text-red-500"
-                            >
-                                {{ form.errors.time }}
                             </p>
                         </div>
                     </div>
@@ -322,6 +329,7 @@
 <script setup lang="ts">
 import { useForm, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { APPOINTMENT_SLOTS } from '@/utils/appointmentTime';
 
 interface Patient {
     id: string | number;
@@ -342,6 +350,12 @@ const props = defineProps({
 
 const searchQuery = ref('');
 
+// Backend window errors arrive under `time` for backward compatibility; the
+// typed form only knows the `time_slot` field, so surface it explicitly.
+const timeError = computed(
+    () => (form.errors as Record<string, string>).time ?? '',
+);
+
 // Today's date in local time so the receptionist can't book into the past.
 const today = computed(() => {
     const d = new Date();
@@ -351,17 +365,6 @@ const today = computed(() => {
 
     return `${y}-${m}-${day}`;
 });
-
-const timeError = ref('');
-const padTime = (n: number): string => String(n).padStart(2, '0');
-const isTodayBooking = computed(() => form.date === today.value);
-
-// Earliest selectable time = "now"; the native picker refuses anything past it.
-const minTime = computed((): string =>
-    isTodayBooking.value
-        ? `${padTime(new Date().getHours())}:${padTime(new Date().getMinutes())}`
-        : '',
-);
 
 const filteredPatients = computed(() => {
     if (!searchQuery.value.trim()) {
@@ -390,7 +393,7 @@ const form = useForm({
     doctor_id: '',
     service_type: '',
     date: today.value,
-    time: '', // Receptionist must pick a future slot
+    time_slot: '',
 });
 
 const selectPatient = (patient: Patient) => {
@@ -399,21 +402,6 @@ const selectPatient = (patient: Patient) => {
 };
 
 const submit = () => {
-    if (isTodayBooking.value && form.time) {
-        const [hh, mm] = form.time.split(':').map(Number);
-        const slotMinutes = hh * 60 + mm;
-        const now = new Date();
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-        if (slotMinutes <= nowMinutes) {
-            timeError.value =
-                'That time has already passed — please pick a future time.';
-
-            return;
-        }
-    }
-
-    timeError.value = '';
     form.post('/appointments/returning');
 };
 </script>

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\DoctorSchedule;
 use App\Models\Patient;
 use App\Models\Provider;
+use App\Support\AppointmentSlot;
 use App\Support\PatientHistoryMapper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -134,6 +135,11 @@ class ReceptionistController extends Controller
                 'day_of_week' => $s->day_of_week,
                 'start_time' => $s->start_time,
                 'end_time' => $s->end_time,
+                'shift' => AppointmentSlot::fromTime($s->start_time),
+                'shift_label' => AppointmentSlot::labelForRange(
+                    (string) $s->start_time,
+                    (string) $s->end_time,
+                ),
                 'is_active' => (bool) $s->is_active,
             ])
             ->values();
@@ -204,13 +210,20 @@ class ReceptionistController extends Controller
                         'name' => $appt->provider?->user?->name ?? 'Unknown',
                     ],
                     'current_date' => Carbon::parse($appt->scheduled_date)->format('M d, Y'),
-                    'current_time' => $appt->scheduled_time ? Carbon::parse($appt->scheduled_time)->format('h:i A') : 'N/A',
+                    'current_time' => $appt->scheduled_time
+                        ? (AppointmentSlot::labelForTime($appt->scheduled_time)
+                            ?? Carbon::parse($appt->scheduled_time)->format('h:i A'))
+                        : 'N/A',
                     'requested_date' => $appt->reschedule_requested_date
                         ? Carbon::parse($appt->reschedule_requested_date)->format('M d, Y')
                         : 'N/A',
                     'requested_time' => $appt->reschedule_requested_time
-                        ? Carbon::parse($appt->reschedule_requested_time)->format('h:i A')
+                        ? (AppointmentSlot::labelForTime($appt->reschedule_requested_time)
+                            ?? Carbon::parse($appt->reschedule_requested_time)->format('h:i A'))
                         : 'N/A',
+                    // Machine-readable slot so the edit modal can pre-fill the
+                    // Morning/Afternoon select.
+                    'requested_slot' => AppointmentSlot::fromTime($appt->reschedule_requested_time),
                     // Machine-readable values so the edit modal can pre-fill
                     // <input type="date"/time> (display strings would render empty).
                     'requested_date_iso' => $appt->reschedule_requested_date

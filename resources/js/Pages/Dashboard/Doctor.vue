@@ -2322,13 +2322,23 @@
                         <div>
                             <label
                                 class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
-                                >Follow-up Time</label
+                                >Follow-up Time Slot</label
                             >
-                            <input
-                                type="time"
-                                v-model="followUpForm.time"
+                            <select
+                                v-model="followUpForm.time_slot"
                                 class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#146b8a]"
-                            />
+                            >
+                                <option value="" disabled>
+                                    Select a time slot...
+                                </option>
+                                <option
+                                    v-for="option in APPOINTMENT_SLOTS"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </option>
+                            </select>
                         </div>
                         <p class="col-span-2 text-xs font-medium text-gray-500">
                             The follow-up will be assigned to the same doctor
@@ -2535,24 +2545,17 @@ import { useSidebar } from '@/composables/useSidebar';
 import { useToast } from '@/composables/useToast';
 
 import { getEcho } from '@/echo';
+import type {
+    ConsultForm,
+    Appointment,
+    Prescription,
+} from '@/types/appointment';
+import {
+    APPOINTMENT_SLOTS,
+    appointmentSlotLabel,
+} from '@/utils/appointmentTime';
 
-const getTimeSlotLabel = (time: string) => {
-    if (!time) {
-        return 'N/A';
-    }
-
-    const t = time.toString().substring(0, 5);
-
-    if (t >= '06:00' && t < '13:00') {
-        return 'Morning (6:00 AM - 12:00 PM)';
-    }
-
-    if (t >= '13:00' && t <= '18:00') {
-        return 'Afternoon (1:00 PM - 6:00 PM)';
-    }
-
-    return time;
-};
+const getTimeSlotLabel = (time: string) => appointmentSlotLabel(time);
 
 const {
     isOpen,
@@ -2563,11 +2566,6 @@ const {
     closeMobile,
 } = useSidebar('doctor');
 
-import type {
-    ConsultForm,
-    Appointment,
-    Prescription,
-} from '@/types/appointment';
 import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
 import {
     validateConsultation,
@@ -2696,7 +2694,7 @@ const doctorNotifications = computed(() => {
         notifs.push({
             id: 'next-patient',
             title: 'Next Patient',
-            message: `${next.name} at ${next.time}`,
+            message: `${next.name} at ${getTimeSlotLabel(next.time)}`,
             time: 'Up next',
         });
     } else {
@@ -2782,7 +2780,7 @@ const activeHistoryUrl = computed<string | null>(() => {
 });
 
 const wantsFollowUp = ref(false);
-const followUpForm = useForm({ date: '', time: '' });
+const followUpForm = useForm({ date: '', time_slot: '' });
 
 const tomorrowDate = computed(() => {
     const d = new Date();
@@ -4293,7 +4291,7 @@ const saveConsultation = async () => {
                         if (
                             wantsFollowUp.value &&
                             followUpForm.date &&
-                            followUpForm.time
+                            followUpForm.time_slot
                         ) {
                             followUpForm.post(
                                 `/appointments/${appt.id}/follow-up`,

@@ -1601,29 +1601,27 @@
                                     </label>
                                 </div>
                             </div>
-                            <div>
+                            <div class="md:col-span-2">
                                 <label
                                     class="mb-1 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                    >Start Time</label
+                                    >Shift</label
                                 >
-                                <input
-                                    type="time"
-                                    v-model="scheduleForm.start_time"
+                                <select
+                                    v-model="scheduleForm.shift"
                                     class="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
                                     required
-                                />
-                            </div>
-                            <div>
-                                <label
-                                    class="mb-1 block text-xs font-extrabold tracking-widest text-gray-500 uppercase"
-                                    >End Time</label
                                 >
-                                <input
-                                    type="time"
-                                    v-model="scheduleForm.end_time"
-                                    class="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
-                                    required
-                                />
+                                    <option value="" disabled>
+                                        Select a shift...
+                                    </option>
+                                    <option
+                                        v-for="option in APPOINTMENT_SLOTS"
+                                        :key="option.value"
+                                        :value="option.value"
+                                    >
+                                        {{ option.label }}
+                                    </option>
+                                </select>
                             </div>
                         </div>
                         <div class="flex gap-3">
@@ -1681,8 +1679,10 @@
                                     <span
                                         class="rounded border border-teal-100 bg-teal-50 px-2 py-1"
                                     >
-                                        {{ sch.start_time?.substring(0, 5) }} –
-                                        {{ sch.end_time?.substring(0, 5) }}
+                                        {{
+                                            sch.shift_label ??
+                                            `${sch.start_time?.substring(0, 5)} – ${sch.end_time?.substring(0, 5)}`
+                                        }}
                                     </span>
                                 </div>
                                 <div class="flex gap-2">
@@ -1883,14 +1883,24 @@
                             <label
                                 class="mb-2 block text-sm font-bold text-gray-700"
                             >
-                                New Time
+                                New Time Slot
                             </label>
-                            <input
-                                v-model="rescheduleEditForm.requested_time"
-                                type="time"
+                            <select
+                                v-model="rescheduleEditForm.requested_slot"
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-800 outline-none focus:border-blue-500 focus:ring-blue-500"
                                 required
-                            />
+                            >
+                                <option value="" disabled>
+                                    Select a time slot...
+                                </option>
+                                <option
+                                    v-for="option in APPOINTMENT_SLOTS"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </option>
+                            </select>
                         </div>
                         <div
                             class="flex justify-end gap-3 border-t border-gray-100 pt-4"
@@ -1971,14 +1981,24 @@
                             <label
                                 class="mb-2 block text-sm font-bold text-gray-700"
                             >
-                                New Time
+                                New Time Slot
                             </label>
-                            <input
-                                v-model="queueRescheduleForm.time"
-                                type="time"
+                            <select
+                                v-model="queueRescheduleForm.slot"
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-800 outline-none focus:border-amber-500 focus:ring-amber-500"
                                 required
-                            />
+                            >
+                                <option value="" disabled>
+                                    Select a time slot...
+                                </option>
+                                <option
+                                    v-for="option in APPOINTMENT_SLOTS"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </option>
+                            </select>
                         </div>
                         <div
                             class="flex justify-end gap-3 border-t border-gray-100 pt-4"
@@ -2738,6 +2758,11 @@ import Toast from '@/components/Toast.vue';
 import { useModalA11y } from '@/composables/useModalA11y';
 import { useToast } from '@/composables/useToast';
 import { getEcho } from '@/echo';
+import {
+    APPOINTMENT_SLOTS,
+    appointmentSlotLabel,
+    timeSlotValue,
+} from '@/utils/appointmentTime';
 import { blankStudyForms } from '@/utils/studyForms';
 
 const { error: showError, success: showSuccess } = useToast();
@@ -3551,8 +3576,7 @@ const scheduleForm = useForm({
     id: null as number | null,
     doctor_id: '',
     day_of_week: [] as string[],
-    start_time: '08:00',
-    end_time: '17:00',
+    shift: 'morning',
 });
 
 const transferForm = useForm({
@@ -3561,12 +3585,12 @@ const transferForm = useForm({
 
 const rescheduleEditForm = useForm({
     requested_date: '',
-    requested_time: '',
+    requested_slot: '',
 });
 
 const queueRescheduleForm = useForm({
     date: '',
-    time: '',
+    slot: '',
 });
 
 // ── Real-time appointment updates via WebSocket ────────────────────
@@ -3686,33 +3710,6 @@ const isoDateFromDisplay = (v?: string | null): string => {
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
-const isoTimeFromDisplay = (v?: string | null): string => {
-    if (!v) {
-        return '';
-    }
-
-    const m = v.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?$/);
-
-    if (!m) {
-        return '';
-    }
-
-    let h = Number(m[1]);
-    const suffix = (m[3] || '').toUpperCase();
-
-    if (suffix) {
-        if (suffix === 'PM' && h !== 12) {
-            h += 12;
-        }
-
-        if (suffix === 'AM' && h === 12) {
-            h = 0;
-        }
-    }
-
-    return `${pad2(h)}:${m[2]}`;
-};
-
 // Actions
 const submitSchedule = () => {
     if (isEditing.value) {
@@ -3780,8 +3777,17 @@ const editSchedule = (sch: any) => {
     isEditing.value = true;
     scheduleForm.id = sch.id;
     scheduleForm.doctor_id = sch.doctor_id;
-    scheduleForm.start_time = sch.start_time?.substring(0, 5);
-    scheduleForm.end_time = sch.end_time?.substring(0, 5);
+    // A legacy row that covers both windows cannot map to a single shift.
+    // Leave the select blank so the receptionist explicitly splits it instead
+    // of silently dropping the afternoon half on save.
+    scheduleForm.shift = String(sch.shift_label ?? '').startsWith(
+        'Morning & Afternoon',
+    )
+        ? ''
+        : (sch.shift ??
+          (timeSlotValue(sch.start_time) === 'afternoon'
+              ? 'afternoon'
+              : 'morning'));
     scheduleForm.day_of_week = toDayNames(sch.day_of_week);
 };
 
@@ -3855,23 +3861,7 @@ const markReadingComplete = (id: number) => {
     );
 };
 
-const getTimeSlotLabel = (time: string) => {
-    if (!time) {
-        return 'N/A';
-    }
-
-    const t = time.toString().substring(0, 5);
-
-    if (t >= '06:00' && t < '13:00') {
-        return 'Morning (6:00 AM - 12:00 PM)';
-    }
-
-    if (t >= '13:00' && t <= '18:00') {
-        return 'Afternoon (1:00 PM - 6:00 PM)';
-    }
-
-    return time;
-};
+const getTimeSlotLabel = (time: string) => appointmentSlotLabel(time);
 
 const cancelAppointment = (id: number) => {
     if (confirm('Cancel this appointment?')) {
@@ -3917,8 +3907,10 @@ const openEditReschedule = (req: any) => {
     editingReschedule.value = req;
     rescheduleEditForm.requested_date =
         req.requested_date_iso || isoDateFromDisplay(req.requested_date);
-    rescheduleEditForm.requested_time =
-        req.requested_time_iso || isoTimeFromDisplay(req.requested_time);
+    rescheduleEditForm.requested_slot =
+        req.requested_slot ||
+        timeSlotValue(req.requested_time_iso) ||
+        'morning';
     isEditingReschedule.value = true;
 };
 
@@ -3933,7 +3925,7 @@ const submitEditReschedule = () => {
         `/receptionist/appointments/${editingReschedule.value.id}/edit-reschedule`,
         {
             date: rescheduleEditForm.requested_date,
-            time: rescheduleEditForm.requested_time,
+            time_slot: rescheduleEditForm.requested_slot,
         },
         {
             preserveScroll: true,
@@ -3950,7 +3942,7 @@ const submitEditReschedule = () => {
 const openQueueReschedule = (appt: any) => {
     queueRescheduleAppt.value = appt;
     queueRescheduleForm.date = '';
-    queueRescheduleForm.time = '';
+    queueRescheduleForm.slot = '';
     isQueueRescheduleOpen.value = true;
 };
 
@@ -3965,7 +3957,7 @@ const submitQueueReschedule = () => {
         `/receptionist/appointments/${queueRescheduleAppt.value.id}/edit-reschedule`,
         {
             date: queueRescheduleForm.date,
-            time: queueRescheduleForm.time,
+            time_slot: queueRescheduleForm.slot,
         },
         {
             preserveScroll: true,

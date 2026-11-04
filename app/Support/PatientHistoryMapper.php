@@ -44,7 +44,9 @@ class PatientHistoryMapper
                 $date = $encounter->started_at?->format('M d, Y')
                     ?? ($appt?->scheduled_date?->format('M d, Y') ?? 'N/A');
                 $time = $appt?->scheduled_time
-                    ? Carbon::parse($appt->scheduled_time)->format('h:i A') : '';
+                    ? (AppointmentSlot::labelForTime($appt->scheduled_time)
+                        ?? Carbon::parse($appt->scheduled_time)->format('h:i A'))
+                    : '';
 
                 $forms = [];
 

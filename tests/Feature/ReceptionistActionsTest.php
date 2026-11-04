@@ -183,6 +183,39 @@ class ReceptionistActionsTest extends TestCase
         $this->assertDatabaseMissing('doctor_schedules', ['id' => $schedule->id]);
     }
 
+    public function test_receptionist_plots_schedules_as_morning_or_afternoon_shifts()
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        $provider = $this->makeProvider();
+
+        $this->actingAs($receptionist)
+            ->post(route('schedules.store'), [
+                'doctor_id' => $provider->id,
+                'day_of_week' => ['Monday'],
+                'shift' => 'morning',
+            ])
+            ->assertRedirect(route('receptionist.dashboard'))
+            ->assertSessionHas('success');
+
+        $schedule = DoctorSchedule::where('provider_id', $provider->id)->firstOrFail();
+
+        $this->assertSame('06:00:00', $schedule->start_time);
+        $this->assertSame('12:00:00', $schedule->end_time);
+
+        $this->actingAs($receptionist)
+            ->put(route('schedules.update', $schedule), [
+                'day_of_week' => ['Tuesday'],
+                'shift' => 'afternoon',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('doctor_schedules', [
+            'id' => $schedule->id,
+            'start_time' => '13:00:00',
+            'end_time' => '18:00:00',
+        ]);
+    }
+
     public function test_receptionist_can_reschedule_appointment_from_the_queue()
     {
         $receptionist = User::factory()->receptionist()->create();

@@ -14,7 +14,7 @@ class PatientAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_available_slots_are_generated_from_doctor_schedules_on_5_minute_grid()
+    public function test_availability_returns_the_morning_window_for_a_morning_schedule()
     {
         $target = Carbon::parse(now()->addDays(2)->format('Y-m-d'));
         $provider = Provider::factory()->create();
@@ -33,12 +33,62 @@ class PatientAvailabilityTest extends TestCase
         );
 
         $response->assertOk();
-        // 08:00 -> 09:25 inclusive, every 5 minutes = 18 slots.
-        $response->assertJsonCount(18, 'slots');
-        $response->assertJsonFragment(['value' => '08:00:00', 'label' => '8:00 AM']);
-        $response->assertJsonFragment(['value' => '08:05:00', 'label' => '8:05 AM']);
-        $response->assertJsonFragment(['value' => '08:30:00', 'label' => '8:30 AM']);
-        $response->assertJsonFragment(['value' => '09:00:00', 'label' => '9:00 AM']);
+        $response->assertJsonCount(1, 'slots');
+        $response->assertJsonFragment([
+            'value' => 'morning',
+            'label' => 'Morning (6:00 AM - 12:00 PM)',
+        ]);
+    }
+
+    public function test_availability_returns_the_afternoon_window_for_an_afternoon_schedule()
+    {
+        $target = Carbon::parse(now()->addDays(2)->format('Y-m-d'));
+        $provider = Provider::factory()->create();
+
+        DoctorSchedule::create([
+            'provider_id' => $provider->id,
+            'day_of_week' => [$target->dayOfWeekIso],
+            'start_time' => '13:00:00',
+            'end_time' => '15:00:00',
+        ]);
+
+        $patient = Patient::factory()->create()->user;
+
+        $response = $this->actingAs($patient)->getJson(
+            route('appointments.availability', ['date' => $target->format('Y-m-d')])
+        );
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'slots');
+        $response->assertJsonFragment([
+            'value' => 'afternoon',
+            'label' => 'Afternoon (1:00 PM - 6:00 PM)',
+        ]);
+    }
+
+    public function test_availability_returns_both_windows_for_a_full_day_schedule()
+    {
+        $target = Carbon::parse(now()->addDays(2)->format('Y-m-d'));
+        $provider = Provider::factory()->create();
+
+        DoctorSchedule::create([
+            'provider_id' => $provider->id,
+            'day_of_week' => [$target->dayOfWeekIso],
+            'start_time' => '08:00:00',
+            'end_time' => '17:00:00',
+        ]);
+
+        $patient = Patient::factory()->create()->user;
+
+        $response = $this->actingAs($patient)->getJson(
+            route('appointments.availability', ['date' => $target->format('Y-m-d')])
+        );
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'slots');
+
+        $values = collect($response->json('slots'))->pluck('value')->all();
+        $this->assertSame(['morning', 'afternoon'], $values);
     }
 
     public function test_booked_slots_are_excluded_from_availability_realtime()
@@ -70,10 +120,40 @@ class PatientAvailabilityTest extends TestCase
 
         $response->assertOk();
         $values = collect($response->json('slots'))->pluck('value')->all();
-        $this->assertContains('08:00:00', $values);
-        $this->assertNotContains('08:30:00', $values);
-        $this->assertContains('09:00:00', $values);
-        $this->assertContains('09:30:00', $values);
+        $this->assertContains('morning', $values);
+        $this->assertNotContains('afternoon', $values);
+    }
+
+    public function test_a_window_is_hidden_when_every_exact_time_is_booked()
+    {
+        $target = Carbon::parse(now()->addDays(2)->format('Y-m-d'));
+        $provider = Provider::factory()->create();
+
+        DoctorSchedule::create([
+            'provider_id' => $provider->id,
+            'day_of_week' => [$target->dayOfWeekIso],
+            'start_time' => '08:00:00',
+            'end_time' => '08:15:00',
+        ]);
+
+        $patientRecord = Patient::factory()->create();
+        $patient = $patientRecord->user;
+
+        foreach (['08:00:00', '08:05:00', '08:10:00'] as $time) {
+            Appointment::create([
+                'patient_id' => $patientRecord->id,
+                'provider_id' => $provider->id,
+                'scheduled_date' => $target->format('Y-m-d'),
+                'scheduled_time' => $time,
+                'status' => 'Scheduled',
+            ]);
+        }
+
+        $response = $this->actingAs($patient)->getJson(
+            route('appointments.availability', ['date' => $target->format('Y-m-d')])
+        );
+
+        $response->assertOk()->assertJsonCount(0, 'slots');
     }
 
     public function test_past_slots_are_filtered_out_for_today()
@@ -97,10 +177,32 @@ class PatientAvailabilityTest extends TestCase
 
         $response->assertOk();
         $values = collect($response->json('slots'))->pluck('value')->all();
-        $this->assertNotContains('10:00:00', $values, 'The current slot must be excluded');
-        $this->assertContains('10:05:00', $values);
-        $this->assertContains('10:30:00', $values);
-        $this->assertContains('11:00:00', $values);
+        $this->assertContains('morning', $values);
+        $this->assertNotContains('afternoon', $values);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_a_window_whose_times_have_all_passed_is_hidden()
+    {
+        Carbon::setTestNow('2026-09-21 10:00:00');
+
+        $provider = Provider::factory()->create();
+
+        DoctorSchedule::create([
+            'provider_id' => $provider->id,
+            'day_of_week' => [Carbon::now()->dayOfWeekIso],
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+        ]);
+
+        $patient = Patient::factory()->create()->user;
+
+        $response = $this->actingAs($patient)->getJson(
+            route('appointments.availability', ['date' => Carbon::now()->format('Y-m-d')])
+        );
+
+        $response->assertOk()->assertJsonCount(0, 'slots');
 
         Carbon::setTestNow();
     }

@@ -3,15 +3,27 @@
 namespace Tests\Feature;
 
 use App\Models\Appointment;
+use App\Models\DoctorSchedule;
 use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AppointmentDoubleBookingTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function schedule(Provider $provider, string $date, string $start = '06:00:00', string $end = '12:00:00'): DoctorSchedule
+    {
+        return DoctorSchedule::create([
+            'provider_id' => $provider->id,
+            'day_of_week' => [Carbon::parse($date)->dayOfWeekIso],
+            'start_time' => $start,
+            'end_time' => $end,
+        ]);
+    }
 
     private function appointment(Provider $provider, string $date, string $time, string $status = 'Scheduled'): Appointment
     {
@@ -32,6 +44,7 @@ class AppointmentDoubleBookingTest extends TestCase
         $doctorTwo = Provider::factory()->create();
         $date = now()->addDays(2)->format('Y-m-d');
 
+        $this->schedule($doctorTwo, $date);
         $this->appointment($doctorOne, $date, '09:00:00');
 
         $this->actingAs($receptionist)
@@ -50,6 +63,7 @@ class AppointmentDoubleBookingTest extends TestCase
         $this->assertDatabaseHas('appointments', [
             'provider_id' => $doctorTwo->id,
             'scheduled_date' => $date,
+            'scheduled_time' => '06:00:00',
             'status' => 'Pending',
         ]);
 
@@ -89,7 +103,88 @@ class AppointmentDoubleBookingTest extends TestCase
         ]);
     }
 
-    public function test_walk_in_cannot_take_a_slot_already_held_by_the_same_doctor(): void
+    public function test_a_window_booking_takes_the_next_free_time_for_the_same_doctor(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        $provider = Provider::factory()->create();
+        $date = now()->addDays(2)->format('Y-m-d');
+
+        $this->schedule($provider, $date);
+        $this->appointment($provider, $date, '06:00:00');
+
+        $this->actingAs($receptionist)
+            ->post(route('appointments.manual'), [
+                'name' => 'Walk In Next',
+                'doctor_id' => $provider->id,
+                'service_type' => 'Consultation',
+                'date' => $date,
+                'time_slot' => 'morning',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('appointments', [
+            'provider_id' => $provider->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '06:05:00',
+            'status' => 'Pending',
+        ]);
+    }
+
+    public function test_patient_window_booking_auto_assigns_a_scheduled_doctor(): void
+    {
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+        $date = now()->addDays(2)->format('Y-m-d');
+
+        $this->schedule($provider, $date);
+
+        $this->actingAs($patient->user)
+            ->post(route('appointments.store'), [
+                'date' => $date,
+                'time_slot' => 'morning',
+                'service' => 'Consultation',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('appointments', [
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '06:00:00',
+            'status' => 'Scheduled',
+        ]);
+    }
+
+    public function test_returning_patient_window_booking_uses_the_selected_doctors_next_free_time(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+        $date = now()->addDays(2)->format('Y-m-d');
+
+        $this->schedule($provider, $date);
+        $this->appointment($provider, $date, '06:00:00');
+
+        $this->actingAs($receptionist)
+            ->post('/appointments/returning', [
+                'patient_id' => $patient->id,
+                'doctor_id' => $provider->id,
+                'service_type' => 'Consultation',
+                'date' => $date,
+                'time_slot' => 'morning',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('appointments', [
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => $date,
+            'scheduled_time' => '06:05:00',
+            'status' => 'Pending',
+        ]);
+    }
+
+    public function test_legacy_exact_time_cannot_double_book_the_same_doctor(): void
     {
         $receptionist = User::factory()->receptionist()->create();
         $provider = Provider::factory()->create();
@@ -106,7 +201,7 @@ class AppointmentDoubleBookingTest extends TestCase
                 'doctor_id' => $provider->id,
                 'service_type' => 'Consultation',
                 'date' => $date,
-                'time_slot' => 'morning',
+                'time' => '09:00',
             ])
             ->assertSessionHasErrors('time_slot');
 

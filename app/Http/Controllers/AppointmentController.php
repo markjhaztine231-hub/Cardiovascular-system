@@ -27,6 +27,7 @@ use App\Models\TreadmillTest;
 use App\Models\User;
 use App\Models\VitalSign;
 use App\Services\GoogleCalendarService;
+use App\Support\AppointmentSlot;
 use App\Support\ClinicalRecordMapper;
 use App\Support\DiagnosisText;
 use Carbon\Carbon;
@@ -79,17 +80,24 @@ class AppointmentController extends Controller
     {
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'time' => 'required',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'time' => 'required_without:time_slot',
             'service' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
         ]);
 
-        // Reject past/too-near slots when booking for today — mirrors the
-        // 30-minute cut-off used by the availability endpoint so the dropdown
-        // and the server never disagree.
-        if ($request->date === now()->toDateString()) {
-            $slotAt = Carbon::parse($request->date.' '.$request->time);
-            // Slots arrive on a 5-min grid, so the first bookable one at
-            // e.g. 7:32 PM is 7:35 PM - no extra lead window.
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
+
+        if ($slot === null && $exactTime === null) {
+            throw ValidationException::withMessages([
+                'time' => 'Please select a time slot.',
+            ]);
+        }
+
+        // Legacy exact-time bookings keep their past-time guard. Slot bookings
+        // are filtered while the first free time in the window is chosen.
+        if ($exactTime !== null && $request->date === now()->toDateString()) {
+            $slotAt = Carbon::parse($request->date.' '.$exactTime);
             if ($slotAt->lte(Carbon::now())) {
                 throw ValidationException::withMessages([
                     'time' => 'That time slot has already passed. Please select a future time.',
@@ -117,19 +125,32 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Lock every provider working this slot, then re-run availability
-        // inside the lock. Without this, two simultaneous bookings can both
-        // pass the check and claim the same doctor.
-        [$providerId, $appointment] = DB::transaction(function () use ($request, $patient) {
-            $this->lockProvidersForSlot($request->date, $request->time);
+        // Lock every provider working the requested window, then re-run
+        // availability inside the lock. Without this, two simultaneous
+        // bookings can both pass the check and claim the same doctor.
+        [$providerId, $appointment] = DB::transaction(function () use ($request, $patient, $slot, $exactTime) {
+            if ($slot !== null) {
+                $this->lockProvidersForDate($request->date);
+                $time = $this->firstAvailableTime($request->date, $slot);
 
-            $providerId = self::autoAssignDoctor($request->date, $request->time);
+                if ($time === null) {
+                    throw ValidationException::withMessages([
+                        'time' => 'No doctor is available in that time slot. Please choose another slot.',
+                    ]);
+                }
+
+                $providerId = self::autoAssignDoctor($request->date, $time);
+            } else {
+                $time = $exactTime;
+                $this->lockProvidersForSlot($request->date, $time);
+                $providerId = self::autoAssignDoctor($request->date, $time);
+            }
 
             $appointment = Appointment::create([
                 'patient_id' => $patient->id,
                 'provider_id' => $providerId,
                 'scheduled_date' => $request->date,
-                'scheduled_time' => $request->time,
+                'scheduled_time' => $time,
                 'duration_minutes' => $this->getDurationMinutes($patient->id),
                 'service_type' => $request->service,
                 'status' => 'Scheduled',
@@ -160,10 +181,10 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Live slot-availability endpoint. Recomputes the bookable times for a
-     * chosen date on every request: doctor coverage, existing appointments,
-     * and (for today) slots too near the current time are all filtered out so
-     * the patient form never shows a slot the server would reject.
+     * Live slot-availability endpoint. Returns the two half-day windows that
+     * still have at least one free exact time for a scheduled doctor. The
+     * patient only ever sees Morning / Afternoon; the server assigns the
+     * exact time when the booking is submitted.
      */
     public function availableSlots(Request $request)
     {
@@ -173,7 +194,6 @@ class AppointmentController extends Controller
 
         $date = $validated['date'];
         $dayInt = Carbon::parse($date)->dayOfWeekIso; // 1 = Monday .. 7 = Sunday
-        $step = 5; // minutes between bookable slots
 
         $schedules = DoctorSchedule::whereJsonContains('day_of_week', $dayInt)->get();
 
@@ -181,39 +201,31 @@ class AppointmentController extends Controller
             return response()->json(['date' => $date, 'slots' => []]);
         }
 
-        $candidateTimes = collect();
-        foreach ($schedules as $schedule) {
-            [$sh, $sm] = array_map('intval', explode(':', $schedule->start_time));
-            [$eh, $em] = array_map('intval', explode(':', $schedule->end_time));
-            $start = $sh * 60 + $sm;
-            $end = $eh * 60 + $em;
-            for ($t = $start; $t < $end; $t += $step) {
-                $candidateTimes->push(sprintf('%02d:%02d:00', intdiv($t, 60), $t % 60));
-            }
-        }
+        $slots = collect(AppointmentSlot::all())
+            ->map(function (array $window, string $value) use ($schedules, $date) {
+                $candidateTimes = collect();
 
-        $isToday = $date === now()->toDateString();
-
-        $slots = $candidateTimes
-            ->unique()
-            ->sort()
-            ->values()
-            ->filter(function (string $time) use ($date, $isToday) {
-                if ($isToday) {
-                    $slotAt = Carbon::parse($date.' '.$time);
-                    // Next boundary on the 5-min grid after now (at 7:32 PM
-                    // that's 7:35 PM) - no extra lead offset.
-                    if ($slotAt->lte(Carbon::now())) {
-                        return false;
-                    }
+                foreach ($schedules as $schedule) {
+                    $candidateTimes = $candidateTimes->merge(
+                        AppointmentSlot::times($value, $schedule->start_time, $schedule->end_time)
+                    );
                 }
 
-                return self::providersAvailableAt($date, $time)->isNotEmpty();
+                $hasAvailability = $candidateTimes
+                    ->unique()
+                    ->contains(function (string $time) use ($date) {
+                        if (AppointmentSlot::isPast($date, $time)) {
+                            return false;
+                        }
+
+                        return self::providersAvailableAt($date, $time)->isNotEmpty();
+                    });
+
+                return $hasAvailability
+                    ? ['value' => $value, 'label' => $window['label']]
+                    : null;
             })
-            ->map(fn ($time) => [
-                'value' => $time,
-                'label' => Carbon::parse($time)->format('g:i A'),
-            ])
+            ->filter()
             ->values();
 
         return response()->json(['date' => $date, 'slots' => $slots]);
@@ -462,15 +474,12 @@ class AppointmentController extends Controller
 
         $request->validate($rules);
 
-        $request->merge([
-            'time' => $request->filled('time_slot')
-                ? $this->resolveTimeSlot($request->input('time_slot'))
-                : null,
-        ]);
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
 
-        // Can't schedule a walk-in into a slot that already started today.
-        if ($request->date === now()->toDateString() && $request->time) {
-            $slotAt = Carbon::parse($request->date.' '.$request->time);
+        // Can't schedule a walk-in into an exact time that already started today.
+        if ($exactTime !== null && $request->date === now()->toDateString()) {
+            $slotAt = Carbon::parse($request->date.' '.$exactTime);
             if ($slotAt->lte(Carbon::now())) {
                 throw ValidationException::withMessages([
                     'time_slot' => 'That time has already passed. Please select a future time.',
@@ -478,15 +487,27 @@ class AppointmentController extends Controller
             }
         }
 
-        $appointment = DB::transaction(function () use ($request) {
+        $appointment = DB::transaction(function () use ($request, $slot, $exactTime) {
             $doctorId = (int) $request->doctor_id;
 
-            $this->lockProvidersForSlot($request->date, $request->time ?? '00:00:00', $doctorId);
+            $this->lockProvidersForSlot($request->date, $exactTime ?? '00:00:00', $doctorId);
 
-            if ($request->time && $this->slotTaken($doctorId, $request->date, $request->time)) {
-                throw ValidationException::withMessages([
-                    'time_slot' => 'This doctor already has an appointment at this time.',
-                ]);
+            if ($slot !== null) {
+                $time = $this->firstAvailableTime($request->date, $slot, $doctorId);
+
+                if ($time === null) {
+                    throw ValidationException::withMessages([
+                        'time_slot' => 'This doctor has no free time left in that slot.',
+                    ]);
+                }
+            } else {
+                $time = $exactTime;
+
+                if ($time !== null && $this->slotTaken($doctorId, $request->date, $time)) {
+                    throw ValidationException::withMessages([
+                        'time_slot' => 'This doctor already has an appointment at this time.',
+                    ]);
+                }
             }
 
             // Use a cryptographically random suffix to prevent email collisions
@@ -520,7 +541,7 @@ class AppointmentController extends Controller
                 'patient_id' => $patientRecord->id,
                 'provider_id' => $doctorId,
                 'scheduled_date' => $request->date,
-                'scheduled_time' => $request->time,
+                'scheduled_time' => $time,
                 'duration_minutes' => $this->getDurationMinutes($patientRecord->id),
                 'service_type' => $request->service_type,
                 'status' => 'Pending',
@@ -587,12 +608,23 @@ class AppointmentController extends Controller
             'doctor_id' => 'required|exists:providers,id',
             'service_type' => 'required|string|in:Consultation,Procedure,Consultation and Procedure',
             'date' => 'required|date',
-            'time' => 'required',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'time' => 'required_without:time_slot',
         ]);
 
-        // Can't book a returning patient into a slot that already started today.
-        if ($request->date === now()->toDateString()) {
-            $slotAt = Carbon::parse($request->date.' '.$request->time);
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
+
+        if ($slot === null && $exactTime === null) {
+            throw ValidationException::withMessages([
+                'time' => 'Please select a time slot.',
+            ]);
+        }
+
+        // Can't book a returning patient into an exact time that already
+        // started today. Window bookings are filtered during assignment.
+        if ($exactTime !== null && $request->date === now()->toDateString()) {
+            $slotAt = Carbon::parse($request->date.' '.$exactTime);
             if ($slotAt->lte(Carbon::now())) {
                 throw ValidationException::withMessages([
                     'time' => 'That time has already passed. Please select a future time.',
@@ -600,22 +632,34 @@ class AppointmentController extends Controller
             }
         }
 
-        $appointment = DB::transaction(function () use ($request) {
+        $appointment = DB::transaction(function () use ($request, $slot, $exactTime) {
             $doctorId = (int) $request->doctor_id;
 
-            $this->lockProvidersForSlot($request->date, $request->time, $doctorId);
+            $this->lockProvidersForSlot($request->date, $exactTime ?? '00:00:00', $doctorId);
 
-            if ($this->slotTaken($doctorId, $request->date, $request->time)) {
-                throw ValidationException::withMessages([
-                    'time' => 'This doctor already has an appointment at this time.',
-                ]);
+            if ($slot !== null) {
+                $time = $this->firstAvailableTime($request->date, $slot, $doctorId);
+
+                if ($time === null) {
+                    throw ValidationException::withMessages([
+                        'time' => 'This doctor has no free time left in that slot.',
+                    ]);
+                }
+            } else {
+                $time = $exactTime;
+
+                if ($this->slotTaken($doctorId, $request->date, $time)) {
+                    throw ValidationException::withMessages([
+                        'time' => 'This doctor already has an appointment at this time.',
+                    ]);
+                }
             }
 
             return Appointment::create([
                 'patient_id' => $request->patient_id,
                 'provider_id' => $doctorId,
                 'scheduled_date' => $request->date,
-                'scheduled_time' => $request->time,
+                'scheduled_time' => $time,
                 'duration_minutes' => $this->getDurationMinutes($request->patient_id),
                 'service_type' => $request->service_type,
                 'status' => 'Pending',
@@ -1548,15 +1592,142 @@ class AppointmentController extends Controller
         return false;
     }
 
-    private function resolveTimeSlot(?string $slot): string
+    /**
+     * The half-day window the caller picked. Both the dedicated `time_slot`
+     * field and a `time` value of `morning` / `afternoon` are accepted so the
+     * older forms keep working during the transition.
+     */
+    private function requestedSlot(Request $request): ?string
     {
-        return match ($slot) {
-            'morning' => '09:00:00',
-            'afternoon' => '14:00:00',
-            default => throw ValidationException::withMessages([
-                'time_slot' => 'Please select a valid time slot.',
-            ]),
-        };
+        foreach (['time_slot', 'time'] as $field) {
+            $value = $request->input($field);
+
+            if (AppointmentSlot::isValid($value)) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A legacy exact time (HH:MM or HH:MM:SS) submitted instead of a window.
+     */
+    private function requestedExactTime(Request $request): ?string
+    {
+        $value = $request->input('time');
+
+        if (! is_string($value) || AppointmentSlot::isValid($value)) {
+            return null;
+        }
+
+        return $this->normalizeTimeInput($value);
+    }
+
+    /**
+     * Normalize "H:MM" / "HH:MM" / "HH:MM:SS" to "HH:MM:SS"; null when the
+     * input is not a valid 24-hour time.
+     */
+    private function normalizeTimeInput(?string $time): ?string
+    {
+        if ($time === null) {
+            return null;
+        }
+
+        $time = trim($time);
+
+        if (! preg_match('/^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/', $time)) {
+            return null;
+        }
+
+        return preg_match('/^\d{2}:\d{2}$/', $time) ? $time.':00' : $time;
+    }
+
+    /**
+     * First exact time inside a window that can still take a booking.
+     *
+     * When $providerId is given (returning patient, follow-up, reschedule)
+     * only that doctor's own schedule and bookings are considered. Otherwise
+     * any scheduled doctor may take the appointment and auto-assignment later
+     * picks the actual provider.
+     */
+    private function firstAvailableTime(string $date, string $slot, ?int $providerId = null): ?string
+    {
+        $dayInt = Carbon::parse($date)->dayOfWeekIso;
+
+        $schedules = DoctorSchedule::whereJsonContains('day_of_week', $dayInt)
+            ->when($providerId !== null, fn ($q) => $q->where('provider_id', $providerId))
+            ->get();
+
+        $candidates = $schedules
+            ->flatMap(fn (DoctorSchedule $schedule) => AppointmentSlot::times(
+                $slot,
+                $schedule->start_time,
+                $schedule->end_time,
+            ))
+            ->unique()
+            ->sort()
+            ->values();
+
+        foreach ($candidates as $time) {
+            if (AppointmentSlot::isPast($date, $time)) {
+                continue;
+            }
+
+            if ($providerId !== null) {
+                if ($this->providerAvailableAt($providerId, $date, $time)) {
+                    return $time;
+                }
+            } elseif (self::providersAvailableAt($date, $time)->isNotEmpty()) {
+                return $time;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a specific doctor works the given date/time and has no live
+     * appointment there yet.
+     */
+    private function providerAvailableAt(int $providerId, string $date, string $time): bool
+    {
+        return Provider::whereKey($providerId)
+            ->whereHas('schedules', function ($q) use ($date, $time) {
+                $q->whereJsonContains('day_of_week', Carbon::parse($date)->dayOfWeekIso)
+                    ->whereTime('start_time', '<=', $time)
+                    ->whereTime('end_time', '>', $time);
+            })
+            ->whereDoesntHave('appointments', function ($q) use ($date, $time) {
+                $q->whereDate('scheduled_date', $date)
+                    ->whereTime('scheduled_time', $time)
+                    ->whereNotIn('status', ['Cancelled', 'No-Show']);
+            })
+            ->exists();
+    }
+
+    /**
+     * Lock every provider who works the requested date, in id order, so two
+     * simultaneous window bookings cannot both claim the same exact time.
+     */
+    private function lockProvidersForDate(string $date): void
+    {
+        $dayInt = Carbon::parse($date)->dayOfWeekIso;
+
+        $providerIds = DoctorSchedule::whereJsonContains('day_of_week', $dayInt)
+            ->orderBy('provider_id')
+            ->pluck('provider_id')
+            ->unique()
+            ->values();
+
+        if ($providerIds->isEmpty()) {
+            return;
+        }
+
+        Provider::whereIn('id', $providerIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
     }
 
     /**
@@ -1967,21 +2138,46 @@ class AppointmentController extends Controller
         return back()->with('success', 'Patient successfully transferred!');
     }
 
+    /**
+     * Map the shift choice (or legacy start/end pair) to a stored time range.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array{0: string, 1: string}
+     */
+    private function scheduleRange(array $validated): array
+    {
+        $shift = $validated['shift'] ?? null;
+
+        if ($shift !== null) {
+            $window = AppointmentSlot::all()[$shift];
+
+            return [$window['start'], $window['end']];
+        }
+
+        return [
+            $this->normalizeTimeInput($validated['start_time']) ?? $validated['start_time'],
+            $this->normalizeTimeInput($validated['end_time']) ?? $validated['end_time'],
+        ];
+    }
+
     // 9. Doctor Schedule Plotter
     public function storeSchedule(Request $request)
     {
         $validated = $request->validate([
             'doctor_id' => 'required|exists:providers,id',
             'day_of_week' => 'required|array',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'shift' => 'nullable|in:morning,afternoon',
+            'start_time' => 'nullable|required_without:shift|date_format:H:i',
+            'end_time' => 'nullable|required_without:shift|date_format:H:i|after:start_time',
         ]);
+
+        [$startTime, $endTime] = $this->scheduleRange($validated);
 
         DoctorSchedule::create([
             'provider_id' => $validated['doctor_id'],
             'day_of_week' => $this->normalizeDays($validated['day_of_week']),
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
+            'start_time' => $startTime,
+            'end_time' => $endTime,
         ]);
 
         Cache::forget('doctor_list');
@@ -2003,15 +2199,18 @@ class AppointmentController extends Controller
         $validated = $request->validate([
             'doctor_id' => 'sometimes|exists:providers,id',
             'day_of_week' => 'required|array',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'shift' => 'nullable|in:morning,afternoon',
+            'start_time' => 'nullable|required_without:shift|date_format:H:i',
+            'end_time' => 'nullable|required_without:shift|date_format:H:i|after:start_time',
         ]);
+
+        [$startTime, $endTime] = $this->scheduleRange($validated);
 
         $schedule->update([
             'provider_id' => $validated['doctor_id'] ?? $schedule->provider_id,
             'day_of_week' => $this->normalizeDays($validated['day_of_week']),
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
+            'start_time' => $startTime,
+            'end_time' => $endTime,
         ]);
 
         Cache::forget('doctor_list');
@@ -2109,18 +2308,47 @@ class AppointmentController extends Controller
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'time' => 'required',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'time' => 'required_without:time_slot',
         ]);
+
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
+
+        if ($slot === null && $exactTime === null) {
+            throw ValidationException::withMessages([
+                'time' => 'Please select a time slot.',
+            ]);
+        }
+
+        if ($exactTime !== null) {
+            if ($request->date === now()->toDateString()
+                && Carbon::parse($request->date.' '.$exactTime)->lte(Carbon::now())) {
+                throw ValidationException::withMessages([
+                    'time' => 'That time has already passed. Please select a future time.',
+                ]);
+            }
+
+            $requestedTime = $exactTime;
+        } else {
+            $requestedTime = $this->firstAvailableTime($request->date, $slot, $appointment->provider_id);
+
+            if ($requestedTime === null) {
+                throw ValidationException::withMessages([
+                    'time' => 'Your doctor has no free time left in that slot. Please choose another slot.',
+                ]);
+            }
+        }
 
         $appointment->update([
             'status' => 'Reschedule Requested',
             'reschedule_requested_date' => $request->date,
-            'reschedule_requested_time' => $request->time,
+            'reschedule_requested_time' => $requestedTime,
         ]);
 
         AuditLog::create([
             'user_id' => Auth::id(),
-            'action' => 'Patient requested reschedule for appointment #'.$appointment->id.' to '.$request->date.' at '.$request->time,
+            'action' => 'Patient requested reschedule for appointment #'.$appointment->id.' to '.$request->date.' ('.$requestedTime.')',
         ]);
 
         $appointment->refresh();
@@ -2203,21 +2431,30 @@ class AppointmentController extends Controller
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'time' => 'required',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'time' => 'required_without:time_slot',
         ]);
 
-        // Normalize any accepted "HH:MM" / "HH:MM:SS" time to "HH:MM:SS"
-        // before it touches the `time` column (rejects stray "h:i A" strings
-        // that would otherwise crash the query — no 500s for bad input).
-        $sentTime = trim($request->time);
-        if (! preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/', $sentTime)) {
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
+
+        if ($slot === null && $exactTime === null) {
             throw ValidationException::withMessages([
-                'time' => 'Please provide a valid time (HH:MM).',
+                'time' => 'Please select a time slot.',
             ]);
         }
-        $requestTime = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $sentTime)
-            ? $sentTime.':00'
-            : $sentTime;
+
+        if ($exactTime !== null) {
+            $requestTime = $exactTime;
+        } else {
+            $requestTime = $this->firstAvailableTime($request->date, $slot, $appointment->provider_id);
+
+            if ($requestTime === null) {
+                throw ValidationException::withMessages([
+                    'time' => 'This doctor has no free time left in that slot.',
+                ]);
+            }
+        }
 
         $oldDate = $appointment->scheduled_date instanceof Carbon
             ? $appointment->scheduled_date->format('Y-m-d')
@@ -2253,7 +2490,7 @@ class AppointmentController extends Controller
             'action' => 'Receptionist rescheduled appointment #'.$appointment->id
                         .' for Patient ID: '.$appointment->patient_id
                         .' from '.$oldDate.' '.$oldTime
-                        .' to '.$request->date.' '.$request->time,
+                        .' to '.$request->date.' '.$requestTime,
         ]);
 
         $appointment->refresh();
@@ -2294,23 +2531,45 @@ class AppointmentController extends Controller
     {
         $request->validate([
             'date' => 'required|date|after_or_equal:today', // H5 FIX: consistent with patient booking
-            'time' => 'required',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'time' => 'required_without:time_slot',
         ]);
 
-        $followUp = DB::transaction(function () use ($request, $appointment) {
-            $this->lockProvidersForSlot($request->date, $request->time, $appointment->provider_id);
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
 
-            if ($this->slotTaken($appointment->provider_id, $request->date, $request->time)) {
-                throw ValidationException::withMessages([
-                    'time' => 'The doctor already has an appointment at this time. Please choose a different slot.',
-                ]);
+        if ($slot === null && $exactTime === null) {
+            throw ValidationException::withMessages([
+                'time' => 'Please select a time slot.',
+            ]);
+        }
+
+        $followUp = DB::transaction(function () use ($request, $appointment, $slot, $exactTime) {
+            $this->lockProvidersForSlot($request->date, $exactTime ?? '00:00:00', $appointment->provider_id);
+
+            if ($slot !== null) {
+                $time = $this->firstAvailableTime($request->date, $slot, $appointment->provider_id);
+
+                if ($time === null) {
+                    throw ValidationException::withMessages([
+                        'time' => 'You have no free time left in that slot. Please choose another slot.',
+                    ]);
+                }
+            } else {
+                $time = $exactTime;
+
+                if ($this->slotTaken($appointment->provider_id, $request->date, $time)) {
+                    throw ValidationException::withMessages([
+                        'time' => 'The doctor already has an appointment at this time. Please choose a different slot.',
+                    ]);
+                }
             }
 
             return Appointment::create([
                 'patient_id' => $appointment->patient_id,
                 'provider_id' => $appointment->provider_id,
                 'scheduled_date' => $request->date,
-                'scheduled_time' => $request->time,
+                'scheduled_time' => $time,
                 'duration_minutes' => 30,
                 'service_type' => 'Consultation',
                 'status' => 'Scheduled',
@@ -2351,24 +2610,49 @@ class AppointmentController extends Controller
 
         $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'time' => 'required',
+            'time_slot' => 'nullable|in:morning,afternoon',
+            'time' => 'required_without:time_slot',
         ]);
 
-        if ($appointment->scheduled_date->toDateString() === $request->date && $appointment->scheduled_time === $request->time) {
+        $slot = $this->requestedSlot($request);
+        $exactTime = $this->requestedExactTime($request);
+
+        if ($slot === null && $exactTime === null) {
+            throw ValidationException::withMessages([
+                'time' => 'Please select a time slot.',
+            ]);
+        }
+
+        if ($exactTime !== null
+            && $appointment->scheduled_date->toDateString() === $request->date
+            && $appointment->scheduled_time === $exactTime) {
             return back()->with('success', 'Schedule remained the same.');
         }
 
-        // Lock every provider working the new slot before re-running
+        // Lock every provider working the new window before re-running
         // auto-assignment, so two simultaneous reschedules cannot claim the
         // same doctor.
-        $providerId = DB::transaction(function () use ($request, $appointment) {
-            $this->lockProvidersForSlot($request->date, $request->time);
+        $providerId = DB::transaction(function () use ($request, $appointment, $slot, $exactTime) {
+            if ($slot !== null) {
+                $this->lockProvidersForDate($request->date);
+                $time = $this->firstAvailableTime($request->date, $slot);
 
-            $providerId = self::autoAssignDoctor($request->date, $request->time);
+                if ($time === null) {
+                    throw ValidationException::withMessages([
+                        'time' => 'No doctor is available in that time slot. Please choose another slot.',
+                    ]);
+                }
+
+                $providerId = self::autoAssignDoctor($request->date, $time);
+            } else {
+                $time = $exactTime;
+                $this->lockProvidersForSlot($request->date, $time);
+                $providerId = self::autoAssignDoctor($request->date, $time);
+            }
 
             $appointment->update([
                 'scheduled_date' => $request->date,
-                'scheduled_time' => $request->time,
+                'scheduled_time' => $time,
                 'provider_id' => $providerId,
                 'status' => 'Scheduled',
             ]);

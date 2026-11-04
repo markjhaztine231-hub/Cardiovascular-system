@@ -64,7 +64,7 @@ class RescheduleNotificationTest extends TestCase
             fn (AppointmentRescheduled $event): bool => $event->appointmentId === $appointment->id
                 && $event->patientId === $patient->user_id
                 && $event->newDate === $requested->format('M d, Y')
-                && $event->newTime === '10:00 AM'
+                && $event->newTime === 'Morning (6:00 AM - 12:00 PM)'
                 && $event->broadcastOn()->name === 'patient.'.$patient->user_id
         );
     }
@@ -85,7 +85,7 @@ class RescheduleNotificationTest extends TestCase
             fn (RescheduleDenied $event): bool => $event->appointmentId === $appointment->id
                 && $event->patientId === $patient->user_id
                 && $event->scheduledDate === $originalDate->format('M d, Y')
-                && $event->scheduledTime === '09:00 AM'
+                && $event->scheduledTime === 'Morning (6:00 AM - 12:00 PM)'
                 && $event->broadcastOn()->name === 'patient.'.$patient->user_id
         );
     }

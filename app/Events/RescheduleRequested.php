@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Appointment;
+use App\Support\AppointmentSlot;
 use Carbon\Carbon;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -28,7 +29,8 @@ class RescheduleRequested implements ShouldBroadcast
         $this->patientName = $appointment->patient?->user?->name ?? 'Unknown';
         $this->requestedDate = $appointment->reschedule_requested_date?->format('Y-m-d');
         $this->requestedTime = $appointment->reschedule_requested_time
-            ? Carbon::parse($appointment->reschedule_requested_time)->format('H:i')
+            ? (AppointmentSlot::labelForTime($appointment->reschedule_requested_time)
+                ?? Carbon::parse($appointment->reschedule_requested_time)->format('H:i'))
             : null;
     }
 

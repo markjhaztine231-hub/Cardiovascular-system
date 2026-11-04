@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Appointment;
+use App\Support\AppointmentSlot;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Broadcasting\Channel;
@@ -36,7 +37,9 @@ class RescheduleDenied implements ShouldBroadcast
             ? $appointment->scheduled_date->format('M d, Y')
             : (string) $appointment->scheduled_date;
         $this->scheduledTime = $appointment->scheduled_time
-            ? Carbon::parse($appointment->scheduled_time)->format('h:i A') : '';
+            ? (AppointmentSlot::labelForTime($appointment->scheduled_time)
+                ?? Carbon::parse($appointment->scheduled_time)->format('h:i A'))
+            : '';
         $this->doctorName = $appointment->provider?->user?->name;
     }
 
