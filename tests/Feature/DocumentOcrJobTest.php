@@ -205,6 +205,70 @@ class DocumentOcrJobTest extends TestCase
         $this->assertSame('PaddleOCR-VL-1.6', $document->ocr_raw['engine']);
     }
 
+    public function test_cloud_submission_is_a_post_to_the_canonical_https_jobs_endpoint(): void
+    {
+        config([
+            'services.paddle_ocr.driver' => 'cloud',
+            'services.paddle_ocr.cloud.url' => 'http://paddleocr.aistudio-app.com/api/v2/ocr',
+        ]);
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+
+            if ($request->method() === 'POST' && $url === 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs') {
+                return Http::response(['data' => ['jobId' => 'job-1']]);
+            }
+
+            if (str_ends_with($url, '/api/v2/ocr/jobs/job-1')) {
+                return Http::response([
+                    'data' => [
+                        'state' => 'done',
+                        'resultUrl' => ['jsonUrl' => 'https://results.example/one.jsonl'],
+                    ],
+                ]);
+            }
+
+            if (str_starts_with($url, 'https://results.example/')) {
+                return Http::response(json_encode([
+                    'result' => [
+                        'layoutParsingResults' => [['markdown' => ['text' => 'ok']]],
+                    ],
+                ]));
+            }
+
+            return Http::response('unexpected', 500);
+        });
+
+        (new ProcessDocumentOcr($this->document->id))->handle();
+
+        $this->assertSame('completed', $this->document->fresh()->ocr_status);
+
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && $request->url() === 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs');
+    }
+
+    public function test_a_cloud_405_surfaces_the_api_body_instead_of_a_bare_status(): void
+    {
+        config(['services.paddle_ocr.driver' => 'cloud']);
+
+        Http::fake(fn () => Http::response([
+            'traceId' => 'trace-1',
+            'code' => 405,
+            'msg' => 'Method Not Allowed',
+        ], 405));
+
+        try {
+            (new ProcessDocumentOcr($this->document->id))->handle();
+            $this->fail('A rejected cloud job should bubble up so the queue retries it.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('405', $e->getMessage());
+            $this->assertStringContainsString('Method Not Allowed', $e->getMessage());
+            $this->assertStringContainsString('https://paddleocr.aistudio-app.com/api/v2/ocr/jobs', $e->getMessage());
+        }
+
+        $this->assertSame('processing', $this->document->fresh()->ocr_status);
+    }
+
     public function test_the_failed_callback_marks_the_scan_as_failed(): void
     {
         (new ProcessDocumentOcr($this->document->id))->failed(

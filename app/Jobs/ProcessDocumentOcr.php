@@ -116,6 +116,39 @@ class ProcessDocumentOcr implements ShouldQueue
     }
 
     /**
+     * Resolve the configured cloud URL to the async jobs endpoint.
+     *
+     * The API answers a redirected POST with a GET, and its jobs endpoint
+     * rejects GET with "405 Method Not Allowed". Pin HTTPS up front and accept
+     * a bare host or ".../api/v2/ocr" so a slightly different .env value cannot
+     * silently turn into a 405.
+     */
+    private function cloudJobsEndpoint(string $configured): string
+    {
+        $url = trim($configured);
+
+        if ($url === '') {
+            $url = 'https://paddleocr.aistudio-app.com/api/v2/ocr/jobs';
+        }
+
+        if (str_starts_with($url, 'http://')) {
+            $url = 'https://'.substr($url, 7);
+        }
+
+        $url = rtrim($url, '/');
+
+        if (! str_ends_with($url, '/api/v2/ocr/jobs')) {
+            if (preg_match('#^https://[^/]+$#', $url) === 1) {
+                $url .= '/api/v2/ocr/jobs';
+            } elseif (str_ends_with($url, '/api/v2/ocr')) {
+                $url .= '/jobs';
+            }
+        }
+
+        return $url;
+    }
+
+    /**
      * Async OCR through the hosted PaddleOCR API (paddleocr.aistudio-app.com).
      * Submits a job, polls until it finishes, then folds the resulting markdown
      * pages into the same shape the rest of the app expects.
@@ -123,7 +156,7 @@ class ProcessDocumentOcr implements ShouldQueue
     private function runCloudOcr(string $contents, string $filename): array
     {
         $cloud = config('services.paddle_ocr.cloud');
-        $baseUrl = rtrim((string) $cloud['url'], '/');
+        $baseUrl = $this->cloudJobsEndpoint((string) ($cloud['url'] ?? ''));
         $headers = ['Authorization' => 'bearer '.$cloud['token']];
 
         $optionalPayload = [
@@ -137,6 +170,9 @@ class ProcessDocumentOcr implements ShouldQueue
         $jobResponse = Http::timeout(config('services.paddle_ocr.timeout'))
             ->connectTimeout(10)
             ->withHeaders($headers)
+            // Keep POST across redirects. Guzzle downgrades 301/302 POSTs to
+            // GETs by default, which this endpoint rejects with a 405.
+            ->withOptions(['allow_redirects' => ['strict' => true]])
             ->asMultipart()
             ->attach('file', $contents, $filename)
             ->post($baseUrl, [
@@ -146,7 +182,8 @@ class ProcessDocumentOcr implements ShouldQueue
 
         if ($jobResponse->failed()) {
             throw new \RuntimeException(sprintf(
-                'OCR cloud API rejected the job with %d: %s',
+                'OCR cloud API rejected the POST to %s with %d: %s',
+                $baseUrl,
                 $jobResponse->status(),
                 Str::limit($jobResponse->body(), 500),
             ));
