@@ -32,11 +32,6 @@
                                 >
                                     Admin overview
                                 </p>
-                                <h1
-                                    class="mt-2 text-2xl font-black tracking-tight lg:text-3xl"
-                                >
-                                    {{ greeting }}, {{ firstName }}
-                                </h1>
                                 <p
                                     class="mt-2 max-w-xl text-sm leading-relaxed text-slate-300"
                                 >
@@ -532,24 +527,6 @@ const props = defineProps<{
 
 const trendCanvas = ref<HTMLCanvasElement | null>(null);
 let trendChart: Chart | null = null;
-
-const firstName = computed(
-    () => props.user?.name?.replace(/^Dr\.\s*/i, '').split(' ')[0] ?? 'Admin',
-);
-
-const greeting = computed(() => {
-    const hour = new Date().getHours();
-
-    if (hour < 12) {
-        return 'Good morning';
-    }
-
-    if (hour < 18) {
-        return 'Good afternoon';
-    }
-
-    return 'Good evening';
-});
 
 const todayLabel = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
