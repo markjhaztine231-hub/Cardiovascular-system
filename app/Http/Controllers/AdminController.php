@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\AuditLog;
+use App\Models\Document;
+use App\Models\Encounter;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\Provider;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -266,11 +271,30 @@ class AdminController extends Controller
             return back()->withErrors(['delete' => 'You cannot delete your own account.']);
         }
 
+        if ($reason = $this->accountDeletionBlockedReason($user)) {
+            return back()->withErrors(['delete' => $reason]);
+        }
+
         $email = $user->email;
-        // Remove profile rows first so FK constraints on related tables are satisfied.
-        $user->patient?->delete();
-        $user->provider?->delete();
-        $user->delete();
+
+        try {
+            // Remove profile rows first so FK constraints on related tables are
+            // satisfied. Account and profile must disappear together.
+            DB::transaction(function () use ($user) {
+                $user->patient?->delete();
+                $user->provider?->delete();
+                $user->delete();
+            });
+        } catch (QueryException $exception) {
+            // A clinical record was linked between the guard check and the
+            // delete (or a table we don't know about still references the
+            // account). Never surface a raw database error to the admin.
+            report($exception);
+
+            return back()->withErrors([
+                'delete' => 'This account is still linked to patient records, so it cannot be deleted. Set the status to Inactive instead.',
+            ]);
+        }
 
         AuditLog::create([
             'user_id' => Auth::id(),
@@ -280,6 +304,64 @@ class AdminController extends Controller
         $this->forgetAdminCaches();
 
         return back()->with('success', 'User account deleted.');
+    }
+
+    /**
+     * Hard-deleting an account must never erase medical history. Staff and
+     * patients with visits on record keep their account; the admin should
+     * mark them Inactive so they can no longer sign in while the clinical
+     * trail stays intact.
+     */
+    private function accountDeletionBlockedReason(User $user): ?string
+    {
+        if ($user->provider) {
+            $appointments = $user->provider->appointments()->count();
+            $encounters = $user->provider->encounters()->count();
+            $prescriptions = $user->provider->prescriptions()->count();
+
+            if ($appointments + $encounters + $prescriptions > 0) {
+                return 'This doctor is linked to '
+                    .$this->historySummary($appointments, $encounters, $prescriptions)
+                    .'. Medical records are retained, so the account cannot be deleted - set the status to Inactive instead.';
+            }
+        }
+
+        if ($user->patient) {
+            $appointments = Appointment::where('patient_id', $user->patient->id)->count();
+            $encounters = Encounter::where('patient_id', $user->patient->id)->count();
+            $prescriptions = Prescription::where('patient_id', $user->patient->id)->count();
+
+            if ($appointments + $encounters + $prescriptions > 0) {
+                return 'This patient is linked to '
+                    .$this->historySummary($appointments, $encounters, $prescriptions)
+                    .'. Medical records are retained, so the account cannot be deleted - set the status to Inactive instead.';
+            }
+        }
+
+        if (Document::where('uploaded_by', $user->id)->exists()) {
+            return 'This account uploaded patient documents, which must be retained. Set the status to Inactive instead.';
+        }
+
+        return null;
+    }
+
+    private function historySummary(int $appointments, int $encounters, int $prescriptions): string
+    {
+        $parts = [];
+
+        if ($appointments > 0) {
+            $parts[] = $appointments.' '.str('appointment')->plural($appointments);
+        }
+
+        if ($encounters > 0) {
+            $parts[] = $encounters.' '.str('visit')->plural($encounters);
+        }
+
+        if ($prescriptions > 0) {
+            $parts[] = $prescriptions.' '.str('prescription')->plural($prescriptions);
+        }
+
+        return implode(', ', $parts);
     }
 
     /**

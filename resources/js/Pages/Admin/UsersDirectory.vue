@@ -401,6 +401,9 @@
                                 <option value="Walk-in Register">
                                     Walk-in Register
                                 </option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Suspended">Suspended</option>
                             </select>
                         </div>
                     </div>
@@ -783,7 +786,8 @@ const deleteUser = (u: DirectoryUser) => {
     router.delete(`/admin/users/${u.id}`, {
         preserveState: true,
         onSuccess: () => showSuccess('User deleted.'),
-        onError: () => showError('Failed to delete user.'),
+        onError: (errors: Record<string, string>) =>
+            showError(errors.delete ?? 'Failed to delete user.'),
     });
 };
 </script>
