@@ -54,8 +54,8 @@ class DocumentOcrJobTest extends TestCase
     {
         Http::fake(fn () => throw new ConnectionException('Could not connect to 127.0.0.1:8010'));
 
+        // No underlying queue job is attached, so attempts() reports 1.
         $job = new ProcessDocumentOcr($this->document->id);
-        $job->attempts = 1;
 
         try {
             $job->handle();
