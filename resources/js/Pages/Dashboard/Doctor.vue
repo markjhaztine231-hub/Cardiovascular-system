@@ -2407,7 +2407,7 @@
         <!-- Reading assignment prompt shown after a procedure is saved -->
         <div
             v-if="readerPromptOpen"
-            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            class="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
             <div
                 role="dialog"
