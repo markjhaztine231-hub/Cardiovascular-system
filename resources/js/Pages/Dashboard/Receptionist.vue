@@ -1669,7 +1669,7 @@
                                 <p
                                     class="mt-0.5 text-[10px] leading-tight font-extrabold tracking-widest text-gray-500 uppercase"
                                 >
-                                    EVERY {{ formatDays(sch.day_of_week) }}
+                                    {{ toDayNames(sch.day_of_week).join(', ') }}
                                 </p>
                             </div>
                             <div class="flex items-center gap-3">
@@ -3673,25 +3673,6 @@ const recepNotifications = computed(() => {
 });
 
 const recepUnreadCount = computed(() => props.rescheduleRequests.length);
-
-// Format Days helper
-const formatDays = (daysData: any): string => {
-    if (!daysData) {
-        return 'N/A';
-    }
-
-    if (Array.isArray(daysData)) {
-        return daysData.join(', ');
-    }
-
-    try {
-        const parsed = JSON.parse(daysData);
-
-        return Array.isArray(parsed) ? parsed.join(', ') : daysData;
-    } catch {
-        return String(daysData);
-    }
-};
 
 // The backend sends display strings ("Sep 23, 2026" / "10:00 AM") for the
 // reschedule cards; the edit modal needs ISO values or the native date/time
