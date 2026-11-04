@@ -1330,8 +1330,7 @@
                         Daily Activity History
                     </h3>
                     <p class="mt-0.5 text-xs text-gray-500">
-                        Appointments and completed visits per calendar day (most
-                        recent 14)
+                        Appointments and completed visits per calendar day
                     </p>
                 </div>
                 <div class="overflow-x-auto">
@@ -1355,7 +1354,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr
-                                v-for="row in recentActivity"
+                                v-for="row in pagedActivity"
                                 :key="row.key"
                                 class="hover:bg-gray-50"
                             >
@@ -1416,6 +1415,37 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div
+                    v-if="recentActivity.length > 0"
+                    class="flex flex-col gap-3 border-t border-gray-100 px-6 py-3 text-xs font-medium text-gray-500 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <span>
+                        Showing {{ activityPageStart }}-{{ activityPageEnd }} of
+                        {{ recentActivity.length }} days
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            :disabled="activityPage <= 1"
+                            @click="activityPage--"
+                            class="rounded-lg border border-gray-200 px-3 py-1.5 font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Previous
+                        </button>
+                        <span
+                            >Page {{ activityPage }} of
+                            {{ activityTotalPages }}</span
+                        >
+                        <button
+                            type="button"
+                            :disabled="activityPage >= activityTotalPages"
+                            @click="activityPage++"
+                            class="rounded-lg border border-gray-200 px-3 py-1.5 font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -3431,7 +3461,6 @@ const recentActivity = computed(() => {
     return Object.entries(dailyActivity.value)
         .filter(([key, a]) => a.total > 0 && key <= todayKey)
         .sort(([a], [b]) => (a < b ? 1 : -1))
-        .slice(0, 14)
         .map(([key, a]) => ({
             key,
             label: new Date(`${key}T00:00:00`).toLocaleDateString('en-US', {
@@ -3441,6 +3470,35 @@ const recentActivity = computed(() => {
             }),
             ...a,
         }));
+});
+
+const activityPage = ref(1);
+const activityPerPage = 10;
+
+const activityTotalPages = computed(() =>
+    Math.max(1, Math.ceil(recentActivity.value.length / activityPerPage)),
+);
+
+const pagedActivity = computed(() => {
+    const start = (activityPage.value - 1) * activityPerPage;
+
+    return recentActivity.value.slice(start, start + activityPerPage);
+});
+
+const activityPageStart = computed(() =>
+    recentActivity.value.length
+        ? (activityPage.value - 1) * activityPerPage + 1
+        : 0,
+);
+
+const activityPageEnd = computed(() =>
+    Math.min(activityPage.value * activityPerPage, recentActivity.value.length),
+);
+
+watch(activityTotalPages, (total) => {
+    if (activityPage.value > total) {
+        activityPage.value = total;
+    }
 });
 
 const calendarLabel = computed(() =>
