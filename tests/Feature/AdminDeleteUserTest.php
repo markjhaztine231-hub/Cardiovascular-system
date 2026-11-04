@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\Document;
+use App\Models\Encounter;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\Provider;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -124,5 +126,170 @@ class AdminDeleteUserTest extends TestCase
             ->assertSessionHasErrors('delete');
 
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_admin_can_purge_a_test_doctor_with_only_appointments(): void
+    {
+        $provider = Provider::factory()->create();
+        $email = $provider->user->email;
+        $appointment = $this->appointmentFor($provider, Patient::factory()->create());
+
+        $this->actingAs($this->admin())
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $provider->user_id]);
+        $this->assertDatabaseMissing('providers', ['id' => $provider->id]);
+        $this->assertDatabaseMissing('appointments', ['id' => $appointment->id]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'Purged test doctor account: '.$email.' (1 appointment removed)',
+        ]);
+    }
+
+    public function test_purge_is_refused_when_the_doctor_has_a_visit(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $appointment = $this->appointmentFor($provider, $patient);
+
+        Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'encounter_type' => 'consultation',
+            'status' => 'in_progress',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('purge');
+
+        $this->assertDatabaseHas('users', ['id' => $provider->user_id]);
+        $this->assertDatabaseHas('appointments', ['id' => $appointment->id]);
+    }
+
+    public function test_purge_is_refused_when_the_doctor_has_a_prescription(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $appointment = $this->appointmentFor($provider, $patient);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'encounter_type' => 'consultation',
+            'status' => 'completed',
+        ]);
+
+        Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Aspirin',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('purge');
+
+        $this->assertDatabaseHas('users', ['id' => $provider->user_id]);
+        $this->assertDatabaseHas('prescriptions', ['provider_id' => $provider->id]);
+    }
+
+    public function test_purge_is_refused_when_the_doctor_completed_a_reading(): void
+    {
+        $provider = Provider::factory()->create();
+        $appointment = $this->appointmentFor($provider, Patient::factory()->create());
+        $appointment->update([
+            'reading_status' => 'completed',
+            'reading_completed_at' => now(),
+            'reading_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('purge');
+
+        $this->assertDatabaseHas('users', ['id' => $provider->user_id]);
+    }
+
+    public function test_purge_is_refused_when_the_doctor_completed_a_reading_for_another_doctor(): void
+    {
+        $provider = Provider::factory()->create();
+        $attending = Provider::factory()->create();
+        $appointment = $this->appointmentFor($attending, Patient::factory()->create());
+        $appointment->update([
+            'reader_provider_id' => $provider->id,
+            'reading_status' => 'completed',
+            'reading_completed_at' => now(),
+            'reading_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('purge');
+
+        $this->assertDatabaseHas('users', ['id' => $provider->user_id]);
+        $this->assertDatabaseHas('appointments', ['id' => $appointment->id]);
+    }
+
+    public function test_purge_is_refused_when_an_appointment_has_patient_documents(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $appointment = $this->appointmentFor($provider, $patient);
+
+        Document::create([
+            'patient_id' => $patient->id,
+            'appointment_id' => $appointment->id,
+            'uploaded_by' => User::factory()->receptionist()->create()->id,
+            'type' => 'prescription',
+            'original_filename' => 'rx.png',
+            'image_path' => 'documents/rx.png',
+            'ocr_status' => 'completed',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('purge');
+
+        $this->assertDatabaseHas('users', ['id' => $provider->user_id]);
+        $this->assertDatabaseHas('appointments', ['id' => $appointment->id]);
+    }
+
+    public function test_purge_is_refused_for_a_patient_account(): void
+    {
+        $patient = Patient::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->delete(route('admin.users.purge', $patient->user))
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('purge');
+
+        $this->assertDatabaseHas('users', ['id' => $patient->user_id]);
+    }
+
+    public function test_non_admin_cannot_purge_accounts(): void
+    {
+        $provider = Provider::factory()->create();
+
+        $this->actingAs(User::factory()->receptionist()->create())
+            ->delete(route('admin.users.purge', $provider->user))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('users', ['id' => $provider->user_id]);
     }
 }

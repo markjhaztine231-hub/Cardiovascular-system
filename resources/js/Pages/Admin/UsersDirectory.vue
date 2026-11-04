@@ -474,6 +474,30 @@
                     </div>
 
                     <div
+                        v-if="editingUser.role === 'doctor'"
+                        class="rounded-xl border border-red-100 bg-red-50/60 p-4"
+                    >
+                        <p
+                            class="text-[10px] font-extrabold tracking-widest text-red-600 uppercase"
+                        >
+                            Danger zone
+                        </p>
+                        <p class="mt-1 text-xs leading-relaxed text-red-600/80">
+                            Duplicate or test doctor? Purging removes the
+                            account and all of its appointments. It is refused
+                            when visits, prescriptions, readings, or patient
+                            documents exist.
+                        </p>
+                        <button
+                            type="button"
+                            class="mt-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-600 hover:text-white"
+                            @click="purgeUser"
+                        >
+                            Purge test account
+                        </button>
+                    </div>
+
+                    <div
                         class="flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end"
                     >
                         <button
@@ -788,6 +812,32 @@ const deleteUser = (u: DirectoryUser) => {
         onSuccess: () => showSuccess('User deleted.'),
         onError: (errors: Record<string, string>) =>
             showError(errors.delete ?? 'Failed to delete user.'),
+    });
+};
+
+const purgeUser = () => {
+    const u = editingUser.value;
+
+    if (!u) {
+        return;
+    }
+
+    if (
+        !confirm(
+            `Purge ${u.name}? This deletes the account and all of its appointments. It is refused when visits, prescriptions, readings, or patient documents exist.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(`/admin/users/${u.id}/purge`, {
+        preserveState: true,
+        onSuccess: () => {
+            editingUser.value = null;
+            showSuccess('Test account purged.');
+        },
+        onError: (errors: Record<string, string>) =>
+            showError(errors.purge ?? 'Failed to purge account.'),
     });
 };
 </script>

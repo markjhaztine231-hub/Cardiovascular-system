@@ -307,6 +307,93 @@ class AdminController extends Controller
     }
 
     /**
+     * Escape hatch for duplicate/test doctor accounts. Purging removes the
+     * provider together with its appointments, but only while nothing of
+     * clinical value (visits, prescriptions, readings, documents) exists.
+     */
+    public function purgeUser(User $user)
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403);
+        }
+        if ($user->id === Auth::id()) {
+            return back()->withErrors(['purge' => 'You cannot purge your own account.']);
+        }
+
+        if ($reason = $this->providerPurgeBlockedReason($user)) {
+            return back()->withErrors(['purge' => $reason]);
+        }
+
+        $provider = $user->provider;
+        $email = $user->email;
+        $appointmentCount = $provider->appointments()->count();
+
+        try {
+            DB::transaction(function () use ($user, $provider) {
+                // Documents and encounters detach instead of cascading, so
+                // patient records survive the appointment purge.
+                Appointment::where('provider_id', $provider->id)->delete();
+                $provider->delete();
+                $user->delete();
+            });
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return back()->withErrors([
+                'purge' => 'This account is still linked to patient records, so it cannot be purged. Set the status to Inactive instead.',
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'Purged test doctor account: '.$email
+                .' ('.$appointmentCount.' '.str('appointment')->plural($appointmentCount).' removed)',
+        ]);
+
+        $this->forgetAdminCaches();
+
+        return back()->with('success', 'Test account purged.');
+    }
+
+    /**
+     * Null when the provider can be purged, otherwise the reason it must be
+     * kept. Any clinical artifact - even a completed reading - blocks the
+     * purge so authorship and patient history stay auditable.
+     */
+    private function providerPurgeBlockedReason(User $user): ?string
+    {
+        $provider = $user->provider;
+
+        if (! $provider) {
+            return 'Only doctor accounts can be purged.';
+        }
+
+        if ($provider->encounters()->exists() || $provider->prescriptions()->exists()) {
+            return 'This doctor has visits or prescriptions on record, so the account cannot be purged. Set the status to Inactive instead.';
+        }
+
+        if (Appointment::where('provider_id', $provider->id)->whereNotNull('reading_completed_at')->exists()) {
+            return 'This doctor completed readings for patient procedures, so the account cannot be purged. Set the status to Inactive instead.';
+        }
+
+        if (Appointment::where('reader_provider_id', $provider->id)->whereNotNull('reading_completed_at')->exists()) {
+            return 'This doctor completed readings for another doctor\'s procedures, so the account cannot be purged. Set the status to Inactive instead.';
+        }
+
+        if (Document::where('uploaded_by', $user->id)->exists()) {
+            return 'This account uploaded patient documents, which must be retained. Set the status to Inactive instead.';
+        }
+
+        $appointmentIds = Appointment::where('provider_id', $provider->id)->select('id');
+
+        if (Document::whereIn('appointment_id', $appointmentIds)->exists()) {
+            return 'One or more of this doctor\'s appointments has patient documents attached, so the account cannot be purged. Set the status to Inactive instead.';
+        }
+
+        return null;
+    }
+
+    /**
      * Hard-deleting an account must never erase medical history. Staff and
      * patients with visits on record keep their account; the admin should
      * mark them Inactive so they can no longer sign in while the clinical
@@ -320,9 +407,15 @@ class AdminController extends Controller
             $prescriptions = $user->provider->prescriptions()->count();
 
             if ($appointments + $encounters + $prescriptions > 0) {
-                return 'This doctor is linked to '
+                $reason = 'This doctor is linked to '
                     .$this->historySummary($appointments, $encounters, $prescriptions)
                     .'. Medical records are retained, so the account cannot be deleted - set the status to Inactive instead.';
+
+                if ($this->providerPurgeBlockedReason($user) === null) {
+                    $reason .= ' If this is a duplicate or test account, use Purge test account.';
+                }
+
+                return $reason;
             }
         }
 
