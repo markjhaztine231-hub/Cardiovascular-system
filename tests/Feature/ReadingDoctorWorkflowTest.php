@@ -399,6 +399,68 @@ class ReadingDoctorWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_receptionist_can_mark_a_reading_complete_then_close_the_consultation(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.reading', $appointment), [
+                'reading_status' => 'completed',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->actingAs($receptionist)
+            ->post(route('appointments.complete', $appointment), [])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $appointment->refresh();
+        $this->assertSame('Completed', $appointment->status);
+        $this->assertSame('completed', $appointment->reading_status);
+        $this->assertNotNull($appointment->reading_completed_at);
+    }
+
+    public function test_receptionist_can_close_the_consultation_then_mark_the_reading_complete(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($receptionist)
+            ->post(route('appointments.complete', $appointment), [])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.reading', $appointment), [
+                'reading_status' => 'completed',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $appointment->refresh();
+        $this->assertSame('Completed', $appointment->status);
+        $this->assertSame('completed', $appointment->reading_status);
+        $this->assertNotNull($appointment->reading_completed_at);
+    }
+
     public function test_receptionist_can_assign_a_reading_doctor_to_a_completed_procedure(): void
     {
         $receptionist = User::factory()->receptionist()->create();
