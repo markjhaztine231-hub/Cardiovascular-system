@@ -919,8 +919,8 @@
                             Reading Requests
                         </h3>
                         <p class="text-xs font-semibold text-gray-500">
-                            Completed Procedure / Consultation and Procedure
-                            appointments
+                            Procedure appointments — assign a reader in advance
+                            or after the visit
                         </p>
                     </div>
                 </div>
@@ -967,14 +967,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             <tr
-                                v-for="appt in masterQueue.filter(
-                                    (a: any) =>
-                                        a.status === 'Completed' &&
-                                        [
-                                            'Procedure',
-                                            'Consultation and Procedure',
-                                        ].includes(a.service_type),
-                                )"
+                                v-for="appt in readingRequests"
                                 :key="appt.id"
                                 class="transition-colors hover:bg-gray-50"
                             >
@@ -1027,6 +1020,11 @@
                                     class="px-6 py-4 text-sm font-semibold text-gray-700"
                                 >
                                     {{ appt.service_type }}
+                                    <div
+                                        class="mt-0.5 text-[11px] font-bold tracking-wide text-gray-400 uppercase"
+                                    >
+                                        {{ appt.status }}
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <input
@@ -1135,18 +1133,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr
-                                v-if="
-                                    masterQueue.filter(
-                                        (a: any) =>
-                                            a.status === 'Completed' &&
-                                            [
-                                                'Procedure',
-                                                'Consultation and Procedure',
-                                            ].includes(a.service_type),
-                                    ).length === 0
-                                "
-                            >
+                            <tr v-if="readingRequests.length === 0">
                                 <td
                                     colspan="7"
                                     class="px-6 py-8 text-center font-medium text-gray-500"
@@ -3429,6 +3416,18 @@ type DayActivity = {
 
 const dailyActivity = computed<Record<string, DayActivity>>(
     () => (props.stats?.dailyActivity ?? {}) as Record<string, DayActivity>,
+);
+
+// Procedure visits that can be sent to a reading doctor. Advance assignment is
+// allowed while the consultation is still running; only cancelled/no-show
+// visits are excluded.
+const readingRequests = computed(() =>
+    (props.masterQueue as any[]).filter(
+        (a: any) =>
+            ['Procedure', 'Consultation and Procedure'].includes(
+                a.service_type,
+            ) && !['Cancelled', 'No-Show'].includes(a.status),
+    ),
 );
 
 function activityFor(key: string): DayActivity | null {

@@ -539,8 +539,8 @@
                                 <p
                                     class="mt-0.5 text-xs font-medium text-gray-500"
                                 >
-                                    Completed procedures waiting for your
-                                    reading.
+                                    Procedures waiting for your reading, even
+                                    while the consultation is still in progress.
                                 </p>
                             </div>
                             <span
@@ -612,16 +612,39 @@
                                             class="px-6 py-5 text-sm font-semibold whitespace-nowrap text-gray-600"
                                         >
                                             {{ appt.service }}
+                                            <div
+                                                class="mt-0.5 text-[10px] font-bold tracking-widest text-gray-400 uppercase"
+                                            >
+                                                {{ appt.status }}
+                                            </div>
                                         </td>
                                         <td
                                             class="px-6 py-5 text-right whitespace-nowrap"
                                         >
-                                            <button
-                                                @click="openReadingModal(appt)"
-                                                class="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-amber-700"
+                                            <div
+                                                class="flex items-center justify-end gap-2"
                                             >
-                                                Open Reading
-                                            </button>
+                                                <button
+                                                    v-if="
+                                                        appt.status ===
+                                                        'Completed'
+                                                    "
+                                                    @click="
+                                                        openReadingModal(appt)
+                                                    "
+                                                    class="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-amber-700"
+                                                >
+                                                    Open Reading
+                                                </button>
+                                                <button
+                                                    @click="
+                                                        markReadingDone(appt)
+                                                    "
+                                                    class="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-600 hover:text-white"
+                                                >
+                                                    Mark Reading Done
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -3330,6 +3353,33 @@ function openReadingModal(appt: ReadingQueueItem): void {
     openConsultModal(appt as unknown as Appointment, true);
 }
 
+/**
+ * A reading can be signed off from the queue without opening the consultation.
+ * This is the doctor-side counterpart to the receptionist's "Mark Reading
+ * Complete" action and works while the visit is still in progress.
+ */
+const markReadingDone = (appt: ReadingQueueItem): void => {
+    if (!confirm(`Mark ${appt.name}'s reading as completed?`)) {
+        return;
+    }
+
+    router.put(
+        `/appointments/${appt.id}/reading`,
+        { reading_status: 'completed' },
+        {
+            preserveScroll: true,
+            onSuccess: () => showSuccess('Reading marked as completed.'),
+            onError: (errors) => {
+                const message =
+                    Object.values(errors)[0] ??
+                    'Could not mark the reading as completed. Please try again.';
+
+                showError(String(message));
+            },
+        },
+    );
+};
+
 // ---------------------------------------------------------------------------
 // OCR scans captured by reception, shown read-only beside the consultation form.
 // Reception may still be scanning when the doctor opens the visit, so this
@@ -4073,8 +4123,11 @@ const saveConsultation = async () => {
     }
 
     // Only procedure visits produce a result that another doctor can read.
+    // Do not prompt again when reception already picked a reader in advance.
     const canAssignReader =
         !isReadingMode.value &&
+        !appt.reader_provider_id &&
+        appt.reading_status !== 'completed' &&
         ['Procedure', 'Consultation and Procedure'].includes(
             appt.service ?? '',
         );

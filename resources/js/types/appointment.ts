@@ -29,6 +29,9 @@ export interface Appointment {
     time: string;
     service?: string;
     status?: string;
+    reader_provider_id?: number | string | null;
+    reading_status?: string | null;
+    reading_date?: string | null;
     patient_id?: string | number;
     /**
      * patients.user_id - the identifier the /doctor/patients/{patient}/history

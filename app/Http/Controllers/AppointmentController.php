@@ -373,9 +373,11 @@ class AppointmentController extends Controller
             }
         }
 
-        if ($appointment->status !== 'Completed') {
+        // Reception may pick a reader while the consultation is still running.
+        // Only a visit that never happened (cancelled / no-show) is ineligible.
+        if (in_array($appointment->status, ['Cancelled', 'No-Show'], true)) {
             throw ValidationException::withMessages([
-                'reading_date' => 'Mark the appointment as completed before assigning a reading doctor.',
+                'reading_date' => 'A cancelled or no-show appointment cannot be assigned a reading doctor.',
             ]);
         }
 
@@ -387,7 +389,9 @@ class AppointmentController extends Controller
 
         $validated = $request->validate([
             'reader_provider_id' => 'nullable|exists:providers,id',
-            'reading_date' => 'nullable|required_with:reader_provider_id|date',
+            // The reading date is optional: an advance assignment made while
+            // the consultation is still in progress falls back to the visit date.
+            'reading_date' => 'nullable|date',
             'reading_status' => 'nullable|string|in:pending,completed',
         ]);
 
@@ -397,7 +401,15 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $readerId = $validated['reader_provider_id'] ?? $appointment->reader_provider_id;
+        $readerId = array_key_exists('reader_provider_id', $validated)
+            ? $validated['reader_provider_id']
+            : $appointment->reader_provider_id;
+
+        // Keep an existing date, and default an advance assignment to the visit
+        // date so the receptionist can assign a reader without guessing a date.
+        $readingDate = $validated['reading_date']
+            ?? $appointment->reading_date?->toDateString()
+            ?? ($readerId ? $appointment->scheduled_date?->toDateString() : null);
 
         if (($validated['reading_status'] ?? null) === 'completed') {
             if (! $readerId) {
@@ -408,7 +420,7 @@ class AppointmentController extends Controller
 
             $appointment->update([
                 'reader_provider_id' => $readerId,
-                'reading_date' => $validated['reading_date'] ?? $appointment->reading_date,
+                'reading_date' => $readingDate ?? now()->toDateString(),
                 'reading_status' => 'completed',
                 'reading_completed_at' => now(),
             ]);
@@ -416,15 +428,15 @@ class AppointmentController extends Controller
             $action = 'Completed reading for Appointment #'.$appointment->id.' (Reader ID: '.$readerId.')';
         } else {
             $appointment->update([
-                'reader_provider_id' => $validated['reader_provider_id'] ?? null,
-                'reading_date' => $validated['reading_date'] ?? null,
-                'reading_status' => empty($validated['reader_provider_id']) ? null : 'pending',
+                'reader_provider_id' => $readerId,
+                'reading_date' => $readerId ? $readingDate : null,
+                'reading_status' => $readerId ? 'pending' : null,
                 'reading_completed_at' => null,
             ]);
 
-            $action = empty($validated['reader_provider_id'])
-                ? 'Cleared reading assignment for Appointment #'.$appointment->id
-                : 'Assigned reading doctor ID '.$validated['reader_provider_id'].' for Appointment #'.$appointment->id;
+            $action = $readerId
+                ? 'Assigned reading doctor ID '.$readerId.' for Appointment #'.$appointment->id
+                : 'Cleared reading assignment for Appointment #'.$appointment->id;
         }
 
         AuditLog::create([

@@ -271,6 +271,134 @@ class ReadingDoctorWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_receptionist_can_assign_a_reading_doctor_while_the_consultation_is_in_progress(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.reading', $appointment), [
+                'reader_provider_id' => $readerProvider->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $appointment->refresh();
+        $this->assertSame($readerProvider->id, $appointment->reader_provider_id);
+        $this->assertSame('pending', $appointment->reading_status);
+        $this->assertSame(
+            $appointment->scheduled_date->toDateString(),
+            $appointment->reading_date?->toDateString(),
+            'An advance assignment without a date falls back to the visit date.'
+        );
+        $this->assertSame('In Progress', $appointment->status);
+    }
+
+    public function test_receptionist_can_mark_a_reading_complete_while_the_consultation_is_in_progress(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.reading', $appointment), [
+                'reading_status' => 'completed',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $appointment->refresh();
+        $this->assertSame('completed', $appointment->reading_status);
+        $this->assertNotNull($appointment->reading_completed_at);
+        $this->assertSame('In Progress', $appointment->status);
+    }
+
+    public function test_reading_doctor_sees_and_can_complete_an_advance_reading_while_the_visit_is_ongoing(): void
+    {
+        [$readerUser, $readerProvider] = $this->makeDoctor();
+        [, $attendingProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($readerUser)
+            ->get(route('doctor.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('readingQueue', 1)
+                ->where('readingQueue.0.id', $appointment->id)
+            );
+
+        $this->actingAs($readerUser)
+            ->put(route('appointments.reading', $appointment), [
+                'reading_status' => 'completed',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $appointment->refresh();
+        $this->assertSame('completed', $appointment->reading_status);
+        $this->assertSame('In Progress', $appointment->status);
+    }
+
+    public function test_reading_doctor_opening_an_ongoing_visit_does_not_start_the_consultation(): void
+    {
+        [$readerUser, $readerProvider] = $this->makeDoctor();
+        [, $attendingProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+        ]);
+
+        $this->actingAs($readerUser)
+            ->postJson(route('consultation.start', $appointment))
+            ->assertOk()
+            ->assertJsonPath('appointment.status', 'In Progress');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'status' => 'In Progress',
+            'consultation_started_at' => null,
+        ]);
+    }
+
+    public function test_receptionist_cannot_assign_a_reading_doctor_to_a_cancelled_visit(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'Cancelled', 'Procedure');
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.reading', $appointment), [
+                'reader_provider_id' => $readerProvider->id,
+            ])
+            ->assertSessionHasErrors('reading_date');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'reader_provider_id' => null,
+            'reading_status' => null,
+        ]);
+    }
+
     public function test_receptionist_can_assign_a_reading_doctor_to_a_completed_procedure(): void
     {
         $receptionist = User::factory()->receptionist()->create();

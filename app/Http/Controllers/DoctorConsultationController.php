@@ -91,6 +91,18 @@ class DoctorConsultationController extends Controller
             abort(422, 'This appointment was cancelled and can no longer be edited.');
         }
 
+        // A reading doctor may review an assigned reading while the attending
+        // consultation is still in progress. Opening it must not hijack the
+        // visit's status or start a new consultation.
+        $providerId = Auth::user()?->provider?->id;
+        $isReadingDoctor = $providerId !== null
+            && $appointment->reader_provider_id === $providerId
+            && $appointment->provider_id !== $providerId;
+
+        if ($isReadingDoctor) {
+            return $this->show($appointment->fresh());
+        }
+
         // Opening a completed visit (typically from the reading queue) is a
         // review, not a new consultation. Do not push it back to In Progress.
         if ($appointment->status === 'Completed') {

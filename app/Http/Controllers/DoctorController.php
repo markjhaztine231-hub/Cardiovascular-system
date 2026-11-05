@@ -80,6 +80,9 @@ class DoctorController extends Controller
                 ];
             });
 
+        // Readings can be assigned while the consultation is still in progress,
+        // so the reader's queue must not wait for status = Completed. Only a
+        // visit that never happened is excluded.
         $readingQueue = Appointment::with([
             'patient:id,user_id,allergies',
             'patient.user:id,name',
@@ -87,8 +90,8 @@ class DoctorController extends Controller
             'provider.user:id,name',
         ])
             ->where('reader_provider_id', $providerId)
-            ->where('status', 'Completed')
             ->where('reading_status', 'pending')
+            ->whereNotIn('status', ['Cancelled', 'No-Show'])
             ->orderByRaw('COALESCE(reading_date, scheduled_date) ASC')
             ->select([
                 'id', 'patient_id', 'provider_id', 'reader_provider_id', 'scheduled_date',
