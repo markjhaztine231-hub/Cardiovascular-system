@@ -336,6 +336,78 @@ class AdminController extends Controller
     }
 
     /**
+     * Destructive escape hatch for dummy/test accounts. Unlike deleteUser(),
+     * this removes the account and every clinical record linked to it, so the
+     * admin must type the account email before the request is accepted.
+     */
+    public function forceDeleteUser(Request $request, User $user)
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403);
+        }
+        if ($user->id === Auth::id()) {
+            return back()->withErrors(['force_delete' => 'You cannot delete your own account.']);
+        }
+
+        $validated = $request->validate([
+            'confirmation' => ['required', 'string'],
+        ]);
+
+        if (mb_strtolower(trim($validated['confirmation'])) !== mb_strtolower(trim((string) $user->email))) {
+            return back()->withErrors([
+                'force_delete' => 'Type '.$user->email.' exactly to confirm permanent deletion.',
+            ]);
+        }
+
+        $email = $user->email;
+        $role = $user->role;
+
+        try {
+            // Everything runs in one transaction so a failed foreign key never
+            // leaves a half-deleted patient or doctor behind.
+            DB::transaction(function () use ($user) {
+                if ($user->patient) {
+                    // Cascades to appointments, encounters, prescriptions,
+                    // clinical requests and every child study/note table.
+                    $user->patient->delete();
+                }
+
+                if ($user->provider) {
+                    $provider = $user->provider;
+
+                    // These three restrict provider deletion, so remove them
+                    // (and their cascading children) first.
+                    Appointment::where('provider_id', $provider->id)->delete();
+                    Encounter::where('provider_id', $provider->id)->delete();
+                    Prescription::where('provider_id', $provider->id)->delete();
+
+                    $provider->delete();
+                }
+
+                // uploaded_by restricts user deletion and is not nullable.
+                Document::where('uploaded_by', $user->id)->delete();
+
+                $user->delete();
+            });
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return back()->withErrors([
+                'force_delete' => 'The account could not be fully deleted because another record still references it. No data was removed.',
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'Permanently deleted '.$role.' account and all linked data: '.$email,
+        ]);
+
+        $this->forgetAdminCaches();
+
+        return back()->with('success', 'Account and all linked data deleted permanently.');
+    }
+
+    /**
      * Escape hatch for duplicate/test doctor accounts. Purging removes the
      * provider together with its appointments, but only while nothing of
      * clinical value (visits, prescriptions, readings, documents) exists.

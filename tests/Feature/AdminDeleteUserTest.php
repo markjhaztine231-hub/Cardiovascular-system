@@ -214,6 +214,159 @@ class AdminDeleteUserTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }
 
+    public function test_force_delete_removes_a_test_patient_and_all_clinical_data(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $appointment = $this->appointmentFor($provider, $patient);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'encounter_type' => 'consultation',
+            'status' => 'completed',
+        ]);
+
+        $prescription = Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Aspirin',
+        ]);
+
+        $document = Document::create([
+            'patient_id' => $patient->id,
+            'appointment_id' => $appointment->id,
+            'uploaded_by' => $provider->user_id,
+            'type' => 'prescription',
+            'original_filename' => 'rx.png',
+            'image_path' => 'documents/rx.png',
+            'ocr_status' => 'completed',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.users.force-delete', $patient->user), [
+                'confirmation' => $patient->user->email,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $patient->user_id]);
+        $this->assertDatabaseMissing('patients', ['id' => $patient->id]);
+        $this->assertDatabaseMissing('appointments', ['id' => $appointment->id]);
+        $this->assertDatabaseMissing('encounters', ['id' => $encounter->id]);
+        $this->assertDatabaseMissing('prescriptions', ['id' => $prescription->id]);
+        $this->assertDatabaseMissing('documents', ['id' => $document->id]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'Permanently deleted patient account and all linked data: '.$patient->user->email,
+        ]);
+    }
+
+    public function test_force_delete_removes_a_test_doctor_and_their_clinical_data(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $appointment = $this->appointmentFor($provider, $patient);
+
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'encounter_type' => 'consultation',
+            'status' => 'completed',
+        ]);
+
+        $prescription = Prescription::create([
+            'encounter_id' => $encounter->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'medication_name' => 'Aspirin',
+        ]);
+
+        $document = Document::create([
+            'patient_id' => $patient->id,
+            'appointment_id' => $appointment->id,
+            'uploaded_by' => $provider->user_id,
+            'type' => 'prescription',
+            'original_filename' => 'rx.png',
+            'image_path' => 'documents/rx.png',
+            'ocr_status' => 'completed',
+        ]);
+
+        // Another doctor's appointment must survive a force delete, but the
+        // deleted doctor's reading assignment is cleared.
+        $otherProvider = Provider::factory()->create();
+        $otherAppointment = $this->appointmentFor($otherProvider, $patient);
+        $otherAppointment->update(['reader_provider_id' => $provider->id]);
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.users.force-delete', $provider->user), [
+                'confirmation' => $provider->user->email,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $provider->user_id]);
+        $this->assertDatabaseMissing('providers', ['id' => $provider->id]);
+        $this->assertDatabaseMissing('appointments', ['id' => $appointment->id]);
+        $this->assertDatabaseMissing('encounters', ['id' => $encounter->id]);
+        $this->assertDatabaseMissing('prescriptions', ['id' => $prescription->id]);
+        $this->assertDatabaseMissing('documents', ['id' => $document->id]);
+        $this->assertDatabaseHas('appointments', [
+            'id' => $otherAppointment->id,
+            'reader_provider_id' => null,
+        ]);
+        $this->assertDatabaseHas('patients', ['id' => $patient->id]);
+    }
+
+    public function test_force_delete_requires_the_exact_account_email(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $appointment = $this->appointmentFor($provider, $patient);
+
+        $this->actingAs($this->admin())
+            ->from('/admin/users-directory')
+            ->post(route('admin.users.force-delete', $patient->user), [
+                'confirmation' => 'wrong@example.test',
+            ])
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('force_delete');
+
+        $this->assertDatabaseHas('users', ['id' => $patient->user_id]);
+        $this->assertDatabaseHas('patients', ['id' => $patient->id]);
+        $this->assertDatabaseHas('appointments', ['id' => $appointment->id]);
+    }
+
+    public function test_admin_cannot_force_delete_their_own_account(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->from('/admin/users-directory')
+            ->post(route('admin.users.force-delete', $admin), [
+                'confirmation' => $admin->email,
+            ])
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('force_delete');
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_non_admin_cannot_force_delete_an_account(): void
+    {
+        $patient = User::factory()->patient()->create();
+
+        $this->actingAs(User::factory()->receptionist()->create())
+            ->post(route('admin.users.force-delete', $patient), [
+                'confirmation' => $patient->email,
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('users', ['id' => $patient->id]);
+    }
+
     public function test_admin_can_purge_a_test_doctor_with_only_appointments(): void
     {
         $provider = Provider::factory()->create();

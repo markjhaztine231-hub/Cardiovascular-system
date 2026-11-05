@@ -223,6 +223,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/users', [AdminController::class, 'storeUser'])->middleware('role:admin')->name('admin.users.store');
     Route::put('/admin/users/{user}', [AdminController::class, 'updateUser'])->middleware('role:admin')->name('admin.users.update');
     Route::patch('/admin/users/{user}/status', [AdminController::class, 'updateStatus'])->middleware('role:admin')->name('admin.users.status');
+    Route::post('/admin/users/{user}/force-delete', [AdminController::class, 'forceDeleteUser'])->middleware('role:admin')->name('admin.users.force-delete');
     Route::delete('/admin/users/{user}', [AdminController::class, 'deleteUser'])->middleware('role:admin')->name('admin.users.delete');
     Route::delete('/admin/users/{user}/purge', [AdminController::class, 'purgeUser'])->middleware('role:admin')->name('admin.users.purge');
 

@@ -581,6 +581,48 @@
                             preserves visits, prescriptions and readings while
                             blocking sign-in.
                         </p>
+
+                        <div
+                            v-if="!deletingUser.is_self"
+                            class="mt-4 border-t border-gray-100 pt-4"
+                        >
+                            <button
+                                v-if="!forceMode"
+                                type="button"
+                                class="text-xs font-bold text-red-600 underline-offset-2 transition hover:text-red-700 hover:underline"
+                                @click="forceMode = true"
+                            >
+                                This is a test/dummy account — delete it and all
+                                of its data
+                            </button>
+                            <template v-else>
+                                <p
+                                    class="text-[10px] font-extrabold tracking-widest text-red-600 uppercase"
+                                >
+                                    Permanent data removal
+                                </p>
+                                <p
+                                    class="mt-1 text-xs leading-relaxed text-red-700/90"
+                                >
+                                    This erases every record tied to this
+                                    account: appointments, visits, SOAP notes,
+                                    diagnoses, prescriptions, readings,
+                                    documents, schedules and reports. Type
+                                    <strong class="font-mono">{{
+                                        deletingUser.email
+                                    }}</strong>
+                                    to confirm.
+                                </p>
+                                <input
+                                    v-model="forceConfirmation"
+                                    type="text"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    :placeholder="deletingUser.email"
+                                    class="mt-3 w-full rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition outline-none placeholder:text-slate-300 focus:border-red-400 focus:ring-2 focus:ring-red-500/15"
+                                />
+                            </template>
+                        </div>
                     </template>
                     <template v-else>
                         <p class="mt-4 text-sm leading-relaxed text-slate-600">
@@ -606,7 +648,20 @@
                     </button>
                     <template v-if="deletingUser.delete_blocked_reason">
                         <button
-                            v-if="
+                            v-if="forceMode"
+                            type="button"
+                            :disabled="!forceConfirmed || forceDeleting"
+                            class="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-red-600/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            @click="forceDelete"
+                        >
+                            {{
+                                forceDeleting
+                                    ? 'Deleting everything...'
+                                    : 'Delete account and all data'
+                            }}
+                        </button>
+                        <button
+                            v-else-if="
                                 !deletingUser.is_self &&
                                 deletingUser.status !== 'Inactive'
                             "
@@ -882,13 +937,30 @@ const { container: editUserDialog } = useModalA11y(editUserOpen, () => {
 const deletingUser = ref<DirectoryUser | null>(null);
 const deleting = ref(false);
 const savingStatus = ref(false);
+const forceMode = ref(false);
+const forceConfirmation = ref('');
+const forceDeleting = ref(false);
 const deleteUserOpen = computed(() => deletingUser.value !== null);
+const forceConfirmed = computed(() => {
+    const u = deletingUser.value;
+
+    return (
+        !!u &&
+        forceConfirmation.value.trim().toLowerCase() ===
+            u.email.trim().toLowerCase()
+    );
+});
+const resetDeleteOptions = () => {
+    forceMode.value = false;
+    forceConfirmation.value = '';
+};
 const closeDelete = () => {
-    if (deleting.value || savingStatus.value) {
+    if (deleting.value || savingStatus.value || forceDeleting.value) {
         return;
     }
 
     deletingUser.value = null;
+    resetDeleteOptions();
 };
 const { container: deleteUserDialog } = useModalA11y(
     deleteUserOpen,
@@ -934,6 +1006,7 @@ const updateUser = () => {
 };
 
 const openDelete = (u: DirectoryUser) => {
+    resetDeleteOptions();
     deletingUser.value = u;
 };
 
@@ -950,6 +1023,7 @@ const confirmDelete = () => {
         preserveState: true,
         onSuccess: () => {
             deletingUser.value = null;
+            resetDeleteOptions();
             showSuccess('User account deleted.');
         },
         onError: (errors: Record<string, string>) =>
@@ -958,6 +1032,36 @@ const confirmDelete = () => {
             deleting.value = false;
         },
     });
+};
+
+const forceDelete = () => {
+    const u = deletingUser.value;
+
+    if (!u || !forceConfirmed.value) {
+        return;
+    }
+
+    forceDeleting.value = true;
+
+    router.post(
+        `/admin/users/${u.id}/force-delete`,
+        { confirmation: forceConfirmation.value },
+        {
+            preserveState: true,
+            onSuccess: () => {
+                deletingUser.value = null;
+                resetDeleteOptions();
+                showSuccess('Account and all linked data deleted permanently.');
+            },
+            onError: (errors: Record<string, string>) =>
+                showError(
+                    errors.force_delete ?? 'Failed to delete account data.',
+                ),
+            onFinish: () => {
+                forceDeleting.value = false;
+            },
+        },
+    );
 };
 
 const setInactive = () => {
