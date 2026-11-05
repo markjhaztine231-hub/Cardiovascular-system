@@ -10,6 +10,7 @@ use App\Models\Prescription;
 use App\Models\Provider;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class AdminDeleteUserTest extends TestCase
@@ -114,6 +115,91 @@ class AdminDeleteUserTest extends TestCase
             ->assertSessionHasErrors('delete');
 
         $this->assertDatabaseHas('users', ['id' => $receptionist->id]);
+    }
+
+    public function test_directory_explains_why_an_account_with_history_cannot_be_deleted(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $this->appointmentFor($provider, $patient);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.users.directory', ['search' => $patient->user->email]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/UsersDirectory')
+                ->where('users.total', 1)
+                ->where('users.data.0.id', $patient->user_id)
+                ->where('users.data.0.is_self', false)
+                ->where('users.data.0.delete_blocked_reason', fn ($reason) => is_string($reason)
+                    && str_contains($reason, '1 appointment')
+                    && str_contains($reason, 'Inactive'))
+            );
+    }
+
+    public function test_directory_allows_deleting_an_account_without_clinical_history(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.users.directory', ['search' => $receptionist->email]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/UsersDirectory')
+                ->where('users.total', 1)
+                ->where('users.data.0.delete_blocked_reason', null)
+            );
+    }
+
+    public function test_admin_can_set_an_account_with_history_to_inactive(): void
+    {
+        $provider = Provider::factory()->create();
+        $patient = Patient::factory()->create();
+        $this->appointmentFor($provider, $patient);
+
+        $this->actingAs($this->admin())
+            ->patch(route('admin.users.status', $patient->user), ['status' => 'Inactive'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $patient->user_id,
+            'status' => 'Inactive',
+        ]);
+        $this->assertDatabaseHas('patients', ['id' => $patient->id]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'Updated account status for '.$patient->user->email.' to Inactive',
+        ]);
+    }
+
+    public function test_admin_cannot_change_their_own_status(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->from('/admin/users-directory')
+            ->patch(route('admin.users.status', $admin), ['status' => 'Inactive'])
+            ->assertRedirect('/admin/users-directory')
+            ->assertSessionHasErrors('status');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'status' => 'Active',
+        ]);
+    }
+
+    public function test_non_admin_cannot_change_account_status(): void
+    {
+        $patient = User::factory()->patient()->create();
+
+        $this->actingAs(User::factory()->receptionist()->create())
+            ->patch(route('admin.users.status', $patient), ['status' => 'Inactive'])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $patient->id,
+            'status' => 'Active',
+        ]);
     }
 
     public function test_admin_cannot_delete_their_own_account(): void

@@ -2,6 +2,7 @@
     <div
         class="flex h-screen bg-[#f1f5f9] font-sans selection:bg-indigo-500 selection:text-white"
     >
+        <Toast />
         <AdminSidebar :user="user" />
 
         <main class="flex h-screen flex-1 flex-col overflow-hidden">
@@ -238,7 +239,7 @@
                                                 class="ml-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-600 hover:text-white"
                                                 title="Delete account"
                                                 aria-label="Delete account"
-                                                @click="deleteUser(u)"
+                                                @click="openDelete(u)"
                                             >
                                                 <Trash2 class="h-3.5 w-3.5" />
                                             </button>
@@ -522,6 +523,117 @@
                 </form>
             </div>
         </div>
+
+        <!-- Delete / retention modal -->
+        <div
+            v-if="deletingUser"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+            @click.self="closeDelete"
+        >
+            <div
+                ref="deleteUserDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-user-title"
+                tabindex="-1"
+                class="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl outline-none"
+            >
+                <div class="p-6">
+                    <div class="flex items-start gap-4">
+                        <span
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                            :class="
+                                deletingUser.delete_blocked_reason
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-red-100 text-red-600'
+                            "
+                        >
+                            <Trash2 class="h-5 w-5" />
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3
+                                id="delete-user-title"
+                                class="text-lg font-black tracking-tight text-slate-800"
+                            >
+                                {{
+                                    deletingUser.delete_blocked_reason
+                                        ? 'This account cannot be deleted'
+                                        : 'Delete this account?'
+                                }}
+                            </h3>
+                            <p class="truncate text-xs text-gray-400">
+                                {{ deletingUser.name }} ·
+                                {{ deletingUser.email }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <template v-if="deletingUser.delete_blocked_reason">
+                        <p
+                            class="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900"
+                        >
+                            {{ deletingUser.delete_blocked_reason }}
+                        </p>
+                        <p class="mt-4 text-xs leading-relaxed text-gray-500">
+                            Deleting an account never erases medical records.
+                            Keeping the account
+                            <strong class="text-slate-700">Inactive</strong>
+                            preserves visits, prescriptions and readings while
+                            blocking sign-in.
+                        </p>
+                    </template>
+                    <template v-else>
+                        <p class="mt-4 text-sm leading-relaxed text-slate-600">
+                            This permanently removes the account and its
+                            profile. Accounts with clinical history are refused
+                            so medical records are never erased.
+                        </p>
+                        <p class="mt-2 text-xs font-bold text-red-600">
+                            This cannot be undone.
+                        </p>
+                    </template>
+                </div>
+
+                <div
+                    class="flex flex-col-reverse gap-2 border-t border-gray-100 bg-slate-50/60 p-4 sm:flex-row sm:justify-end"
+                >
+                    <button
+                        type="button"
+                        class="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
+                        @click="closeDelete"
+                    >
+                        Cancel
+                    </button>
+                    <template v-if="deletingUser.delete_blocked_reason">
+                        <button
+                            v-if="
+                                !deletingUser.is_self &&
+                                deletingUser.status !== 'Inactive'
+                            "
+                            type="button"
+                            :disabled="savingStatus"
+                            class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50"
+                            @click="setInactive"
+                        >
+                            {{
+                                savingStatus
+                                    ? 'Updating...'
+                                    : 'Set status to Inactive'
+                            }}
+                        </button>
+                    </template>
+                    <button
+                        v-else
+                        type="button"
+                        :disabled="deleting"
+                        class="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-red-600/20 transition hover:bg-red-700 disabled:opacity-50"
+                        @click="confirmDelete"
+                    >
+                        {{ deleting ? 'Deleting...' : 'Delete permanently' }}
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -549,6 +661,7 @@ import AdminHeader from '@/components/AdminHeader.vue';
 import AdminSidebar from '@/components/AdminSidebar.vue';
 import PasswordField from '@/components/PasswordField.vue';
 import PasswordRequirements from '@/components/PasswordRequirements.vue';
+import Toast from '@/components/Toast.vue';
 import { useModalA11y } from '@/composables/useModalA11y';
 import { useToast } from '@/composables/useToast';
 
@@ -566,6 +679,8 @@ interface DirectoryUser {
     age?: number | null;
     date_of_birth?: string | null;
     sex?: string | null;
+    is_self?: boolean;
+    delete_blocked_reason?: string | null;
 }
 
 interface PaginatedUsers {
@@ -764,6 +879,22 @@ const { container: editUserDialog } = useModalA11y(editUserOpen, () => {
     editingUser.value = null;
 });
 
+const deletingUser = ref<DirectoryUser | null>(null);
+const deleting = ref(false);
+const savingStatus = ref(false);
+const deleteUserOpen = computed(() => deletingUser.value !== null);
+const closeDelete = () => {
+    if (deleting.value || savingStatus.value) {
+        return;
+    }
+
+    deletingUser.value = null;
+};
+const { container: deleteUserDialog } = useModalA11y(
+    deleteUserOpen,
+    closeDelete,
+);
+
 const editForm = useForm({
     name: '',
     email: '',
@@ -802,17 +933,58 @@ const updateUser = () => {
     });
 };
 
-const deleteUser = (u: DirectoryUser) => {
-    if (!confirm(`Delete ${u.name}? This cannot be undone.`)) {
+const openDelete = (u: DirectoryUser) => {
+    deletingUser.value = u;
+};
+
+const confirmDelete = () => {
+    const u = deletingUser.value;
+
+    if (!u) {
         return;
     }
 
+    deleting.value = true;
+
     router.delete(`/admin/users/${u.id}`, {
         preserveState: true,
-        onSuccess: () => showSuccess('User deleted.'),
+        onSuccess: () => {
+            deletingUser.value = null;
+            showSuccess('User account deleted.');
+        },
         onError: (errors: Record<string, string>) =>
             showError(errors.delete ?? 'Failed to delete user.'),
+        onFinish: () => {
+            deleting.value = false;
+        },
     });
+};
+
+const setInactive = () => {
+    const u = deletingUser.value;
+
+    if (!u) {
+        return;
+    }
+
+    savingStatus.value = true;
+
+    router.patch(
+        `/admin/users/${u.id}/status`,
+        { status: 'Inactive' },
+        {
+            preserveState: true,
+            onSuccess: () => {
+                deletingUser.value = null;
+                showSuccess(`${u.name} is now Inactive.`);
+            },
+            onError: (errors: Record<string, string>) =>
+                showError(errors.status ?? 'Failed to update account status.'),
+            onFinish: () => {
+                savingStatus.value = false;
+            },
+        },
+    );
 };
 
 const purgeUser = () => {

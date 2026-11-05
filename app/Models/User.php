@@ -112,6 +112,11 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function uploadedDocuments(): HasMany
+    {
+        return $this->hasMany(Document::class, 'uploaded_by');
+    }
+
     public function schedules(): HasManyThrough
     {
         return $this->hasManyThrough(

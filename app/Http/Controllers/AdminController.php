@@ -307,6 +307,35 @@ class AdminController extends Controller
     }
 
     /**
+     * Deactivation is the safe replacement for deleting an account that owns
+     * medical history: sign-in is blocked while every clinical record stays.
+     */
+    public function updateStatus(Request $request, User $user)
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403);
+        }
+        if ($user->id === Auth::id()) {
+            return back()->withErrors(['status' => 'You cannot change your own status.']);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:Register,Walk-in Register,Active,Inactive,Suspended'],
+        ]);
+
+        $user->update(['status' => $validated['status']]);
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'Updated account status for '.$user->email.' to '.$validated['status'],
+        ]);
+
+        $this->forgetAdminCaches();
+
+        return back()->with('success', 'Account status updated to '.$validated['status'].'.');
+    }
+
+    /**
      * Escape hatch for duplicate/test doctor accounts. Purging removes the
      * provider together with its appointments, but only while nothing of
      * clinical value (visits, prescriptions, readings, documents) exists.
@@ -402,9 +431,11 @@ class AdminController extends Controller
     private function accountDeletionBlockedReason(User $user): ?string
     {
         if ($user->provider) {
-            $appointments = $user->provider->appointments()->count();
-            $encounters = $user->provider->encounters()->count();
-            $prescriptions = $user->provider->prescriptions()->count();
+            // The directory eager-loads these counters; the delete endpoint
+            // falls back to live counts when the relation was not preloaded.
+            $appointments = $user->provider->appointments_count ?? $user->provider->appointments()->count();
+            $encounters = $user->provider->encounters_count ?? $user->provider->encounters()->count();
+            $prescriptions = $user->provider->prescriptions_count ?? $user->provider->prescriptions()->count();
 
             if ($appointments + $encounters + $prescriptions > 0) {
                 $reason = 'This doctor is linked to '
@@ -420,9 +451,9 @@ class AdminController extends Controller
         }
 
         if ($user->patient) {
-            $appointments = Appointment::where('patient_id', $user->patient->id)->count();
-            $encounters = Encounter::where('patient_id', $user->patient->id)->count();
-            $prescriptions = Prescription::where('patient_id', $user->patient->id)->count();
+            $appointments = $user->patient->appointments_count ?? Appointment::where('patient_id', $user->patient->id)->count();
+            $encounters = $user->patient->encounters_count ?? Encounter::where('patient_id', $user->patient->id)->count();
+            $prescriptions = $user->patient->prescriptions_count ?? Prescription::where('patient_id', $user->patient->id)->count();
 
             if ($appointments + $encounters + $prescriptions > 0) {
                 return 'This patient is linked to '
@@ -431,7 +462,9 @@ class AdminController extends Controller
             }
         }
 
-        if (Document::where('uploaded_by', $user->id)->exists()) {
+        $uploadedDocuments = $user->uploaded_documents_count ?? Document::where('uploaded_by', $user->id)->count();
+
+        if ($uploadedDocuments > 0) {
             return 'This account uploaded patient documents, which must be retained. Set the status to Inactive instead.';
         }
 
@@ -473,7 +506,17 @@ class AdminController extends Controller
             abort(403);
         }
 
-        $query = User::with(['provider:id,user_id,specialty', 'patient:id,user_id,sex,date_of_birth'])
+        // Count the clinical links up front so every row can explain whether
+        // deletion is allowed without running a fresh set of queries per user.
+        $query = User::with([
+            'provider' => fn ($provider) => $provider
+                ->select(['id', 'user_id', 'specialty'])
+                ->withCount(['appointments', 'encounters', 'prescriptions']),
+            'patient' => fn ($patient) => $patient
+                ->select(['id', 'user_id', 'sex', 'date_of_birth'])
+                ->withCount(['appointments', 'encounters', 'prescriptions']),
+        ])
+            ->withCount('uploadedDocuments')
             ->orderBy('created_at', 'desc');
 
         if ($search = $request->input('search')) {
@@ -499,6 +542,8 @@ class AdminController extends Controller
         }
 
         $users = $query->paginate(20)->through(function ($user) {
+            $isSelf = $user->id === Auth::id();
+
             return [
                 'id' => $user->id,
                 'system_id' => $user->patient_id,
@@ -510,6 +555,10 @@ class AdminController extends Controller
                 'joined' => $user->created_at->format('M d, Y'),
                 'age' => $user->patient?->age,
                 'sex' => $user->patient?->sex,
+                'is_self' => $isSelf,
+                'delete_blocked_reason' => $isSelf
+                    ? 'You cannot delete your own account.'
+                    : $this->accountDeletionBlockedReason($user),
             ];
         });
 
