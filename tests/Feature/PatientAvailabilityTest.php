@@ -62,7 +62,7 @@ class PatientAvailabilityTest extends TestCase
         $response->assertJsonCount(1, 'slots');
         $response->assertJsonFragment([
             'value' => 'afternoon',
-            'label' => 'Afternoon (1:00 PM - 6:00 PM)',
+            'label' => 'Afternoon (1:00 PM - 9:00 PM)',
         ]);
     }
 

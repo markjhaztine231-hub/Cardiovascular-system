@@ -1,6 +1,6 @@
 export const APPOINTMENT_SLOTS = [
     { value: 'morning', label: 'Morning (6:00 AM - 12:00 PM)' },
-    { value: 'afternoon', label: 'Afternoon (1:00 PM - 6:00 PM)' },
+    { value: 'afternoon', label: 'Afternoon (1:00 PM - 9:00 PM)' },
 ] as const;
 
 export type AppointmentSlotValue = (typeof APPOINTMENT_SLOTS)[number]['value'];
@@ -27,7 +27,7 @@ export function timeSlotValue(time?: string | null): AppointmentSlotValue | '' {
         return 'morning';
     }
 
-    if (exact >= '13:00' && exact <= '18:00') {
+    if (exact >= '13:00' && exact <= '21:00') {
         return 'afternoon';
     }
 

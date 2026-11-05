@@ -212,7 +212,7 @@ class ReceptionistActionsTest extends TestCase
         $this->assertDatabaseHas('doctor_schedules', [
             'id' => $schedule->id,
             'start_time' => '13:00:00',
-            'end_time' => '18:00:00',
+            'end_time' => '21:00:00',
         ]);
     }
 

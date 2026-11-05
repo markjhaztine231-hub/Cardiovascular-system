@@ -241,7 +241,7 @@
                             >
                                 <option value="">Any time</option>
                                 <option value="morning">Morning (6:00 AM - 12:00 PM)</option>
-                                <option value="afternoon">Afternoon (1:00 PM - 6:00 PM)</option>
+                                <option value="afternoon">Afternoon (1:00 PM - 9:00 PM)</option>
                             </select>
                             <p
                                 v-if="form.errors.time_slot"

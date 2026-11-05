@@ -34,9 +34,9 @@ class AppointmentSlot
                 'end' => '12:00:00',
             ],
             self::AFTERNOON => [
-                'label' => 'Afternoon (1:00 PM - 6:00 PM)',
+                'label' => 'Afternoon (1:00 PM - 9:00 PM)',
                 'start' => '13:00:00',
-                'end' => '18:00:00',
+                'end' => '21:00:00',
             ],
         ];
     }
@@ -77,7 +77,7 @@ class AppointmentSlot
             return self::MORNING;
         }
 
-        if ($minutes >= self::minutes('13:00') && $minutes <= self::minutes('18:00')) {
+        if ($minutes >= self::minutes('13:00') && $minutes <= self::minutes('21:00')) {
             return self::AFTERNOON;
         }
 
@@ -102,11 +102,11 @@ class AppointmentSlot
 
         $coversMorning = $startMinutes < self::minutes('12:00')
             && $endMinutes > self::minutes('06:00');
-        $coversAfternoon = $startMinutes < self::minutes('18:00')
+        $coversAfternoon = $startMinutes < self::minutes('21:00')
             && $endMinutes > self::minutes('13:00');
 
         if ($coversMorning && $coversAfternoon) {
-            return 'Morning & Afternoon (6:00 AM - 6:00 PM)';
+            return 'Morning & Afternoon (6:00 AM - 9:00 PM)';
         }
 
         if ($coversMorning) {
