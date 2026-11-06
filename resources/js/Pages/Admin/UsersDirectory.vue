@@ -41,7 +41,7 @@
                     </div>
 
                     <AdminSectionCard
-                        title="All accounts"
+                        title="User accounts"
                         :subtitle="resultSummary"
                         :padded="false"
                     >
@@ -91,7 +91,7 @@
                                         class="rounded-xl border border-gray-200 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/15"
                                         @change="fetchUsers"
                                     >
-                                        <option value="">All statuses</option>
+                                        <option value="">status</option>
                                         <option value="Register">
                                             Register
                                         </option>
@@ -113,7 +113,7 @@
                         </div>
 
                         <div class="max-h-[calc(100vh-28rem)] overflow-auto">
-                            <table class="w-full min-w-[64rem]">
+                            <table class="w-full min-w-5xl">
                                 <thead class="sticky top-0 z-10 bg-slate-50">
                                     <tr class="border-b border-gray-100">
                                         <th

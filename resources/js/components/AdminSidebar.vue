@@ -82,7 +82,7 @@
                     >
                         <component
                             :is="item.icon"
-                            class="h-[18px] w-[18px] shrink-0"
+                            class="h-4.5 w-4.5 shrink-0"
                             :class="
                                 isActive(item.href)
                                     ? 'text-indigo-600'
@@ -110,7 +110,7 @@
                 @click="closeMobile"
             >
                 <ScrollText
-                    class="h-[18px] w-[18px] shrink-0"
+                    class="h-4.5 w-4.5 shrink-0"
                     :class="
                         isActive('/admin/audit-log')
                             ? 'text-indigo-600'
@@ -133,7 +133,7 @@
                 @click="closeMobile"
             >
                 <UserRound
-                    class="h-[18px] w-[18px] shrink-0"
+                    class="h-4.5 w-4.5 shrink-0"
                     :class="
                         isActive('/profile')
                             ? 'text-indigo-600'
