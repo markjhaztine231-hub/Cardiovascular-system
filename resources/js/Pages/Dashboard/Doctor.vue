@@ -365,7 +365,7 @@
                                 v-if="nextPatient"
                             >
                                 {{ nextPatient.service ?? 'General Checkup' }}
-                                �?�
+                                &middot;
                                 {{ getTimeSlotLabel(nextPatient.time) }}
                             </p>
                         </div>
@@ -1022,13 +1022,6 @@
                                 </div>
                             </div>
                             <div
-                                v-else
-                                class="mb-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500"
-                            >
-                                No known allergies recorded.
-                            </div>
-
-                            <div
                                 v-if="prefilledByReception"
                                 class="mb-6 flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3"
                             >
@@ -1546,31 +1539,52 @@
                                                     >Medication
                                                     {{ index + 1 }}</span
                                                 >
-                                                <button
-                                                    type="button"
-                                                    @click.prevent="
-                                                        toggleMedicationMode(
-                                                            med,
-                                                        )
-                                                    "
-                                                    class="rounded-lg border px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase transition-colors"
-                                                    :class="
-                                                        med.is_freeform
-                                                            ? 'border-[#146b8a] bg-[#146b8a] text-white'
-                                                            : 'border-gray-300 bg-white text-gray-600 hover:border-[#146b8a] hover:text-[#146b8a]'
-                                                    "
-                                                    :title="
-                                                        med.is_freeform
-                                                            ? 'Switch to structured fields'
-                                                            : 'Write the prescription as free text'
-                                                    "
+                                                <div
+                                                    class="inline-flex items-center gap-0.5 rounded-lg border border-gray-300 bg-white p-0.5"
+                                                    role="group"
+                                                    aria-label="Prescription entry mode"
                                                 >
-                                                    {{
-                                                        med.is_freeform
-                                                            ? 'Free-text'
-                                                            : 'Structured'
-                                                    }}
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        @click.prevent="
+                                                            setMedicationMode(
+                                                                med,
+                                                                false,
+                                                            )
+                                                        "
+                                                        class="rounded-md px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase transition-colors"
+                                                        :class="
+                                                            !med.is_freeform
+                                                                ? 'bg-[#146b8a] text-white shadow-sm'
+                                                                : 'text-gray-500 hover:text-[#146b8a]'
+                                                        "
+                                                        :aria-pressed="
+                                                            !med.is_freeform
+                                                        "
+                                                    >
+                                                        Structured
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click.prevent="
+                                                            setMedicationMode(
+                                                                med,
+                                                                true,
+                                                            )
+                                                        "
+                                                        class="rounded-md px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase transition-colors"
+                                                        :class="
+                                                            med.is_freeform
+                                                                ? 'bg-[#146b8a] text-white shadow-sm'
+                                                                : 'text-gray-500 hover:text-[#146b8a]'
+                                                        "
+                                                        :aria-pressed="
+                                                            med.is_freeform
+                                                        "
+                                                    >
+                                                        Free-text
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <!-- Free-text mode: one textarea, no
@@ -1777,28 +1791,7 @@
                                                 </select>
                                             </div>
 
-                                            <div>
-                                                <label
-                                                    class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
-                                                    >Priority</label
-                                                >
-                                                <select
-                                                    v-model="req.priority"
-                                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none focus:border-[#0f8c8e]"
-                                                >
-                                                    <option value="routine">
-                                                        Routine
-                                                    </option>
-                                                    <option value="urgent">
-                                                        Urgent
-                                                    </option>
-                                                    <option value="stat">
-                                                        STAT
-                                                    </option>
-                                                </select>
-                                            </div>
-
-                                            <div class="md:col-span-4">
+                                            <div class="md:col-span-3">
                                                 <label
                                                     class="mb-1 block text-[10px] font-extrabold tracking-widest text-gray-500 uppercase"
                                                     >Request details</label
@@ -3958,33 +3951,30 @@ const removeMedication = (index: number) => {
  * values were already entered, so toggling never silently discards a medicine
  * the doctor had typed. Switching back leaves the structured fields untouched.
  */
-const toggleMedicationMode = (med: Prescription) => {
-    if (!med.is_freeform) {
-        if (!med.free_text?.trim()) {
-            med.free_text = [
-                med.medicine,
-                med.dosage,
-                med.frequency,
-                med.duration ? `${med.duration}` : '',
-            ]
-                .map((part) => `${part ?? ''}`.trim())
-                .filter((part) => part !== '')
-                .join(' — ');
-        }
-
-        med.is_freeform = true;
-
+const setMedicationMode = (med: Prescription, freeform: boolean) => {
+    if (freeform === Boolean(med.is_freeform)) {
         return;
     }
 
-    med.is_freeform = false;
+    if (freeform && !med.free_text?.trim()) {
+        med.free_text = [
+            med.medicine,
+            med.dosage,
+            med.frequency,
+            med.duration ? `${med.duration}` : '',
+        ]
+            .map((part) => `${part ?? ''}`.trim())
+            .filter((part) => part !== '')
+            .join(' — ');
+    }
+
+    med.is_freeform = freeform;
 };
 
 const addRequest = () => {
     consultForm.requests.push({
         type: 'lab',
         body: '',
-        priority: 'routine',
     });
 };
 

@@ -11,7 +11,6 @@ export interface Prescription {
 export interface ClinicalRequest {
     type: 'lab' | 'imaging' | 'referral' | 'other';
     body: string;
-    priority: 'routine' | 'urgent' | 'stat';
 }
 
 export interface VitalsData {
