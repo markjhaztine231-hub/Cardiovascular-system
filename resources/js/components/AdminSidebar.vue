@@ -93,46 +93,6 @@
                     </Link>
                 </li>
             </ul>
-
-            <p
-                v-show="!collapsed"
-                class="mt-6 px-3 pb-2 text-[9px] font-black tracking-[0.22em] text-slate-400 uppercase"
-            >
-                Account
-            </p>
-            <div
-                v-show="collapsed"
-                class="my-4 border-t border-slate-100"
-            ></div>
-            <ul class="space-y-1">
-                <li v-for="item in accountNav" :key="item.href">
-                    <Link
-                        :href="item.href"
-                        :title="collapsed ? item.label : undefined"
-                        class="group flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
-                        :class="[
-                            isActive(item.href)
-                                ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
-                            collapsed
-                                ? 'md:justify-center md:px-0'
-                                : 'gap-3 px-3',
-                        ]"
-                        @click="closeMobile"
-                    >
-                        <component
-                            :is="item.icon"
-                            class="h-[18px] w-[18px] shrink-0"
-                            :class="
-                                isActive(item.href)
-                                    ? 'text-indigo-600'
-                                    : 'text-slate-400 group-hover:text-slate-600'
-                            "
-                        />
-                        <span v-show="!collapsed">{{ item.label }}</span>
-                    </Link>
-                </li>
-            </ul>
         </nav>
 
         <!-- User -->
@@ -158,6 +118,29 @@
                     "
                 />
                 <span v-show="!collapsed">Audit log</span>
+            </Link>
+
+            <Link
+                href="/profile"
+                :title="collapsed ? 'My profile' : undefined"
+                class="group mb-2 flex items-center rounded-xl py-2.5 text-sm font-bold whitespace-nowrap transition"
+                :class="[
+                    isActive('/profile')
+                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                    collapsed ? 'md:justify-center md:px-0' : 'gap-3 px-3',
+                ]"
+                @click="closeMobile"
+            >
+                <UserRound
+                    class="h-[18px] w-[18px] shrink-0"
+                    :class="
+                        isActive('/profile')
+                            ? 'text-indigo-600'
+                            : 'text-slate-400 group-hover:text-slate-600'
+                    "
+                />
+                <span v-show="!collapsed">My profile</span>
             </Link>
 
             <div
@@ -262,14 +245,6 @@ const workspaceNav = [
         label: 'Create account',
         href: '/admin/create-account',
         icon: UserPlus,
-    },
-];
-
-const accountNav = [
-    {
-        label: 'My profile',
-        href: '/profile',
-        icon: UserRound,
     },
 ];
 </script>
