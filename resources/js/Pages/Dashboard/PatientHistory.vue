@@ -2299,6 +2299,39 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <!-- TMT Summary Fields -->
+                            <div
+                                class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                            >
+                                <div class="rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">Peak HR</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.peak_hr || '—' }}</p>
+                                </div>
+                                <div class="rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">Peak BP</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.peak_bp || '—' }}</p>
+                                </div>
+                                <div class="rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">Peak METs</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.peak_mets || '—' }}</p>
+                                </div>
+                                <div class="rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">Max Stage</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.max_stage || '—' }}</p>
+                                </div>
+                                <div v-if="selectedRecord.tmt_data.arrhythmias" class="col-span-2 rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">Arrhythmias</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.arrhythmias }}</p>
+                                </div>
+                                <div v-if="selectedRecord.tmt_data.termination_reason" class="col-span-2 rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">Termination Reason</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.termination_reason }}</p>
+                                </div>
+                                <div v-if="selectedRecord.tmt_data.st_segment_changes" class="col-span-2 rounded-lg bg-purple-50 p-3">
+                                    <p class="text-[10px] font-bold text-purple-600 uppercase">ST Changes</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ selectedRecord.tmt_data.st_segment_changes }}</p>
+                                </div>
+                            </div>
                             <!-- TMT Interpretation -->
                             <div
                                 class="mt-4 space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-4"
