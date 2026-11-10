@@ -133,47 +133,11 @@
     <table class="info-table">
         <tr>
             <td>NAME: <span class="blank" style="width: 220px;">{{ $d['patient_name'] ?? $patient }}</span></td>
-            <td style="text-align: center;">AGE: <span class="blank blank-md">{{ $d['age'] ?? '' }}</span> / <span class="blank blank-md"></span></td>
+            <td style="text-align: center;">AGE: <span class="blank blank-md">{{ $d['age'] ?? '' }}</span></td>
             <td style="text-align: right;">DATE: <span class="blank blank-xl">{{ $date }}</span></td>
         </tr>
     </table>
 
-    <p><strong>Baseline ECG and Echocardiogram</strong></p>
-    <p>Baseline Blood Pressure: <span class="blank blank-md">{{ $d['pre_bp'] ?? '' }}</span></p>
-    <p>Baseline Heart Rate: <span class="blank blank-sm">{{ $d['pre_hr'] ?? '' }}</span></p>
-    <p>Baseline ECG: <span class="blank blank-xl">{{ $d['pre_ecg'] ?? '' }}</span></p>
-
-    <br>
-
-    <p><strong>Stress Findings:</strong></p>
-    <p>
-        Treadmill stress test was done using the <span class="blank blank-md">{{ $d['protocol'] ?? '' }}</span> Protocol and was carried up to stage <span class="blank blank-sm">{{ $lastStageName }}</span>. The total duration of exercise was <span class="blank blank-sm"></span> minutes achieving a maximum heart rate of <span class="blank blank-sm">{{ $d['peak_hr'] ?? '' }}</span> bpm which is <span class="blank blank-sm"></span> % of the predicted maximum heart rate for age at <span class="blank blank-sm">{{ $d['mets'] ?? '' }}</span> METS. Maximum blood pressure achieved at peak exercise was <span class="blank blank-md">{{ $d['peak_bp'] ?? '' }}</span> mmHg. There were <span class="blank blank-sm"></span> cardiac complaints during and after exercise.
-    </p>
-    <p>
-        Serial Treadmill Stress Electrocardiogram showed <span class="blank blank-md"></span> ST-T wave changes noted. <span class="blank blank-sm"></span> arrhythmia noted during exercise and recovery period. The test was stopped due to <span class="blank blank-md"></span>.
-    </p>
-    <p>
-        At immediate post exercise, the echocardiogram showed <span class="blank blank-md"></span> in contractility in all segments. The left ventricular ejection fraction increased from <span class="blank blank-sm">{{ $d['rest_ef'] ?? '' }}</span> % to <span class="blank blank-sm">{{ $d['peak_ef'] ?? '' }}</span> %.
-    </p>
-
-    <p><strong>FINDINGS / INTERPRETATION:</strong></p>
-    <div class="notes">{{ $d['findings'] ?? '' }}</div>
-
-    <br>
-
-    <p><strong>Conclusion:</strong></p>
-    <p>
-        Treadmill exercise test using the <span class="blank blank-md">{{ $d['protocol'] ?? '' }}</span> Protocol was maximal and negative for exercise-induced myocardial ischemia at <span class="blank blank-sm">{{ $d['mets'] ?? '' }}</span> mets.
-    </p>
-    <p>
-        Treadmill Stress Echocardiogram was negative for exercise-induced ischemia at <span class="blank blank-sm">{{ $d['mets'] ?? '' }}</span> METS.
-    </p>
-    <p>
-        Physiologic blood pressure response to exercise.
-    </p>
-    <p>
-        <span class="blank blank-md"></span> exercise capacity was <span class="blank blank-md"></span> for age.
-    </p>
     @if (! empty($d['conclusion']))
         <div class="notes">{{ $d['conclusion'] }}</div>
     @endif

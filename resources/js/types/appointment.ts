@@ -236,29 +236,7 @@ export interface StressEchoStage {
 }
 
 export interface StressEchoData {
-    requesting_physician: string;
-    file_no: string;
     age: string;
-    sex: string;
-    indication: string;
-    medications: string;
-    pre_bp: string;
-    pre_hr: string;
-    pre_ecg: string;
-    pre_symptoms: string;
-    protocol: string;
-    stages: StressEchoStage[];
-    peak_hr: string;
-    target_hr: string;
-    peak_bp: string;
-    mets: string;
-    reached_target: string;
-    rest_ef: string;
-    rest_wma: string;
-    peak_ef: string;
-    peak_wma: string;
-    ischaemia: string;
-    findings: string;
     conclusion: string;
 }
 

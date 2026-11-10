@@ -47,20 +47,7 @@ class StressEchoAbpmConsultationTest extends TestCase
                 'diagnosis' => 'Ischaemia workup',
                 'consultation_type' => ['Type 5'],
                 'stress_echo_data' => [
-                    'requesting_physician' => 'Dr. Reyes',
-                    'file_no' => '26-0001',
-                    'indication' => 'Rule out inducible ischaemia',
-                    'pre_bp' => '130/85',
-                    'pre_hr' => '78',
-                    'protocol' => 'BRUCE',
-                    'stages' => [
-                        ['stage' => 'STAGE 1', 'time' => '3', 'speed' => '1.7', 'grade' => '10', 'hr' => '110', 'bp' => '150/90', 'ecg' => 'No ST changes', 'symptoms' => 'None'],
-                    ],
-                    'peak_hr' => '150',
-                    'target_hr' => '162',
-                    'rest_ef' => '60',
-                    'peak_ef' => '65',
-                    'findings' => 'No inducible wall motion abnormality.',
+                    'age' => '45',
                     'conclusion' => 'Negative for stress-induced ischaemia.',
                 ],
             ]
@@ -72,16 +59,13 @@ class StressEchoAbpmConsultationTest extends TestCase
 
         $echo = $encounter->stressEcho;
         $this->assertNotNull($echo);
-        $this->assertSame('BRUCE', $echo->payload['protocol']);
-        $this->assertSame('150', $echo->payload['peak_hr']);
-        $this->assertCount(1, $echo->payload['stages']);
+        $this->assertSame('Negative for stress-induced ischaemia.', $echo->payload['conclusion']);
 
         $this->actingAs($doctor)
             ->get('/doctor/patients/'.$patient->user_id.'/history')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('history.0.consultation_type', 'Type 5 - Stress Echo')
-                ->where('history.0.stress_echo_data.protocol', 'BRUCE')
                 ->where('history.0.stress_echo_data.conclusion', 'Negative for stress-induced ischaemia.')
             );
     }

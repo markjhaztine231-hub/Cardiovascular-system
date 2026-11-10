@@ -265,29 +265,7 @@ export const DEFAULT_DOPPLER_DATA: DopplerData = {
 };
 
 export const DEFAULT_STRESS_ECHO_DATA: StressEchoData = {
-    requesting_physician: '',
-    file_no: '',
     age: '',
-    sex: '',
-    indication: '',
-    medications: '',
-    pre_bp: '',
-    pre_hr: '',
-    pre_ecg: '',
-    pre_symptoms: '',
-    protocol: '',
-    stages: [],
-    peak_hr: '',
-    target_hr: '',
-    peak_bp: '',
-    mets: '',
-    reached_target: '',
-    rest_ef: '',
-    rest_wma: '',
-    peak_ef: '',
-    peak_wma: '',
-    ischaemia: '',
-    findings: '',
     conclusion: '',
 };
 
@@ -354,10 +332,7 @@ export function blankStudyForms(): {
             stages: DEFAULT_TMT_DATA.stages.map((stage) => ({ ...stage })),
         },
         doppler_data: { ...DEFAULT_DOPPLER_DATA },
-        stress_echo_data: {
-            ...DEFAULT_STRESS_ECHO_DATA,
-            stages: [],
-        },
+        stress_echo_data: { ...DEFAULT_STRESS_ECHO_DATA },
         abpm_data: { ...DEFAULT_ABPM_DATA },
         vitals_data: { ...DEFAULT_VITALS_DATA },
     };
