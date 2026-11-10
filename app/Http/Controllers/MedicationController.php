@@ -284,6 +284,11 @@ class MedicationController extends Controller
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
 
+        // Walk-in register patients are not enrolled for adherence tracking yet.
+        if ($appointment->patient?->user?->status === 'Walk-in Register') {
+            return response()->json(['daily' => [], 'appointment_id' => $appointment->id]);
+        }
+
         $prescriptions = $this->prescriptions($appointment);
         $active = $prescriptions->filter(
             fn (Prescription $p): bool => $p->status === null || $p->status === 'active'
@@ -625,6 +630,12 @@ class MedicationController extends Controller
 
         $patientRecord = $patient->patient;
         if (! $patientRecord) {
+            return response()->json(['medications' => []]);
+        }
+
+        // Walk-in register patients are not yet enrolled for adherence
+        // tracking; only show it once their account status changes.
+        if ($patient->status === 'Walk-in Register') {
             return response()->json(['medications' => []]);
         }
 

@@ -365,6 +365,7 @@ class DoctorController extends Controller
                 'name' => $patient->name,
                 'email' => $patient->email,
                 'allergies' => $patientRecord->allergies,
+                'status' => $patient->status,
                 'joined' => $patient->created_at?->format('M Y'),
             ],
             'history' => $history,

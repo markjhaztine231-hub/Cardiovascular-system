@@ -535,7 +535,10 @@
                                 </div>
 
                                 <!-- Adherence Overview -->
-                                <div class="border-t border-gray-100 pt-6">
+                                <div
+                                    v-if="props.patient.status !== 'Walk-in Register'"
+                                    class="border-t border-gray-100 pt-6"
+                                >
                                     <h4
                                         class="mb-3 flex items-center text-xs font-extrabold tracking-widest text-[#146b8a] uppercase"
                                     >
@@ -3224,6 +3227,7 @@ interface Patient {
     patient_id: string | number;
     email?: string;
     allergies?: string | null;
+    status?: string;
 }
 
 interface ConsultationRecord extends Appointment {
