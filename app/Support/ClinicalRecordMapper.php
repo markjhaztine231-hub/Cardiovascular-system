@@ -291,9 +291,9 @@ class ClinicalRecordMapper
         // save) until only plain text remains.
         $human = trim($text);
         for ($i = 0; $i < 5; $i++) {
-            if (preg_match('/^(.*?)\s*\|\s*\{/', $human, $m)) {
+            if (preg_match('/^(.*?)\s*\|\s*\{/s', $human, $m)) {
                 $candidate = trim($m[1]);
-            } elseif (preg_match('/^(.*?)\s*\{/', $human, $m)) {
+            } elseif (preg_match('/^(.*?)\s*\{/s', $human, $m)) {
                 $candidate = trim($m[1]);
             } else {
                 break;
