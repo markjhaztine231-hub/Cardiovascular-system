@@ -20,7 +20,7 @@ class ReceptionistDocumentController extends Controller
         ]);
 
         $file = $validated['document'];
-        $path = $file->store('documents', 'public');
+        $path = $file->store('documents', Document::STORAGE_DISK);
 
         $document = Document::create([
             'patient_id' => $appointment->patient_id,
@@ -58,6 +58,29 @@ class ReceptionistDocumentController extends Controller
     }
 
     /**
+     * Stream the scan itself. The file is never exposed through the public
+     * disk, so this route is the only way to read it and it repeats the same
+     * role/ownership check as the JSON metadata endpoint.
+     */
+    public function file(Document $document)
+    {
+        $this->authorizeView($document);
+
+        $disk = Document::diskFor($document->image_path);
+
+        abort_if($disk === null, 404, 'The stored scan is missing.');
+
+        $response = Storage::disk($disk)->response(
+            $document->image_path,
+            $document->original_filename ?: basename($document->image_path),
+        );
+
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
+    }
+
+    /**
      * Re-run OCR for a scan that failed or stalled (service was down, worker was
      * not running, image was too blurry). Reception owns this, not the doctor:
      * the image already exists, so nothing has to be re-uploaded.
@@ -69,7 +92,7 @@ class ReceptionistDocumentController extends Controller
         abort_if(! in_array($role, ['receptionist', 'admin'], true), 403);
 
         abort_if(
-            ! Storage::disk('public')->exists($document->image_path),
+            ! $document->existsOnDisk(),
             422,
             'The stored image is missing; please upload the scan again.'
         );
@@ -112,7 +135,12 @@ class ReceptionistDocumentController extends Controller
             }
         }
 
-        abort(403, 'This document belongs to another doctor.');
+        // A patient may read their own scans, but only their own.
+        if ($role === 'patient' && $document->patient?->user_id === Auth::id()) {
+            return;
+        }
+
+        abort(403, 'This document belongs to another patient or doctor.');
     }
 
     /**

@@ -184,27 +184,34 @@ class PdfController extends Controller
         $resolved = [];
 
         foreach ($attachments ?? [] as $image) {
-            $storagePath = null;
-
             if (! empty($image['id'])) {
                 $document = Document::find($image['id']);
-                if ($document && $document->image_path) {
-                    $storagePath = $document->image_path;
+                $absolutePath = $document?->absolutePath();
+
+                if ($absolutePath !== null) {
+                    $resolved[] = [
+                        'path' => $absolutePath,
+                        'name' => $image['name'] ?? basename($absolutePath),
+                    ];
+
+                    continue;
                 }
             }
 
-            if (! $storagePath && ! empty($image['url']) && str_starts_with($image['url'], '/storage/')) {
+            // Older drafts may reference a file by its public URL. Those files
+            // stay readable until the privatisation command has moved them.
+            if (! empty($image['url']) && str_starts_with($image['url'], '/storage/')) {
                 $storagePath = Str::after($image['url'], '/storage/');
-            }
 
-            if (! $storagePath || ! Storage::disk('public')->exists($storagePath)) {
-                continue;
-            }
+                if (! Storage::disk('public')->exists($storagePath)) {
+                    continue;
+                }
 
-            $resolved[] = [
-                'path' => Storage::disk('public')->path($storagePath),
-                'name' => $image['name'] ?? basename($storagePath),
-            ];
+                $resolved[] = [
+                    'path' => Storage::disk('public')->path($storagePath),
+                    'name' => $image['name'] ?? basename($storagePath),
+                ];
+            }
         }
 
         return $resolved;

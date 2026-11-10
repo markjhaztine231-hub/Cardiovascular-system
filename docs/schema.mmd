@@ -1,0 +1,454 @@
+%% Cardiovascular System — Database Schema
+%% Source: database/migrations/* at branch deploy/elastic-beanstalk (75066b7)
+%% Engine target: PostgreSQL (tests: SQLite). Types abbreviated; precision in comments.
+
+erDiagram
+
+  %% =========================================================
+  %% AUTH & FRAMEWORK
+  %% =========================================================
+
+  USERS {
+    bigint id PK
+    varchar name
+    varchar email UK "unique, stored lowercase"
+    timestamp email_verified_at "nullable"
+    varchar password "hashed"
+    varchar role "default patient: admin|doctor|receptionist|patient"
+    varchar status "default Register"
+    text two_factor_secret "nullable"
+    text two_factor_recovery_codes "nullable"
+    timestamp two_factor_confirmed_at "nullable"
+    timestamp terms_accepted_at "nullable"
+    varchar terms_version "nullable"
+    varchar remember_token "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  PASSWORD_RESET_TOKENS {
+    varchar email PK
+    varchar token
+    timestamp created_at "nullable"
+  }
+
+  SESSIONS {
+    varchar id PK
+    bigint user_id "indexed, no FK"
+    varchar ip_address "nullable"
+    text user_agent "nullable"
+    longtext payload
+    integer last_activity "indexed"
+  }
+
+  CACHE {
+    varchar key PK
+    mediumtext value
+    integer expiration "indexed"
+  }
+
+  CACHE_LOCKS {
+    varchar key PK
+    varchar owner
+    integer expiration "indexed"
+  }
+
+  JOBS {
+    bigint id PK
+    varchar queue
+    longtext payload
+    tinyint attempts
+    integer reserved_at "nullable"
+    integer available_at
+    integer created_at
+  }
+
+  JOB_BATCHES {
+    varchar id PK
+    varchar name
+    integer total_jobs
+    integer pending_jobs
+    integer failed_jobs
+    longtext failed_job_ids
+    mediumtext options "nullable"
+    integer cancelled_at "nullable"
+    integer created_at
+    integer finished_at "nullable"
+  }
+
+  FAILED_JOBS {
+    bigint id PK
+    varchar uuid UK
+    text connection
+    text queue
+    longtext payload
+    longtext exception
+    timestamp failed_at "default now"
+  }
+
+  %% =========================================================
+  %% CLINICAL CORE
+  %% =========================================================
+
+  PATIENTS {
+    bigint id PK
+    bigint user_id FK "unique, nullable, ON DELETE SET NULL"
+    varchar mrn UK "nullable"
+    date date_of_birth "nullable"
+    varchar sex "nullable: Male|Female|Other|Unknown"
+    varchar blood_type "nullable"
+    varchar contact_phone "nullable"
+    text address "nullable"
+    varchar emergency_contact_name "nullable"
+    varchar emergency_contact_phone "nullable"
+    text allergies "nullable"
+    varchar insurance_provider "nullable"
+    varchar insurance_id "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  PROVIDERS {
+    bigint id PK
+    bigint user_id FK "unique, ON DELETE CASCADE"
+    varchar npi UK "nullable"
+    varchar license_number "nullable"
+    varchar specialty "nullable"
+    varchar credentials "nullable: MD|DO|NP|PA|RN"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  APPOINTMENTS {
+    bigint id PK
+    bigint patient_id FK "ON DELETE CASCADE"
+    bigint provider_id FK "ON DELETE RESTRICT"
+    bigint reader_provider_id FK "nullable, ON DELETE SET NULL"
+    date reading_date "nullable"
+    varchar reading_status "nullable: pending|completed"
+    timestamp reading_completed_at "nullable"
+    date scheduled_date
+    time scheduled_time "nullable"
+    smallint duration_minutes "default 30"
+    varchar service_type "default Consultation"
+    varchar status "default Scheduled"
+    timestamp consultation_started_at "nullable"
+    text reason_for_visit "nullable"
+    text notes "nullable"
+    varchar google_event_id "nullable"
+    varchar google_event_url "nullable"
+    date reschedule_requested_date "nullable"
+    time reschedule_requested_time "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  ENCOUNTERS {
+    bigint id PK
+    bigint appointment_id FK "nullable, ON DELETE SET NULL"
+    bigint patient_id FK "ON DELETE CASCADE"
+    bigint provider_id FK "ON DELETE RESTRICT"
+    varchar encounter_type "default consultation"
+    varchar status "default in_progress"
+    text chief_complaint "nullable"
+    timestamp started_at "nullable"
+    timestamp ended_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  %% =========================================================
+  %% CLINICAL DETAIL
+  %% =========================================================
+
+  SOAP_NOTES {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    text subjective "nullable"
+    text objective "nullable"
+    text assessment "nullable"
+    text plan "nullable"
+    text ai_summary "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  VITAL_SIGNS {
+    bigint id PK
+    bigint encounter_id FK "ON DELETE CASCADE"
+    decimal temperature_celsius "nullable, numeric(4,1)"
+    smallint heart_rate_bpm "nullable"
+    smallint blood_pressure_systolic "nullable"
+    smallint blood_pressure_diastolic "nullable"
+    smallint respiratory_rate "nullable"
+    smallint oxygen_saturation_percent "nullable"
+    decimal weight_kg "nullable, numeric(5,1)"
+    decimal height_cm "nullable, numeric(5,1)"
+    decimal bmi "nullable, numeric(4,1)"
+    timestamp recorded_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  DIAGNOSES {
+    bigint id PK
+    bigint encounter_id FK "ON DELETE CASCADE"
+    varchar icd_code "nullable, ICD-10"
+    text description
+    boolean is_primary "default false"
+    timestamp diagnosed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  PRESCRIPTIONS {
+    bigint id PK
+    bigint encounter_id FK "ON DELETE CASCADE"
+    bigint patient_id FK "ON DELETE CASCADE"
+    bigint provider_id FK "ON DELETE RESTRICT"
+    varchar medication_name
+    varchar dosage "nullable"
+    varchar frequency "nullable"
+    varchar route "nullable"
+    smallint duration_days "nullable"
+    date start_date "nullable"
+    date end_date "nullable"
+    text instructions "nullable"
+    boolean is_freeform "default false"
+    text free_text "nullable"
+    varchar status "default active: active|completed|discontinued|cancelled"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  MEDICATION_LOGS {
+    bigint id PK
+    bigint prescription_id FK "ON DELETE CASCADE"
+    date log_date
+    time scheduled_time "nullable"
+    timestamp taken_at "nullable"
+    varchar status "nullable: TAKEN|MISSED"
+    varchar adherence_flag "nullable: ON_TIME|LATE|EXPIRED_WINDOW"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  CLINICAL_REQUESTS {
+    bigint id PK
+    bigint encounter_id FK "ON DELETE CASCADE"
+    bigint patient_id FK "ON DELETE CASCADE"
+    bigint provider_id FK "nullable, ON DELETE SET NULL"
+    varchar type "lab|imaging|referral|other"
+    text body "nullable"
+    varchar priority "default routine: routine|urgent|stat"
+    varchar status "default requested"
+    bigint created_by FK "nullable, ON DELETE SET NULL"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  DOCUMENTS {
+    bigint id PK
+    bigint patient_id FK "ON DELETE CASCADE"
+    bigint appointment_id FK "nullable, ON DELETE SET NULL"
+    bigint uploaded_by FK "ON DELETE RESTRICT"
+    varchar type "default prescription: prescription|lab_result|referral|other"
+    varchar original_filename "nullable"
+    varchar image_path
+    longtext ocr_text "nullable"
+    json ocr_raw "nullable"
+    decimal ocr_confidence "nullable, numeric(4,3)"
+    varchar ocr_status "default pending: pending|processing|completed|failed"
+    text ocr_error "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  %% =========================================================
+  %% PROCEDURE / REPORT TABLES (all 1:1 with encounters)
+  %% =========================================================
+
+  ECHOCARDIOGRAMS {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    decimal lvef_percent "nullable, numeric(4,1)"
+    decimal lvfs_percent "nullable, numeric(4,1)"
+    decimal lv_mass_grams "nullable, numeric(6,1)"
+    decimal tapse_mm "nullable, numeric(4,1)"
+    decimal ivs_mm "nullable, numeric(4,1)"
+    decimal lvpw_mm "nullable, numeric(4,1)"
+    decimal lvidd_mm "nullable, numeric(4,1)"
+    decimal lvids_mm "nullable, numeric(4,1)"
+    decimal aortic_root_mm "nullable, numeric(4,1)"
+    decimal la_diameter_mm "nullable, numeric(4,1)"
+    varchar rv_size "nullable"
+    boolean pericardial_effusion "default false"
+    text valve_findings "nullable"
+    text wall_motion "nullable"
+    text notes "nullable"
+    timestamp performed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  TREADMILL_TESTS {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    varchar protocol "default Bruce"
+    decimal max_stage "nullable, numeric(3,1)"
+    smallint peak_heart_rate_bpm "nullable"
+    smallint peak_bp_systolic "nullable"
+    smallint peak_bp_diastolic "nullable"
+    decimal mets_achieved "nullable, numeric(4,1)"
+    smallint exercise_duration_seconds "nullable"
+    smallint recovery_time_minutes "nullable"
+    text st_segment_changes "nullable"
+    text arrhythmias "nullable"
+    text symptoms_during_test "nullable"
+    varchar reason_for_termination "nullable"
+    text notes "nullable"
+    timestamp performed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  DOPPLER_STUDIES {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    decimal ea_ratio "nullable, numeric(4,2)"
+    decimal tissue_doppler_e "nullable, numeric(4,2)"
+    decimal tissue_doppler_a "nullable, numeric(4,2)"
+    decimal mitral_gradient "nullable, numeric(4,1)"
+    decimal aortic_gradient "nullable, numeric(4,1)"
+    decimal tricuspid_gradient "nullable, numeric(4,1)"
+    decimal pulmonic_gradient "nullable, numeric(4,1)"
+    varchar mitral_regurgitation "nullable: none|mild|moderate|severe"
+    varchar aortic_regurgitation "nullable"
+    varchar tricuspid_regurgitation "nullable"
+    text valve_findings "nullable"
+    text notes "nullable"
+    timestamp performed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  MANUAL_DRAFTS {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    varchar requesting_physician "nullable"
+    varchar title "nullable"
+    text draft "nullable"
+    text conclusion "nullable"
+    json attachments "nullable: [{id,url,name}]"
+    timestamp performed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  STRESS_ECHOCARDIOGRAMS {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    json payload "nullable, free-form field map"
+    timestamp performed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  AMBULATORY_BLOOD_PRESSURE_MONITORINGS {
+    bigint id PK
+    bigint encounter_id FK "unique, ON DELETE CASCADE"
+    json payload "nullable, free-form field map"
+    timestamp performed_at "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  %% =========================================================
+  %% OPERATIONS & COMPLIANCE
+  %% =========================================================
+
+  DOCTOR_SCHEDULES {
+    bigint id PK
+    bigint provider_id FK "ON DELETE CASCADE"
+    jsonb day_of_week "ISO array [1..7], CHECK jsonb_typeof = array"
+    time start_time
+    time end_time
+    boolean is_active "default true"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  MONTHLY_REPORTS {
+    bigint id PK
+    bigint provider_id FK "nullable, ON DELETE CASCADE; null for practice scope"
+    varchar scope "default provider: provider|practice"
+    varchar month "YYYY-MM"
+    longtext report_text "nullable"
+    jsonb stats "nullable"
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  AUDIT_LOGS {
+    bigint id PK
+    bigint user_id FK "nullable, ON DELETE SET NULL"
+    bigint patient_id FK "nullable, ON DELETE SET NULL"
+    varchar action "widened to 500"
+    varchar resource_type "nullable"
+    bigint resource_id "nullable, polymorphic, no FK"
+    text description "nullable"
+    jsonb old_values "nullable"
+    jsonb new_values "nullable"
+    varchar ip_address "nullable"
+    text user_agent "nullable"
+    timestamp created_at "default now; no updated_at"
+  }
+
+  %% =========================================================
+  %% RELATIONSHIPS
+  %% =========================================================
+
+  USERS ||--o| PATIENTS : "user_id"
+  USERS ||--o| PROVIDERS : "user_id"
+
+  PATIENTS ||--o{ APPOINTMENTS : "patient_id"
+  PROVIDERS ||--o{ APPOINTMENTS : "attending provider_id"
+  PROVIDERS ||--o{ APPOINTMENTS : "reader_provider_id"
+
+  APPOINTMENTS ||--o| ENCOUNTERS : "appointment_id"
+  PATIENTS ||--o{ ENCOUNTERS : "patient_id"
+  PROVIDERS ||--o{ ENCOUNTERS : "provider_id"
+
+  ENCOUNTERS ||--o| SOAP_NOTES : "encounter_id"
+  ENCOUNTERS ||--o{ VITAL_SIGNS : "encounter_id"
+  ENCOUNTERS ||--o{ DIAGNOSES : "encounter_id"
+  ENCOUNTERS ||--o{ PRESCRIPTIONS : "encounter_id"
+  PATIENTS ||--o{ PRESCRIPTIONS : "patient_id"
+  PROVIDERS ||--o{ PRESCRIPTIONS : "provider_id"
+  PRESCRIPTIONS ||--o{ MEDICATION_LOGS : "prescription_id"
+
+  ENCOUNTERS ||--o| ECHOCARDIOGRAMS : "encounter_id"
+  ENCOUNTERS ||--o| TREADMILL_TESTS : "encounter_id"
+  ENCOUNTERS ||--o| DOPPLER_STUDIES : "encounter_id"
+  ENCOUNTERS ||--o| MANUAL_DRAFTS : "encounter_id"
+  ENCOUNTERS ||--o| STRESS_ECHOCARDIOGRAMS : "encounter_id"
+  ENCOUNTERS ||--o| AMBULATORY_BLOOD_PRESSURE_MONITORINGS : "encounter_id"
+
+  ENCOUNTERS ||--o{ CLINICAL_REQUESTS : "encounter_id"
+  PATIENTS ||--o{ CLINICAL_REQUESTS : "patient_id"
+  PROVIDERS ||--o{ CLINICAL_REQUESTS : "provider_id"
+
+  PATIENTS ||--o{ DOCUMENTS : "patient_id"
+  APPOINTMENTS ||--o{ DOCUMENTS : "appointment_id"
+  USERS ||--o{ DOCUMENTS : "uploaded_by"
+
+  PROVIDERS ||--o{ DOCTOR_SCHEDULES : "provider_id"
+  PROVIDERS ||--o{ MONTHLY_REPORTS : "provider_id"
+
+  USERS ||--o{ AUDIT_LOGS : "user_id"
+  PATIENTS ||--o{ AUDIT_LOGS : "patient_id"
+
+  USERS ||..o{ SESSIONS : "user_id (indexed, no FK)"
+
+  %% Standalone framework tables: PASSWORD_RESET_TOKENS, CACHE,
+  %% CACHE_LOCKS, JOBS, JOB_BATCHES, FAILED_JOBS

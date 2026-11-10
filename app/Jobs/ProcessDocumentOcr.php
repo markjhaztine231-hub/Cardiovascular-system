@@ -51,8 +51,16 @@ class ProcessDocumentOcr implements ShouldQueue
 
         $filename = $document->original_filename ?: basename($document->image_path);
 
+        $disk = Document::diskFor($document->image_path);
+
+        if ($disk === null) {
+            $this->markFailed($document, 'The stored image could not be read.');
+
+            return;
+        }
+
         try {
-            $contents = Storage::disk('public')->get($document->image_path);
+            $contents = Storage::disk($disk)->get($document->image_path);
         } catch (FileNotFoundException) {
             $this->markFailed($document, 'The stored image could not be read.');
 

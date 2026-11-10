@@ -28,12 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureRole::class,
         ]);
 
+        // Applied globally rather than only to the `web` group so framework
+        // responses that bypass route middleware (404s, /up, throttling and
+        // other exception renders) still carry the security headers.
+        $middleware->append(SecurityHeaders::class);
+
         $middleware->web(append: [
             EnsureAccountIsActive::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedScripts::class,
-            SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

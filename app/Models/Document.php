@@ -10,6 +10,15 @@ class Document extends Model
 {
     public const REVIEW_THRESHOLD = 0.70;
 
+    /**
+     * Scans are patient data and live on the private disk. The legacy disk is
+     * checked as a fallback until `documents:move-to-private` has moved every
+     * file on an existing deployment.
+     */
+    public const STORAGE_DISK = 'local';
+
+    public const LEGACY_STORAGE_DISK = 'public';
+
     protected $fillable = [
         'patient_id',
         'appointment_id',
@@ -46,7 +55,36 @@ class Document extends Model
 
     public function url(): string
     {
-        return Storage::disk('public')->url($this->image_path);
+        // Authenticated route, never a direct public-disk URL: a scan must not
+        // be reachable by guessing its path.
+        return route('documents.file', $this);
+    }
+
+    /**
+     * Resolve which disk currently holds the scan. New uploads are private;
+     * the public fallback keeps existing scans readable until they are moved.
+     */
+    public static function diskFor(string $path): ?string
+    {
+        foreach ([self::STORAGE_DISK, self::LEGACY_STORAGE_DISK] as $disk) {
+            if (Storage::disk($disk)->exists($path)) {
+                return $disk;
+            }
+        }
+
+        return null;
+    }
+
+    public function existsOnDisk(): bool
+    {
+        return self::diskFor($this->image_path) !== null;
+    }
+
+    public function absolutePath(): ?string
+    {
+        $disk = self::diskFor($this->image_path);
+
+        return $disk === null ? null : Storage::disk($disk)->path($this->image_path);
     }
 
     /**

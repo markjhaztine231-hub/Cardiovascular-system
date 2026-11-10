@@ -9,6 +9,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Provider;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -42,12 +43,58 @@ class SecurityTest extends TestCase
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('X-Frame-Options', 'DENY');
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+        $response->assertHeader('X-XSS-Protection', '0');
         $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
 
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString("default-src 'self'", $csp);
         $this->assertStringContainsString("frame-ancestors 'none'", $csp);
         $this->assertStringContainsString("object-src 'none'", $csp);
+        $this->assertStringContainsString("img-src 'self' data: blob:;", $csp);
+        $this->assertStringContainsString("connect-src 'self'", $csp);
+        $this->assertStringNotContainsString('https:', $csp);
+        $this->assertStringNotContainsString('ws:', $csp);
+        $this->assertStringNotContainsString('wss:', $csp);
+        $this->assertStringContainsString('upgrade-insecure-requests', $csp);
+    }
+
+    public function test_security_headers_are_also_sent_on_framework_responses(): void
+    {
+        $this->get('/up')
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Content-Security-Policy');
+
+        $this->get('/a-route-that-does-not-exist')
+            ->assertNotFound()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Content-Security-Policy');
+    }
+
+    public function test_production_always_disables_debug_mode(): void
+    {
+        config(['app.env' => 'production', 'app.debug' => true]);
+
+        (new AppServiceProvider($this->app))->register();
+
+        $this->assertFalse(config('app.debug'));
+    }
+
+    public function test_login_is_throttled_per_account(): void
+    {
+        $credentials = [
+            'email' => 'throttled@example.com',
+            'password' => 'wrong-password',
+        ];
+
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->post('/login', $credentials)->assertRedirect();
+        }
+
+        $this->post('/login', $credentials)->assertStatus(429);
     }
 
     public function test_strict_transport_security_only_over_https(): void

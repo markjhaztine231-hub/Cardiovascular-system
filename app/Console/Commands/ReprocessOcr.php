@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Jobs\ProcessDocumentOcr;
 use App\Models\Document;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -60,7 +59,7 @@ class ReprocessOcr extends Command
         $skipped = 0;
 
         foreach ($documents as $document) {
-            if (! Storage::disk('public')->exists($document->image_path)) {
+            if (! $document->existsOnDisk()) {
                 $this->warn(sprintf(
                     'Skipping #%d (%s): the stored image is missing.',
                     $document->id,

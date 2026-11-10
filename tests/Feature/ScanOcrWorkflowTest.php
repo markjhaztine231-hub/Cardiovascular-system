@@ -33,6 +33,7 @@ class ScanOcrWorkflowTest extends TestCase
         parent::setUp();
 
         Storage::fake('public');
+        Storage::fake('local');
 
         $this->receptionist = User::factory()->create(['role' => 'receptionist']);
 
@@ -76,9 +77,68 @@ class ScanOcrWorkflowTest extends TestCase
         $this->assertSame($this->receptionist->id, $document->uploaded_by);
         $this->assertSame('pending', $document->ocr_status);
 
-        Storage::disk('public')->assertExists($document->image_path);
+        Storage::disk('local')->assertExists($document->image_path);
+        Storage::disk('public')->assertMissing($document->image_path);
 
         Queue::assertPushed(ProcessDocumentOcr::class, fn ($job) => $job->documentId === $document->id);
+    }
+
+    public function test_a_scan_is_only_streamed_through_an_authorized_route(): void
+    {
+        Storage::disk('local')->put('documents/private.png', 'binary');
+
+        $document = Document::create([
+            'patient_id' => $this->patient->id,
+            'appointment_id' => $this->appointment->id,
+            'uploaded_by' => $this->receptionist->id,
+            'type' => 'prescription',
+            'original_filename' => 'private.png',
+            'image_path' => 'documents/private.png',
+            'ocr_status' => 'completed',
+        ]);
+
+        $this->assertSame(route('documents.file', $document), $document->url());
+        $this->assertStringNotContainsString('/storage/', $document->url());
+
+        $this->get(route('documents.file', $document))
+            ->assertRedirect(route('login'));
+
+        $this->actingAs(User::factory()->doctor()->create())
+            ->get(route('documents.file', $document))
+            ->assertForbidden();
+
+        $file = $this->actingAs($this->patient->user)
+            ->get(route('documents.file', $document))
+            ->assertOk();
+
+        $this->assertStringContainsString('no-store', (string) $file->headers->get('Cache-Control'));
+
+        $this->actingAs(User::factory()->patient()->create())
+            ->get(route('documents.file', $document))
+            ->assertForbidden();
+
+        $this->actingAs($this->receptionist)
+            ->get(route('documents.file', $document))
+            ->assertOk();
+    }
+
+    public function test_a_scan_still_reads_from_the_legacy_public_disk(): void
+    {
+        Storage::disk('public')->put('documents/legacy.png', 'binary');
+
+        $document = Document::create([
+            'patient_id' => $this->patient->id,
+            'appointment_id' => $this->appointment->id,
+            'uploaded_by' => $this->receptionist->id,
+            'type' => 'prescription',
+            'original_filename' => 'legacy.png',
+            'image_path' => 'documents/legacy.png',
+            'ocr_status' => 'completed',
+        ]);
+
+        $this->actingAs($this->receptionist)
+            ->get(route('documents.file', $document))
+            ->assertOk();
     }
 
     public function test_scan_upload_rejects_non_image_files(): void

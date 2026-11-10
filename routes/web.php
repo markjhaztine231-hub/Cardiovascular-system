@@ -36,9 +36,9 @@ Route::get('/terms', [AuthController::class, 'showTerms'])->name('terms');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
-    //  Rate limiting on login (5 attempts per 1 minute per IP) — clinic shares
-    //  one public WiFi IP, so allow a burst for ~16 staff at shift start.
-    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:30,1')->name('login.store');
+    // Per-account (10/min) and per-IP (30/min) throttling, so shared clinic
+    // WiFi does not mask password guessing against a single account.
+    Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:login-attempts')->name('login.store');
     Route::get('/register', [AuthController::class, 'showRegistrationForm'])->name('register');
     //  Rate limiting on registration (3 attempts per 1 hour per IP)
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,10');
@@ -265,6 +265,8 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:receptionist,admin')->name('documents.pending');
     Route::get('/documents/{document}', [ReceptionistDocumentController::class, 'show'])
         ->middleware('role:receptionist,doctor,admin')->name('documents.show');
+    Route::get('/documents/{document}/file', [ReceptionistDocumentController::class, 'file'])
+        ->middleware('role:receptionist,doctor,admin,patient')->name('documents.file');
     Route::post('/documents/{document}/retry-ocr', [ReceptionistDocumentController::class, 'retryOcr'])
         ->middleware('role:receptionist,admin')->name('documents.retryOcr');
 
