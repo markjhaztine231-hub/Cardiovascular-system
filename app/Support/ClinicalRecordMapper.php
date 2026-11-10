@@ -62,7 +62,12 @@ class ClinicalRecordMapper
         $form = self::embeddedForm($echo->notes, $echo->valve_findings);
 
         $result = array_merge($form, $legacy, self::patientContext($patient));
-        $result['findings'] = $echo->valve_findings;
+        $findings = $echo->valve_findings;
+        if ($findings === null && isset($form['findings']) && is_string($form['findings'])
+            && ! preg_match('/\{\s*"|\{\s*&quot;/', $form['findings'])) {
+            $findings = $form['findings'];
+        }
+        $result['findings'] = $findings;
         $result['notes'] = self::humanNotes($echo->notes);
 
         return $result;
@@ -109,8 +114,14 @@ class ClinicalRecordMapper
 
         $result = array_merge($form, $legacy, self::patientContext($patient));
         // The recovered form JSON may carry a stale `conclusion` (e.g. an
-        // earlier notes blob). The curated column value must win.
-        $result['conclusion'] = self::humanNotes($tmt->notes);
+        // earlier notes blob). The curated column value must win, but fall
+        // back to the form's own conclusion when the column has none.
+        $conclusion = self::humanNotes($tmt->notes);
+        if ($conclusion === null && isset($form['conclusion']) && is_string($form['conclusion'])
+            && ! preg_match('/\{\s*"|\{\s*&quot;/', $form['conclusion'])) {
+            $conclusion = $form['conclusion'];
+        }
+        $result['conclusion'] = $conclusion;
 
         return $result;
     }
@@ -138,8 +149,13 @@ class ClinicalRecordMapper
         $form = self::embeddedForm($doppler->notes, $doppler->valve_findings);
 
         $result = array_merge($form, $legacy, self::patientContext($patient));
-        $result['conclusion'] = self::humanNotes($doppler->notes);
-        $result['findings'] = $doppler->valve_findings;
+        $conclusion = self::humanNotes($doppler->notes);
+        if ($conclusion === null && isset($form['conclusion']) && is_string($form['conclusion'])
+            && ! preg_match('/\{\s*"|\{\s*&quot;/', $form['conclusion'])) {
+            $conclusion = $form['conclusion'];
+        }
+        $result['conclusion'] = $conclusion;
+        $result['findings'] = $doppler->valve_findings ?: ($form['findings'] ?? null);
 
         return $result;
     }
