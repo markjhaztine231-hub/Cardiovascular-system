@@ -248,8 +248,12 @@
 
 <!-- ── CLINIC HEADER ──────────────────────────────────────── -->
 <div class="clinic-header">
-    <div class="clinic-name">&nbsp; CARDIOVASCULAR CARE CENTER</div>
-    <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel. 8-353-7182</div>
+    @include('pdfs.partials.clinic-header', [
+        'nameColor' => '#1a4e6e',
+        'nameSize' => '15pt',
+        'subSize' => '8pt',
+        'subColor' => '#555',
+    ])
     <div class="report-title">{{ $reportTitle ?? 'Monthly Narrative Report' }}</div>
     <div class="report-period">Period: {{ $formattedMonth }} &nbsp;&bull;&nbsp; Prepared by: {{ $doctor }}</div>
 </div>
@@ -392,7 +396,11 @@
 <div class="page-break"></div>
 
 <div class="clinic-header" style="margin-top:0;">
-    <div class="clinic-name">&nbsp; CARDIOVASCULAR CARE CENTER</div>
+    @include('pdfs.partials.clinic-header', [
+        'nameColor' => '#1a4e6e',
+        'nameSize' => '15pt',
+        'sub' => '',
+    ])
     <div class="report-title">{{ $reportTitle ?? 'Monthly Narrative Report' }}</div>
     <div class="report-period">Period: {{ $formattedMonth }} &nbsp;&bull;&nbsp; Prepared by: {{ $doctor }}</div>
 </div>

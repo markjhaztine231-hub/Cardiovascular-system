@@ -29,8 +29,12 @@ h2 { text-align: center; font-size: 11pt; margin: 6px 0; text-transform: upperca
 </head>
 <body>
 <div class="clinic-header">
-  <div class="clinic-name">CARDIOVASCULAR CARE CENTER</div>
-  <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel: 8-353-7182</div>
+  @include('pdfs.partials.clinic-header', [
+    'nameSize' => '14pt',
+    'subSize' => '7pt',
+    'subColor' => '#555',
+    'logoHeight' => '0.45in',
+  ])
 </div>
 
 <h2>Clinical Requests</h2>

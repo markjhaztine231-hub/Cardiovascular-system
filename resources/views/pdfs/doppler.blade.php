@@ -21,8 +21,7 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 <body>
 {{-- PAGE 1: Doppler Study --}}
 <div class="clinic-header">
-  <div class="clinic-name">CARDIOVASCULAR CARE CENTER</div>
-  <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel: 8-353-7182</div>
+  @include('pdfs.partials.clinic-header')
 </div>
 <h2>Color Flow &amp; Doppler Study</h2>
 <table>
@@ -149,8 +148,7 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 {{-- PAGE 2: Echocardiographic Report (same layout as the standalone echo PDF) --}}
 <div class="page-break"></div>
 <div class="clinic-header">
-  <div class="clinic-name">CARDIOVASCULAR CARE CENTER</div>
-  <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel: 8-353-7182</div>
+  @include('pdfs.partials.clinic-header')
 </div>
 <h2>Echocardiographic Report</h2>
 <table>

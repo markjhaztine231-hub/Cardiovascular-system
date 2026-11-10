@@ -22,8 +22,7 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 <body>
 {{-- PAGE 1: Informed Consent --}}
 <div class="clinic-header">
-  <div class="clinic-name">CARDIOVASCULAR CARE CENTER</div>
-  <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel: 8-353-7182</div>
+  @include('pdfs.partials.clinic-header')
 </div>
 <h3 style="text-align:center;text-decoration:underline;">INFORMED CONSENT FOR TREADMILL EXERCISE TEST</h3>
 <table class="no-border">
@@ -82,7 +81,7 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 {{-- PAGE 2: Exercise Testing Report --}}
 <div class="page-break"></div>
 <div class="clinic-header">
-  <div class="clinic-name">&#9825; CARDIOVASCULAR CARE CENTER</div>
+  @include('pdfs.partials.clinic-header', ['name' => '&#9825; CARDIOVASCULAR CARE CENTER'])
   <h3 style="margin:5px 0 15px;">EXERCISE TESTING REPORT</h3>
 </div>
 <table class="no-border" style="line-height:1.8;">

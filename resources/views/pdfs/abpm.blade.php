@@ -126,10 +126,15 @@
 <body>
 
     <div class="header">
-        <h1 class="header-title">CARDIOVASCULAR <span>CARE CENTER</span></h1>
-        <div class="header-sub">
-            Rm 207 Mirasol bldg. 854 Apacible St, cor. Taft Ave. Mla., Tel. # 3537182
-        </div>
+        @include('pdfs.partials.clinic-header', [
+            'name' => 'CARDIOVASCULAR <span style="color:#3b7bb5;">CARE CENTER</span>',
+            'nameColor' => '#a82036',
+            'nameSize' => '22px',
+            'sub' => 'Rm 207 Mirasol bldg. 854 Apacible St, cor. Taft Ave. Mla., Tel. # 3537182',
+            'subSize' => '11px',
+            'subColor' => '#333',
+            'logoHeight' => '0.6in',
+        ])
     </div>
 
     <div class="report-title">AMBULATORY BLOOD PRESSURE MONITORING</div>

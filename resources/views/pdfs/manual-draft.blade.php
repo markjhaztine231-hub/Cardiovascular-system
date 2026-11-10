@@ -22,8 +22,7 @@ h3 { font-size: 9pt; margin: 8px 0 3px; text-transform: uppercase; }
 </head>
 <body>
 <div class="clinic-header">
-  <div class="clinic-name">CARDIOVASCULAR CARE CENTER</div>
-  <div class="clinic-sub">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel: 8-353-7182</div>
+  @include('pdfs.partials.clinic-header')
 </div>
 
 <h2>Manual Draft</h2>
