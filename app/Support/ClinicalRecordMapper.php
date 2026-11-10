@@ -266,11 +266,32 @@ class ClinicalRecordMapper
             return null;
         }
 
-        $human = preg_match('/^(.*?)\s*\|\s*\{/', $text, $m)
-            ? trim($m[1])
-            : (preg_match('/^(.*?)\s*\{/', $text, $m) ? trim($m[1]) : trim($text));
+        // The notes column may contain several "text | {json}" layers (a
+        // stale blob that leaked into the conclusion and was re-saved). Peel
+        // them off one at a time until only plain text remains.
+        $human = trim($text);
+        for ($i = 0; $i < 5; $i++) {
+            if (preg_match('/^(.*?)\s*\|\s*\{/', $human, $m)) {
+                $candidate = trim($m[1]);
+            } elseif (preg_match('/^(.*?)\s*\{/', $human, $m)) {
+                $candidate = trim($m[1]);
+            } else {
+                break;
+            }
 
-        return $human === '' ? null : $human;
+            if ($candidate === $human) {
+                break;
+            }
+            $human = $candidate;
+        }
+
+        // Discard anything that still looks like an embedded JSON blob or a
+        // stray separator so it can never leak back into the conclusion.
+        if ($human === '' || str_contains($human, '{') || str_contains($human, '|')) {
+            return null;
+        }
+
+        return $human;
     }
 
     /**
