@@ -420,10 +420,23 @@
                         </div>
                     </div>
                     <div>
-                        <label
-                            class="mt-2 mb-1 block font-bold tracking-widest text-[#1e8996] uppercase"
-                            >Conclusion</label
+                        <div
+                            class="mt-2 mb-1 flex flex-wrap items-center justify-between gap-2"
                         >
+                            <label
+                                class="block font-bold tracking-widest text-[#1e8996] uppercase"
+                                >Conclusion</label
+                            >
+                            <button
+                                v-if="!restricted"
+                                type="button"
+                                @click.prevent="applyConclusionTemplate"
+                                class="rounded border border-cyan-300 bg-cyan-50 px-3 py-1 text-[10px] font-bold tracking-wide text-cyan-800 uppercase transition-colors hover:bg-cyan-100"
+                                title="Insert the standard treadmill interpretation. Every word stays editable."
+                            >
+                                Insert TMT template
+                            </button>
+                        </div>
                         <p
                             v-if="restricted"
                             class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
@@ -431,10 +444,18 @@
                             Doctor only — the physician completes this section.
                         </p>
                         <textarea
+                            ref="conclusionInput"
                             v-model="tmtData.conclusion"
                             :disabled="restricted"
-                            class="h-16 w-full resize-none rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+                            class="min-h-72 w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                         ></textarea>
+                        <p
+                            v-if="!restricted"
+                            class="mt-1 text-[10px] text-gray-500"
+                        >
+                            Tip: use the template, then type over the `_`
+                            blanks. All text remains editable.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -443,8 +464,24 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from 'vue';
 import type { TMTData } from '@/types/appointment';
 import { buildDocument, buildTmtDocument } from '@/utils/docExport';
+
+/**
+ * Standard treadmill interpretation offered as a starting point. The
+ * underscores are fill-in blanks (the first one is selected automatically
+ * after insertion) and the whole text stays editable.
+ */
+const TMT_CONCLUSION_TEMPLATE = `INTERPRETATION :
+A. Resting ECG: Sinus rhythm, normal axis
+B. Response to exercise: A symptom-limited treadmill exercise test using the BRUCE protocol was performed. The patient exercised for a total of __ minutes reaching up to stage __ of exercise.
+Patient achieved a maximum heart rate of _ bpm which was _ % of that predicted for his age and sex at __ METS. No significant horizontal or downsloping ST segment depression was noted during and after exercise. The blood pressure and heart rate response to exercise was physiologic.
+No chest pain was reported during and after exercise.
+C. Exercise Capacity: __ exercise capacity
+D. Probability of CAD: To correlate clinically
+
+CONCLUSION: Maximal treadmill exercise test is _ for exercise-induced ischemia for workload accomplished. _ exercise capacity.`;
 
 const tmtData = defineModel<TMTData>('tmtData', { required: true });
 const props = defineProps({
@@ -461,6 +498,50 @@ const props = defineProps({
         default: false,
     },
 });
+
+const conclusionInput = ref<HTMLTextAreaElement | null>(null);
+
+function applyConclusionTemplate(): void {
+    if (props.restricted) {
+        return;
+    }
+
+    const current = (tmtData.value.conclusion ?? '').trim();
+
+    if (
+        current !== '' &&
+        current !== TMT_CONCLUSION_TEMPLATE.trim() &&
+        !window.confirm('Replace the current conclusion with the template?')
+    ) {
+        return;
+    }
+
+    tmtData.value.conclusion = TMT_CONCLUSION_TEMPLATE;
+
+    nextTick(() => {
+        const textarea = conclusionInput.value;
+
+        if (!textarea) {
+            return;
+        }
+
+        textarea.focus();
+
+        const start = TMT_CONCLUSION_TEMPLATE.indexOf('_');
+
+        if (start === -1) {
+            return;
+        }
+
+        let end = start;
+
+        while (TMT_CONCLUSION_TEMPLATE[end] === '_') {
+            end += 1;
+        }
+
+        textarea.setSelectionRange(start, end);
+    });
+}
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();
