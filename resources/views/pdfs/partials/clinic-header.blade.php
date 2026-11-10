@@ -18,7 +18,7 @@
         : null;
 
     $logoHeight = $logoHeight ?? '0.55in';
-    $name = $name ?? 'CARDIOVASCULAR CARE CENTER';
+    $name = $name 'CARDIOVASCULAR CARE CENTER';
     $nameColor = $nameColor ?? '#8B0000';
     $nameSize = $nameSize ?? '16pt';
     $sub = $sub ?? '<span style="color:#0000FF;">Rm. 303/305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila &bull; Tel: 8-353-7182</span>';
