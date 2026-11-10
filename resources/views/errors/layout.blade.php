@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="robots" content="noindex, nofollow">
         <title>@yield('title') &middot; {{ config('app.name', 'Cardiovascular Care') }}</title>
-        <style>
+        <style nonce="{{ request()->attributes->get('csp_nonce') }}">
             :root {
                 color-scheme: light;
                 --ink: #0f2a35;

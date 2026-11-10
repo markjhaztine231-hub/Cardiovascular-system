@@ -14,6 +14,15 @@ import type {
 /** Returns the value as a string, or '' if null / undefined. */
 const v = (x: string | undefined | null): string => x ?? '';
 
+/**
+ * CSP nonce from the app shell. The print iframe is an about:blank document,
+ * which inherits the page's Content-Security-Policy, so its inline <style>
+ * block must carry the same nonce.
+ */
+const cspNonce = (): string =>
+    document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')
+        ?.content ?? '';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared document shell
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,17 +36,17 @@ const v = (x: string | undefined | null): string => x ?? '';
  * - `.no-border` table variant, `.page-break`, and `.signature-block` helpers
  * - `@media print` colour-adjust rule for accurate PDF output
  */
-export const buildDocument = (
-    title: string,
-    bodyHtml: string,
-): string => `<!DOCTYPE html>
+export const buildDocument = (title: string, bodyHtml: string): string => {
+    const nonce = cspNonce();
+
+    return `<!DOCTYPE html>
 <html xmlns:o='urn:schemas-microsoft-com:office:office'
       xmlns:w='urn:schemas-microsoft-com:office:word'
       xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
   <meta charset='utf-8'>
   <title>${title}</title>
-  <style>
+  <style${nonce ? ` nonce="${nonce}"` : ''}>
     @page {
       size: 8.5in 11in;
       margin: 0.5in;
@@ -108,6 +117,7 @@ export const buildDocument = (
 ${bodyHtml}
 </body>
 </html>`;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Export functions

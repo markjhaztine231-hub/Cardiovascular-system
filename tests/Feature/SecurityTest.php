@@ -54,10 +54,34 @@ class SecurityTest extends TestCase
         $this->assertStringContainsString("object-src 'none'", $csp);
         $this->assertStringContainsString("img-src 'self' data: blob:;", $csp);
         $this->assertStringContainsString("connect-src 'self'", $csp);
+        // Inline <style> blocks must be nonce-gated; only style attributes
+        // (which cannot carry a nonce) are still allowed inline.
+        $this->assertMatchesRegularExpression("/style-src 'self' 'nonce-[^']+';/", $csp);
+        $this->assertStringNotContainsString("style-src 'unsafe-inline'", $csp);
+        $this->assertStringContainsString("style-src-attr 'unsafe-inline'", $csp);
         $this->assertStringNotContainsString('https:', $csp);
         $this->assertStringNotContainsString('ws:', $csp);
         $this->assertStringNotContainsString('wss:', $csp);
         $this->assertStringContainsString('upgrade-insecure-requests', $csp);
+    }
+
+    public function test_csrf_cookie_is_http_only_and_nonce_matches_the_page(): void
+    {
+        $response = $this->get('/login')->assertOk();
+
+        $xsrf = collect($response->headers->getCookies())
+            ->first(fn ($cookie) => $cookie->getName() === 'XSRF-TOKEN');
+
+        $this->assertNotNull($xsrf, 'XSRF-TOKEN cookie was not sent.');
+        $this->assertTrue($xsrf->isHttpOnly(), 'XSRF-TOKEN must be HttpOnly.');
+
+        $csp = $response->headers->get('Content-Security-Policy');
+        $this->assertSame(1, preg_match("/'nonce-([^']+)'/", $csp, $matches));
+        $this->assertStringContainsString(
+            'name="csp-nonce" content="'.$matches[1].'"',
+            $response->getContent()
+        );
+        $this->assertStringContainsString('name="csrf-token"', $response->getContent());
     }
 
     public function test_security_headers_are_also_sent_on_framework_responses(): void

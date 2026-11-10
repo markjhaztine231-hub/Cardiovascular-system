@@ -10,6 +10,11 @@ class SecurityHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Generated before the response is rendered so Blade (app shell and
+        // error pages) can attach the same nonce to its inline <style> tags.
+        $nonce = base64_encode(random_bytes(16));
+        $request->attributes->set('csp_nonce', $nonce);
+
         $response = $next($request);
 
         if (! property_exists($response, 'headers')) {
@@ -28,7 +33,17 @@ class SecurityHeaders
             'Permissions-Policy',
             'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
         );
-        $response->headers->set('Content-Security-Policy', $this->contentSecurityPolicy($request));
+        $response->headers->set('Content-Security-Policy', $this->contentSecurityPolicy($request, $nonce));
+
+        // Laravel ships the CSRF token in a script-readable XSRF-TOKEN cookie
+        // so Axios can mirror it into the X-XSRF-TOKEN header. The app reads
+        // the token from a <meta> tag instead, so the cookie can be HttpOnly
+        // (blocks JavaScript/session-hijacking access) without breaking CSRF.
+        foreach ($response->headers->getCookies() as $cookie) {
+            if ($cookie->getName() === 'XSRF-TOKEN' && ! $cookie->isHttpOnly()) {
+                $response->headers->setCookie($cookie->withHttpOnly(true));
+            }
+        }
 
         if ($request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -37,12 +52,17 @@ class SecurityHeaders
         return $response;
     }
 
-    private function contentSecurityPolicy(Request $request): string
+    private function contentSecurityPolicy(Request $request, string $nonce): string
     {
         $policy = [
             "default-src 'self'",
             "script-src 'self'",
-            "style-src 'self' 'unsafe-inline'",
+            // Inline <style> blocks (error pages, print/Word exports) carry a
+            // per-response nonce. Style *attributes* (Vue :style bindings and
+            // the print-export markup) are governed separately by CSP3's
+            // style-src-attr, which cannot be nonced.
+            "style-src 'self' 'nonce-".$nonce."'",
+            "style-src-attr 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "font-src 'self' data:",
             "object-src 'none'",
@@ -62,6 +82,9 @@ class SecurityHeaders
                 'ws://127.0.0.1:5173',
             ]);
 
+            // The Vite dev server injects <style> elements at runtime, which
+            // cannot carry the nonce; only relax the policy in local dev.
+            $policy[2] = "style-src 'self' 'unsafe-inline' 'nonce-".$nonce."'";
             $policy[1] = "script-src 'self' ".implode(' ', $devOrigins);
             $policy[] = "connect-src 'self' ".implode(' ', $devConnect);
         } else {

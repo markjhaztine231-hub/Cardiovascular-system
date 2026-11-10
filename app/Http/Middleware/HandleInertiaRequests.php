@@ -38,6 +38,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            // Exposed so the SPA can keep sending the CSRF header after the
+            // session token changes (login/logout) without reading the now
+            // HttpOnly XSRF-TOKEN cookie.
+            'csrf_token' => csrf_token(),
             'auth' => [
                 'user' => $request->user(),
             ],
