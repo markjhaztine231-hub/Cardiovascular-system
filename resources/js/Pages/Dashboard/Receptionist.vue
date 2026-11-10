@@ -3120,9 +3120,11 @@ function studyDraftKey(): string | null {
 }
 function saveStudyDraft(): void {
     const key = studyDraftKey();
+
     if (!key) {
         return;
     }
+
     try {
         localStorage.setItem(
             key,
@@ -3134,25 +3136,33 @@ function saveStudyDraft(): void {
 }
 function clearStudyDraft(): void {
     const key = studyDraftKey();
+
     if (key) {
         localStorage.removeItem(key);
     }
 }
 function loadStudyDraft(): void {
     const key = studyDraftKey();
+
     if (!key) {
         return;
     }
+
     try {
         const raw = localStorage.getItem(key);
+
         if (!raw) {
             return;
         }
+
         const draft = JSON.parse(raw);
+
         if (Date.now() - draft.savedAt > STUDY_DRAFT_TTL) {
             localStorage.removeItem(key);
+
             return;
         }
+
         Object.assign(studyForm, draft.payload ?? {});
     } catch {
         clearStudyDraft();
@@ -3165,9 +3175,11 @@ watch(
         if (!studyFormOpen.value) {
             return;
         }
+
         if (studyDraftTimer) {
             clearTimeout(studyDraftTimer);
         }
+
         studyDraftTimer = setTimeout(saveStudyDraft, 2000);
     },
     { deep: true },
@@ -3365,6 +3377,7 @@ function closeStudyForm(): void {
     if (!studySavedAt.value && studyAppt.value) {
         saveStudyDraft();
     }
+
     studyFormOpen.value = false;
     studyAppt.value = null;
     studyLocked.value = false;
