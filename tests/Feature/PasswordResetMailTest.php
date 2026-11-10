@@ -49,4 +49,29 @@ class PasswordResetMailTest extends TestCase
         $this->assertSame(587, $mailer['port']);
         $this->assertSame('api', $mailer['username']);
     }
+
+    public function test_send_mail_command_reports_an_empty_smtp_password(): void
+    {
+        config([
+            'mail.default' => 'mailtrap',
+            'mail.mailers.mailtrap.password' => null,
+        ]);
+
+        $this->artisan('send-mail', ['to' => 'someone@example.com'])
+            ->expectsOutputToContain('The SMTP password is empty.')
+            ->assertFailed();
+    }
+
+    public function test_send_mail_command_accepts_a_configured_password(): void
+    {
+        Mail::fake();
+
+        config([
+            'mail.default' => 'mailtrap',
+            'mail.mailers.mailtrap.password' => 'test-token',
+        ]);
+
+        $this->artisan('send-mail', ['to' => 'someone@example.com'])
+            ->assertSuccessful();
+    }
 }

@@ -30,6 +30,32 @@ class SendTestMail extends Command
             return self::FAILURE;
         }
 
+        $mailer = (string) config('mail.default');
+        /** @var array<string, mixed> $config */
+        $config = (array) config('mail.mailers.'.$mailer, []);
+        $password = $config['password'] ?? null;
+
+        $this->line(sprintf(
+            'Mailer: %s (%s:%s, user: %s, password: %s)',
+            $mailer,
+            $config['host'] ?? '-',
+            $config['port'] ?? '-',
+            $config['username'] ?? '-',
+            blank($password) ? 'EMPTY' : strlen((string) $password).' chars',
+        ));
+
+        // Mailtrap answers an empty SASL password with a misleading
+        // "501 5.5.4 Syntax: AUTH mechanism" (a wrong password gives 535
+        // instead), so surface the real cause before the SMTP exchange.
+        if (($config['transport'] ?? null) === 'smtp'
+            && filled($config['username'] ?? null)
+            && blank($password)) {
+            $this->error('The SMTP password is empty.');
+            $this->line('Set MAILTRAP_PASSWORD in .env, then run: php artisan config:clear');
+
+            return self::FAILURE;
+        }
+
         try {
             Mail::raw(
                 'This is a test email from '.config('app.name')
@@ -44,7 +70,7 @@ class SendTestMail extends Command
             return self::FAILURE;
         }
 
-        $this->info('Test email sent to '.$to.' via the "'.config('mail.default').'" mailer.');
+        $this->info('Test email sent to '.$to.' via the "'.$mailer.'" mailer.');
 
         return self::SUCCESS;
     }
