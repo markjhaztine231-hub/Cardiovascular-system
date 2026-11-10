@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\ConsultationCompleted;
 use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\Encounter;
@@ -10,6 +11,7 @@ use App\Models\Provider;
 use App\Models\SoapNote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -198,6 +200,8 @@ class ReadingDoctorWorkflowTest extends TestCase
             'reading_status' => 'pending',
         ]);
 
+        Event::fake([ConsultationCompleted::class]);
+
         $encounter = Encounter::create([
             'appointment_id' => $appointment->id,
             'patient_id' => $appointment->patient_id,
@@ -245,6 +249,10 @@ class ReadingDoctorWorkflowTest extends TestCase
                 ->exists(),
             'The reading-doctor save must leave an audit entry.'
         );
+
+        // The patient dashboard listens for this event to refresh the record
+        // with the completed reading.
+        Event::assertDispatched(ConsultationCompleted::class);
     }
 
     public function test_reading_doctor_cannot_reopen_a_completed_reading(): void

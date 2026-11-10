@@ -90,4 +90,38 @@ class DashboardTest extends TestCase
             ->where('history.0.ai_summary', 'Patient is stable and responding to therapy.')
         );
     }
+
+    public function test_patient_records_show_a_completed_visit_while_its_reading_is_pending()
+    {
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+        $readerProvider = Provider::factory()->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'reader_provider_id' => $readerProvider->id,
+            'scheduled_date' => Carbon::yesterday()->toDateString(),
+            'scheduled_time' => '09:00:00',
+            'status' => 'Completed',
+            'reading_status' => 'pending',
+        ]);
+
+        Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'status' => 'in_progress',
+            'started_at' => Carbon::now(),
+        ]);
+
+        $this->actingAs($patient->user)
+            ->get(route('patient.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/Patient')
+                ->has('history', 1)
+                ->where('history.0.id', $appointment->id)
+            );
+    }
 }

@@ -32,7 +32,18 @@ class PatientHistoryMapper
                 'stressEcho',
                 'abpm',
             ])
-            ->where('status', 'completed')
+            ->where(function ($query) {
+                // A finished visit belongs in the patient's records as soon as
+                // the appointment is complete, even while a reading doctor is
+                // still reviewing it. Encounters used to be hidden until their
+                // own status flipped to completed, which meant a receptionist
+                // draft (or a visit closed before the reading) disappeared
+                // from View History. The encounter is read live on every
+                // request, so the same record reflects the reading once the
+                // reader saves it.
+                $query->where('status', 'completed')
+                    ->orWhereHas('appointment', fn ($appointment) => $appointment->where('status', 'Completed'));
+            })
             ->orderByDesc('started_at')
             ->get()
             ->map(function ($encounter) use ($patientRecord) {

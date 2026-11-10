@@ -76,6 +76,78 @@ class DoctorPatientHistoryTest extends TestCase
         return [$patient, $appointment, $encounter];
     }
 
+    public function test_completed_visit_is_visible_with_a_pending_reading_then_reflects_the_reading(): void
+    {
+        $patient = Patient::factory()->create();
+        $provider = Provider::factory()->create();
+        $readerProvider = Provider::factory()->create();
+        $doctor = User::factory()->role('doctor')->create();
+
+        $appointment = Appointment::create([
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'scheduled_date' => Carbon::today()->toDateString(),
+            'scheduled_time' => '08:00:00',
+            'service_type' => 'Procedure',
+            'status' => 'Completed',
+        ]);
+
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => Carbon::today()->toDateString(),
+        ]);
+
+        // The receptionist's study data lives on a draft encounter while the
+        // reading doctor is still reviewing the visit.
+        $encounter = Encounter::create([
+            'appointment_id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'provider_id' => $provider->id,
+            'encounter_type' => 'echo',
+            'status' => 'in_progress',
+            'started_at' => Carbon::now(),
+        ]);
+
+        Echocardiogram::create([
+            'encounter_id' => $encounter->id,
+            'lvef_percent' => 40.0,
+            'valve_findings' => 'Provisional reading',
+        ]);
+
+        $this->actingAs($doctor)
+            ->get('/doctor/patients/'.$patient->user_id.'/history')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/PatientHistory')
+                ->has('history', 1)
+                ->where('history.0.appointment_id', $appointment->id)
+                ->where('history.0.echo_data.findings', 'Provisional reading')
+            );
+
+        // The reading doctor saves: the encounter is finalised and the same
+        // history entry must show the corrected impression.
+        $encounter->update(['status' => 'completed', 'ended_at' => Carbon::now()]);
+        $encounter->soapNote()->create([
+            'subjective' => 'Chest pain on exertion',
+            'assessment' => 'Reading impression confirmed',
+        ]);
+        $appointment->update([
+            'reading_status' => 'completed',
+            'reading_completed_at' => Carbon::now(),
+        ]);
+
+        $this->actingAs($doctor)
+            ->get('/doctor/patients/'.$patient->user_id.'/history')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/PatientHistory')
+                ->has('history', 1)
+                ->where('history.0.appointment_id', $appointment->id)
+                ->where('history.0.diagnosis', 'Reading impression confirmed')
+            );
+    }
+
     public function test_history_page_labels_types_and_maps_legacy_study_keys()
     {
         [$patient, $appointment] = $this->makeEncounter();

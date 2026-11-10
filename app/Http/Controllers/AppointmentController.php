@@ -1250,9 +1250,10 @@ class AppointmentController extends Controller
         $appointment->refresh();
         event(new AppointmentStatusChanged($appointment));
 
-        if (! $isReadingDoctor) {
-            event(new ConsultationCompleted($appointment));
-        }
+        // Broadcast for both the attending save and a reading-doctor save so an
+        // open patient dashboard refreshes when the reading lands — the visit
+        // was visible from the attending save and is updated in place here.
+        event(new ConsultationCompleted($appointment));
 
         return back()->with(
             'success',

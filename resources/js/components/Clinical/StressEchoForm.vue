@@ -482,10 +482,23 @@
                 ></textarea>
             </div>
             <div>
-                <label
-                    class="mb-1 block text-[10px] font-bold text-rose-700 uppercase"
-                    >Conclusion</label
+                <div
+                    class="mb-1 flex flex-wrap items-center justify-between gap-2"
                 >
+                    <label
+                        class="block text-[10px] font-bold text-rose-700 uppercase"
+                        >Conclusion</label
+                    >
+                    <button
+                        v-if="!restricted"
+                        type="button"
+                        @click.prevent="applyConclusionTemplate"
+                        class="rounded border border-rose-300 bg-rose-50 px-3 py-1 text-[10px] font-bold tracking-wide text-rose-800 uppercase transition-colors hover:bg-rose-100"
+                        title="Insert the standard stress echo conclusion. Every word stays editable."
+                    >
+                        Insert conclusion template
+                    </button>
+                </div>
                 <p
                     v-if="restricted"
                     class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
@@ -493,19 +506,37 @@
                     Doctor only — the physician completes this section.
                 </p>
                 <textarea
+                    ref="conclusionInput"
                     v-model="stressEchoData.conclusion"
                     :disabled="restricted"
                     placeholder="Optional conclusion / impression..."
-                    class="h-24 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+                    class="min-h-56 w-full resize-y rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
+                <p v-if="!restricted" class="mt-1 text-[10px] text-gray-500">
+                    Tip: use the template, then type over the `_` blanks. All
+                    text remains editable.
+                </p>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from 'vue';
 import type { StressEchoData, StressEchoStage } from '@/types/appointment';
 import { buildStressEchoDocument, exportAsDocx } from '@/utils/docExport';
+
+/**
+ * Standard stress echo conclusion offered as a starting point. The underscores
+ * are fill-in blanks (the first one is selected automatically after insertion)
+ * and the whole text stays editable.
+ */
+const STRESS_ECHO_CONCLUSION_TEMPLATE = `CONCLUSION:
+EXERCISE STRESS ECG: __ for exercise-induced ischemia at _ METS
+
+EXERCISE STRESS ECHO: __ exercise stress echocardiogram with no exercise-induced wall motion abnormality.
+Physiologic blood pressure and heart rate response to exercise
+__ exercise capacity for age.`;
 
 const stressEchoData = defineModel<StressEchoData>('stressEchoData', {
     required: true,
@@ -521,6 +552,50 @@ const props = defineProps({
         default: false,
     },
 });
+
+const conclusionInput = ref<HTMLTextAreaElement | null>(null);
+
+function applyConclusionTemplate(): void {
+    if (props.restricted) {
+        return;
+    }
+
+    const current = (stressEchoData.value.conclusion ?? '').trim();
+
+    if (
+        current !== '' &&
+        current !== STRESS_ECHO_CONCLUSION_TEMPLATE.trim() &&
+        !window.confirm('Replace the current conclusion with the template?')
+    ) {
+        return;
+    }
+
+    stressEchoData.value.conclusion = STRESS_ECHO_CONCLUSION_TEMPLATE;
+
+    nextTick(() => {
+        const textarea = conclusionInput.value;
+
+        if (!textarea) {
+            return;
+        }
+
+        textarea.focus();
+
+        const start = STRESS_ECHO_CONCLUSION_TEMPLATE.indexOf('_');
+
+        if (start === -1) {
+            return;
+        }
+
+        let end = start;
+
+        while (STRESS_ECHO_CONCLUSION_TEMPLATE[end] === '_') {
+            end += 1;
+        }
+
+        textarea.setSelectionRange(start, end);
+    });
+}
 
 function addStage(): void {
     stressEchoData.value.stages.push({
