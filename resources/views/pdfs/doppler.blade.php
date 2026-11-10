@@ -83,8 +83,8 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
     <td colspan="3"><strong>Mean pressure gradient</strong> {{ $data['mv_mean_pressure'] ?? '' }}</td>
     <td><strong>&lt;5 mmHg</strong></td>
     <td><strong>AR jet density</strong></td>
-    <td>@if(($data['av_ar_jet'] ?? '') === 'Faint') &#9746; @else &#9744; @endif Faint</td>
-    <td>@if(($data['av_ar_jet'] ?? '') === 'Dense') &#9746; @else &#9744; @endif Dense</td>
+    <td>Faint</td>
+    <td>Dense</td>
   </tr>
   <tr class="section-head"><td colspan="4">Tissue Doppler (cm/s)</td><td colspan="3">Pulmonic Valve</td></tr>
   <tr>
@@ -114,8 +114,8 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
     <td colspan="3"><strong>A wave velocity</strong> {{ $data['tv_a_wave'] ?? '' }}</td>
     <td><strong>cm/s 1.65</strong></td>
     <td><strong>PR jet density</strong></td>
-    <td>@if(($data['pv_pr_jet'] ?? '') === 'Faint') &#9746; @else &#9744; @endif Faint</td>
-    <td>@if(($data['pv_pr_jet'] ?? '') === 'Dense') &#9746; @else &#9744; @endif Dense</td>
+    <td>Faint</td>
+    <td>Dense</td>
   </tr>
   <tr>
     <td colspan="3"><strong>Regurgitant Fraction</strong> {{ $data['tv_regurg_frac'] ?? '' }}</td>

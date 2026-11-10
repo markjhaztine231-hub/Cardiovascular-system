@@ -81,7 +81,7 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 {{-- PAGE 2: Exercise Testing Report --}}
 <div class="page-break"></div>
 <div class="clinic-header">
-  @include('pdfs.partials.clinic-header', ['name' => '&#9825; CARDIOVASCULAR CARE CENTER'])
+  @include('pdfs.partials.clinic-header', ['name' => 'CARDIOVASCULAR CARE CENTER'])
   <h3 style="margin:5px 0 15px;">EXERCISE TESTING REPORT</h3>
 </div>
 <table class="no-border" style="line-height:1.8;">
