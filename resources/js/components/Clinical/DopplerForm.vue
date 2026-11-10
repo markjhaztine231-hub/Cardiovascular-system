@@ -381,10 +381,23 @@
 
                 <!-- Conclusion -->
                 <div class="mt-6">
-                    <label
-                        class="mb-2 block text-xs font-black tracking-widest text-indigo-700 uppercase"
-                        >Conclusion</label
+                    <div
+                        class="mb-2 flex flex-wrap items-center justify-between gap-2"
                     >
+                        <label
+                            class="block text-xs font-black tracking-widest text-indigo-700 uppercase"
+                            >Conclusion</label
+                        >
+                        <button
+                            v-if="!restricted"
+                            type="button"
+                            @click.prevent="applyConclusionTemplate"
+                            class="rounded border border-indigo-300 bg-indigo-50 px-3 py-1 text-[10px] font-bold tracking-wide text-indigo-700 uppercase transition-colors hover:bg-indigo-100"
+                            title="Insert the standard Doppler impression. Every word stays editable."
+                        >
+                            Insert Doppler template
+                        </button>
+                    </div>
                     <p
                         v-if="restricted"
                         class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
@@ -392,10 +405,18 @@
                         Doctor only — the physician completes this section.
                     </p>
                     <textarea
+                        ref="conclusionInput"
                         v-model="dopplerData.conclusion"
                         :disabled="restricted"
-                        class="h-16 w-full resize-none rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+                        class="min-h-48 w-full resize-y rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                     ></textarea>
+                    <p
+                        v-if="!restricted"
+                        class="mt-1 text-[10px] text-gray-500"
+                    >
+                        Tip: use the template, then type over the `_` blanks.
+                        All text remains editable.
+                    </p>
                 </div>
             </div>
         </div>
@@ -403,11 +424,29 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { DopplerData, EchoData } from '@/types/appointment';
 import { buildDocument, buildDopplerDocument } from '@/utils/docExport';
 
+/**
+ * Standard Doppler impression offered as a starting point. The underscores are
+ * fill-in blanks (the first one is selected automatically after insertion) and
+ * the whole text stays editable so the reader can rewrite any part of it.
+ */
+const DOPPLER_CONCLUSION_TEMPLATE = `The left ventricle _ with left ventricular mass index of _ m/m2 and relative wall thickness of __mm with adequate wall motion and contractility and overall ejection fraction of __% by Teichholz.
+The left atrium is normal in size with a left atrial volume index of __ ml/m2.
+The right atrium and right ventricle are normal in size.
+The anterior and posterior mitral valve leaflets appear thickened without restriction in opening and closing.
+The right coronary and noncoronary cusps of the aortic valve appear thickened without restriction in opening and closing.
+The aortic, mitral, tricuspid and pulmonic valves appear normal without restriction in opening and closing.
+The aortic root diameter is normal in size.
+The interatrial and interventricular septa are intact.
+No intracardiac thrombus
+No significant pericardial abnormalities`;
+
 const dopplerData = defineModel<DopplerData>('dopplerData', { required: true });
+
 const props = defineProps({
     echoData: {
         type: Object as PropType<EchoData>,
@@ -422,6 +461,50 @@ const props = defineProps({
         default: false,
     },
 });
+
+const conclusionInput = ref<HTMLTextAreaElement | null>(null);
+
+function applyConclusionTemplate(): void {
+    if (props.restricted) {
+        return;
+    }
+
+    const current = (dopplerData.value.conclusion ?? '').trim();
+
+    if (
+        current !== '' &&
+        current !== DOPPLER_CONCLUSION_TEMPLATE.trim() &&
+        !window.confirm('Replace the current conclusion with the template?')
+    ) {
+        return;
+    }
+
+    dopplerData.value.conclusion = DOPPLER_CONCLUSION_TEMPLATE;
+
+    nextTick(() => {
+        const textarea = conclusionInput.value;
+
+        if (!textarea) {
+            return;
+        }
+
+        textarea.focus();
+
+        const start = DOPPLER_CONCLUSION_TEMPLATE.indexOf('_');
+
+        if (start === -1) {
+            return;
+        }
+
+        let end = start;
+
+        while (DOPPLER_CONCLUSION_TEMPLATE[end] === '_') {
+            end += 1;
+        }
+
+        textarea.setSelectionRange(start, end);
+    });
+}
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();
