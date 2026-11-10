@@ -362,3 +362,154 @@ export function blankStudyForms(): {
         vitals_data: { ...DEFAULT_VITALS_DATA },
     };
 }
+
+/**
+ * Fields that are generated, injected or otherwise not typed by the user.
+ * Keep in sync with App\Support\ClinicalFormData.
+ */
+const CONTENT_IGNORED_KEYS = new Set([
+    'id',
+    'encounter_id',
+    'appointment_id',
+    'patient_id',
+    'provider_id',
+    'created_by',
+    'performed_at',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+    'file_no',
+    'age',
+    'sex',
+]);
+
+/** Form defaults that must not count as user input. */
+const CONTENT_DEFAULTS: Record<string, Record<string, string[]>> = {
+    echo: {
+        tricuspid_valve: ['normal', 'tricuspid valve: normal'],
+        wall_motion: ['tricuspid valve: normal'],
+        peri_ant: ['absent'],
+        peri_post: ['absent'],
+    },
+    tmt: {
+        procedure: ['treadmill exercise test'],
+        protocol: ['bruce, modified bruce, nih'],
+    },
+    doppler: {
+        av_ar_jet: ['faint'],
+        pv_pr_jet: ['faint'],
+    },
+};
+
+const MANUAL_DRAFT_TEXT_KEYS = [
+    'requesting_physician',
+    'title',
+    'draft',
+    'conclusion',
+];
+
+function textHasContent(value: unknown): boolean {
+    if (typeof value === 'string') {
+        return value.trim() !== '';
+    }
+
+    return value !== null && value !== undefined && value !== false;
+}
+
+function isDefaultFormValue(
+    type: string,
+    key: string,
+    value: unknown,
+): boolean {
+    // A negative effusion is stored as false/0 and is the default state.
+    if (type === 'echo' && key === 'pericardial_effusion') {
+        return !value;
+    }
+
+    if (typeof value !== 'string') {
+        return false;
+    }
+
+    const normalized = value.trim().toLowerCase();
+
+    return (CONTENT_DEFAULTS[type]?.[key] ?? []).includes(normalized);
+}
+
+function tmtStagesHaveContent(stages: unknown[]): boolean {
+    return stages.some((stage) => {
+        if (!stage || typeof stage !== 'object') {
+            return false;
+        }
+
+        const row = stage as Record<string, unknown>;
+
+        return ['bp', 'hr', 'remarks'].some((key) => textHasContent(row[key]));
+    });
+}
+
+function formValueHasContent(type: string, value: unknown): boolean {
+    if (Array.isArray(value)) {
+        return formArrayHasContent(type, value);
+    }
+
+    if (typeof value === 'boolean') {
+        return value;
+    }
+
+    return textHasContent(value);
+}
+
+function formArrayHasContent(
+    type: string,
+    data: Record<string, unknown> | unknown[],
+): boolean {
+    const entries: Array<[string, unknown]> = Array.isArray(data)
+        ? data.map((value, index) => [String(index), value])
+        : Object.entries(data);
+
+    for (const [key, value] of entries) {
+        if (!Array.isArray(data) && CONTENT_IGNORED_KEYS.has(key)) {
+            continue;
+        }
+
+        // TMT stage presets repeat on every row; only the measured columns
+        // (BP / HR / remarks) tell us the technician actually used a stage.
+        if (type === 'tmt' && key === 'stages' && Array.isArray(value)) {
+            if (tmtStagesHaveContent(value)) {
+                return true;
+            }
+
+            continue;
+        }
+
+        if (isDefaultFormValue(type, key, value)) {
+            continue;
+        }
+
+        if (formValueHasContent(type, value)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * True when a study form contains at least one field the user actually filled
+ * in. Mirrors App\Support\ClinicalFormData so the save dialog and the server
+ * agree on what "blank" means.
+ */
+export function hasClinicalFormContent(
+    type: string,
+    data: Record<string, unknown> | null | undefined,
+): boolean {
+    if (!data) {
+        return false;
+    }
+
+    if (type === 'manual_draft') {
+        return MANUAL_DRAFT_TEXT_KEYS.some((key) => textHasContent(data[key]));
+    }
+
+    return formArrayHasContent(type, data);
+}

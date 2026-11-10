@@ -60,7 +60,12 @@ class PatientHistoryMapper
                     : '';
 
                 $forms = [];
+                $studyContent = [];
 
+                // Default-only forms (an Echo carrying just "Tricuspid valve:
+                // normal", a blank TMT with its stage presets, ...) are not
+                // documents the user actually created. Only list and expose a
+                // study once at least one field has real input.
                 foreach ([
                     'echo' => [$encounter->echocardiogram, 'Echo'],
                     'tmt' => [$encounter->treadmillTest, 'TMT'],
@@ -69,7 +74,9 @@ class PatientHistoryMapper
                     'stress_echo' => [$encounter->stressEcho, 'Stress Echo'],
                     'abpm' => [$encounter->abpm, 'ABPM'],
                 ] as $type => [$study, $label]) {
-                    if ($study) {
+                    $studyContent[$type] = ClinicalFormData::modelHasContent($type, $study);
+
+                    if ($studyContent[$type]) {
                         $forms[] = [
                             'type' => $type,
                             'label' => $label,
@@ -81,7 +88,15 @@ class PatientHistoryMapper
                     }
                 }
 
-                if ($encounter->prescriptions->isNotEmpty()) {
+                $prescriptions = $encounter->prescriptions
+                    ->filter(fn ($rx) => ClinicalFormData::prescriptionHasContent($rx))
+                    ->values();
+
+                $clinicalRequests = $encounter->clinicalRequests
+                    ->filter(fn ($request) => ClinicalFormData::requestHasContent($request))
+                    ->values();
+
+                if ($prescriptions->isNotEmpty()) {
                     $forms[] = [
                         'type' => 'prescription',
                         'label' => 'Prescription',
@@ -92,7 +107,7 @@ class PatientHistoryMapper
                     ];
                 }
 
-                if ($encounter->clinicalRequests->isNotEmpty()) {
+                if ($clinicalRequests->isNotEmpty()) {
                     $forms[] = [
                         'type' => 'clinical_requests',
                         'label' => 'Clinical Requests',
@@ -117,7 +132,7 @@ class PatientHistoryMapper
                     'vitals' => $soap?->objective,
                     'diagnosis' => self::diagnosisText($encounter),
                     'plan' => $soap?->plan,
-                    'prescriptions' => $encounter->prescriptions->map(fn ($rx) => [
+                    'prescriptions' => $prescriptions->map(fn ($rx) => [
                         'medicine' => $rx->medication_name,
                         'dosage' => $rx->dosage,
                         'frequency' => $rx->frequency,
@@ -126,7 +141,7 @@ class PatientHistoryMapper
                         'is_freeform' => (bool) $rx->is_freeform,
                         'free_text' => $rx->free_text,
                     ])->values(),
-                    'requests' => $encounter->clinicalRequests
+                    'requests' => $clinicalRequests
                         ->map(fn ($request) => [
                             'id' => $request->id,
                             'type' => $request->type,
@@ -149,27 +164,37 @@ class PatientHistoryMapper
                         'abpm' => 'Type 6 - Ambulatory BP Monitoring',
                         default => 'Consultation',
                     },
-                    // Study panels are gated on the relation existing rather
-                    // than on encounter_type, because a Doppler encounter also
-                    // carries the echo fields.
-                    'echo_data' => ClinicalRecordMapper::forPayload(
-                        $encounter->echocardiogram, null, null, $patientRecord
-                    ),
-                    'tmt_data' => ClinicalRecordMapper::forPayload(
-                        null, $encounter->treadmillTest, null, $patientRecord
-                    ),
-                    'doppler_data' => ClinicalRecordMapper::forPayload(
-                        null, null, $encounter->dopplerStudy, $patientRecord
-                    ),
-                    'manual_draft_data' => $encounter->manualDraft ? [
+                    // Study panels are gated on real user-entered content, not
+                    // merely on the relation existing. A study saved by an
+                    // older buggy path with only defaults stays hidden.
+                    'echo_data' => $studyContent['echo']
+                        ? ClinicalRecordMapper::forPayload(
+                            $encounter->echocardiogram, null, null, $patientRecord
+                        )
+                        : null,
+                    'tmt_data' => $studyContent['tmt']
+                        ? ClinicalRecordMapper::forPayload(
+                            null, $encounter->treadmillTest, null, $patientRecord
+                        )
+                        : null,
+                    'doppler_data' => $studyContent['doppler']
+                        ? ClinicalRecordMapper::forPayload(
+                            null, null, $encounter->dopplerStudy, $patientRecord
+                        )
+                        : null,
+                    'manual_draft_data' => $studyContent['manual_draft'] ? [
                         'requesting_physician' => $encounter->manualDraft->requesting_physician,
                         'title' => $encounter->manualDraft->title,
                         'draft' => $encounter->manualDraft->draft,
                         'conclusion' => $encounter->manualDraft->conclusion,
                         'images' => $encounter->manualDraft->attachments ?? [],
                     ] : null,
-                    'stress_echo_data' => $encounter->stressEcho?->payload,
-                    'abpm_data' => $encounter->abpm?->payload,
+                    'stress_echo_data' => $studyContent['stress_echo']
+                        ? $encounter->stressEcho->payload
+                        : null,
+                    'abpm_data' => $studyContent['abpm']
+                        ? $encounter->abpm->payload
+                        : null,
                     'vital_sign' => [
                         'bp' => $vs ? $vs->blood_pressure_systolic.'/'.$vs->blood_pressure_diastolic : null,
                         'hr' => $vs?->heart_rate_bpm,

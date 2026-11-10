@@ -133,6 +133,40 @@ class StudyDataReceptionTest extends TestCase
         $this->assertDatabaseCount('doppler_studies', 0);
     }
 
+    public function test_default_only_study_forms_do_not_create_records(): void
+    {
+        $response = $this->actingAs($this->receptionist)
+            ->putJson("/appointments/{$this->appointment->id}/study-data", [
+                'echo_data' => [
+                    'file_no' => '2026-0001',
+                    'age' => '54',
+                    'sex' => 'M',
+                    'tricuspid_valve' => 'normal',
+                    'peri_ant' => 'Absent',
+                    'peri_post' => 'Absent',
+                ],
+                'tmt_data' => [
+                    'procedure' => 'Treadmill Exercise Test',
+                    'protocol' => 'BRUCE, MODIFIED BRUCE, NIH',
+                    'stages' => [
+                        ['name' => 'STAGE 1', 'speed' => '1.7', 'grade' => '10', 'mets' => '4.6', 'bp' => '', 'hr' => '', 'remarks' => ''],
+                    ],
+                ],
+                'doppler_data' => [
+                    'av_ar_jet' => 'Faint',
+                    'pv_pr_jet' => 'Faint',
+                ],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('echo_data');
+
+        $this->assertDatabaseCount('encounters', 0);
+        $this->assertDatabaseCount('echocardiograms', 0);
+        $this->assertDatabaseCount('treadmill_tests', 0);
+        $this->assertDatabaseCount('doppler_studies', 0);
+    }
+
     public function test_receptionist_cannot_edit_a_closed_appointment(): void
     {
         $this->appointment->update(['status' => 'Completed']);

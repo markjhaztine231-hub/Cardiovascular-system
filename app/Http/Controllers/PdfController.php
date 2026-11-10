@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\Encounter;
 use App\Models\MonthlyReport;
 use App\Models\Patient;
+use App\Support\ClinicalFormData;
 use App\Support\ClinicalRecordMapper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -64,17 +65,30 @@ class PdfController extends Controller
         }
 
         // Guard each document type against a consultation that never had that
-        // study recorded, rather than printing an empty form.
-        if (! in_array($type, ['prescription', 'clinical_requests'], true) && match ($type) {
-            'echo' => ! $encounter->echocardiogram,
-            'tmt' => ! $encounter->treadmillTest,
-            'doppler' => ! $encounter->dopplerStudy,
-            'manual_draft' => ! $encounter->manualDraft,
-            'stress_echo' => ! $encounter->stressEcho,
-            'abpm' => ! $encounter->abpm,
-            default => true,
-        }) {
-            abort(404, "This consultation has no {$type} record to export.");
+        // study recorded, and against a form that only holds its default
+        // values. Printing an untouched Echo/TMT/Doppler form is never useful.
+        $prescriptions = $encounter->prescriptions
+            ->filter(fn ($rx) => ClinicalFormData::prescriptionHasContent($rx))
+            ->values();
+
+        $requests = $encounter->clinicalRequests
+            ->filter(fn ($request) => ClinicalFormData::requestHasContent($request))
+            ->values();
+
+        $hasContent = match ($type) {
+            'echo' => ClinicalFormData::modelHasContent('echo', $encounter->echocardiogram),
+            'tmt' => ClinicalFormData::modelHasContent('tmt', $encounter->treadmillTest),
+            'doppler' => ClinicalFormData::modelHasContent('doppler', $encounter->dopplerStudy),
+            'manual_draft' => ClinicalFormData::modelHasContent('manual_draft', $encounter->manualDraft),
+            'stress_echo' => ClinicalFormData::modelHasContent('stress_echo', $encounter->stressEcho),
+            'abpm' => ClinicalFormData::modelHasContent('abpm', $encounter->abpm),
+            'prescription' => $prescriptions->isNotEmpty(),
+            'clinical_requests' => $requests->isNotEmpty(),
+            default => false,
+        };
+
+        if (! $hasContent) {
+            abort(404, "This consultation has no {$type} content to export.");
         }
 
         return match ($type) {
@@ -113,7 +127,7 @@ class PdfController extends Controller
                 ->download("Doppler_{$slug}_{$date}.pdf"),
 
             'prescription' => Pdf::loadView('pdfs.prescription', [
-                'prescriptions' => ClinicalRecordMapper::prescriptions($encounter->prescriptions),
+                'prescriptions' => ClinicalRecordMapper::prescriptions($prescriptions),
                 'patient' => $patientName,
                 'date' => $date,
                 'doctor' => $doctorName,
@@ -122,7 +136,7 @@ class PdfController extends Controller
                 ->download("Prescription_{$slug}_{$date}.pdf"),
 
             'clinical_requests' => Pdf::loadView('pdfs.clinical-requests', [
-                'requests' => $encounter->clinicalRequests
+                'requests' => $requests
                     ->map(fn ($request) => [
                         'type' => $request->type,
                         'type_label' => $request->type_label,

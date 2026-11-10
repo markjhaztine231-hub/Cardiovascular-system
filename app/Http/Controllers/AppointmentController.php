@@ -28,6 +28,7 @@ use App\Models\User;
 use App\Models\VitalSign;
 use App\Services\GoogleCalendarService;
 use App\Support\AppointmentSlot;
+use App\Support\ClinicalFormData;
 use App\Support\ClinicalRecordMapper;
 use App\Support\DiagnosisText;
 use Carbon\Carbon;
@@ -991,6 +992,22 @@ class AppointmentController extends Controller
             $validated['abpm_data'] = null;
         }
 
+        // A selected type whose form still only holds its defaults counts as
+        // "not filled in": it must not create a study row, and a reading doctor
+        // must not overwrite the attending doctor's measurements with it.
+        foreach ([
+            'echo' => 'echo_data',
+            'tmt' => 'tmt_data',
+            'doppler' => 'doppler_data',
+            'manual_draft' => 'manual_draft_data',
+            'stress_echo' => 'stress_echo_data',
+            'abpm' => 'abpm_data',
+        ] as $type => $field) {
+            if (! ClinicalFormData::hasContent($type, $validated[$field] ?? null)) {
+                $validated[$field] = null;
+            }
+        }
+
         $encounter = Encounter::updateOrCreate(
             ['appointment_id' => $appointment->id],
             [
@@ -1161,9 +1178,11 @@ class AppointmentController extends Controller
             }
         }
 
-        // Structured cardiac studies (1:1 with the encounter)
+        // Structured cardiac studies (1:1 with the encounter). The content
+        // check also covers payloads copied back from an existing study, so a
+        // default-only row is never recreated.
         $encounter->echocardiogram()?->delete();
-        if (! empty($validated['echo_data'])) {
+        if (ClinicalFormData::hasContent('echo', $validated['echo_data'] ?? null)) {
             Echocardiogram::create(array_merge(
                 $this->mapEchoData($validated['echo_data']),
                 ['encounter_id' => $encounter->id, 'performed_at' => now()]
@@ -1171,7 +1190,7 @@ class AppointmentController extends Controller
         }
 
         $encounter->treadmillTest()?->delete();
-        if (! empty($validated['tmt_data'])) {
+        if (ClinicalFormData::hasContent('tmt', $validated['tmt_data'] ?? null)) {
             TreadmillTest::create(array_merge(
                 $this->mapTmtData($validated['tmt_data']),
                 ['encounter_id' => $encounter->id, 'performed_at' => now()]
@@ -1179,7 +1198,7 @@ class AppointmentController extends Controller
         }
 
         $encounter->dopplerStudy()?->delete();
-        if (! empty($validated['doppler_data'])) {
+        if (ClinicalFormData::hasContent('doppler', $validated['doppler_data'] ?? null)) {
             DopplerStudy::create(array_merge(
                 $this->mapDopplerData($validated['doppler_data']),
                 ['encounter_id' => $encounter->id, 'performed_at' => now()]
@@ -1187,7 +1206,7 @@ class AppointmentController extends Controller
         }
 
         $encounter->manualDraft()?->delete();
-        if (! empty($validated['manual_draft_data'])) {
+        if (ClinicalFormData::hasContent('manual_draft', $validated['manual_draft_data'] ?? null)) {
             ManualDraft::create(array_merge(
                 $this->mapManualDraftData($validated['manual_draft_data']),
                 ['encounter_id' => $encounter->id, 'performed_at' => now()]
@@ -1195,7 +1214,7 @@ class AppointmentController extends Controller
         }
 
         $encounter->stressEcho()?->delete();
-        if (! empty($validated['stress_echo_data'])) {
+        if (ClinicalFormData::hasContent('stress_echo', $validated['stress_echo_data'] ?? null)) {
             StressEchocardiogram::create([
                 'encounter_id' => $encounter->id,
                 'payload' => $validated['stress_echo_data'],
@@ -1204,7 +1223,7 @@ class AppointmentController extends Controller
         }
 
         $encounter->abpm()?->delete();
-        if (! empty($validated['abpm_data'])) {
+        if (ClinicalFormData::hasContent('abpm', $validated['abpm_data'] ?? null)) {
             AmbulatoryBloodPressureMonitoring::create([
                 'encounter_id' => $encounter->id,
                 'payload' => $validated['abpm_data'],
@@ -1304,14 +1323,35 @@ class AppointmentController extends Controller
             }
         }
 
-        foreach ([
-            'prescriptions', 'requests', 'consultation_type',
-            'echo_data', 'tmt_data', 'doppler_data', 'manual_draft_data',
-            'stress_echo_data', 'abpm_data',
-        ] as $field) {
-            $value = $request->input($field);
+        $prescriptions = $request->input('prescriptions');
 
-            if (is_array($value) && $this->hasClinicalData($value)) {
+        if (is_array($prescriptions) && collect($prescriptions)
+            ->contains(fn ($rx) => ClinicalFormData::prescriptionHasContent($rx))) {
+            return true;
+        }
+
+        $requests = $request->input('requests');
+
+        if (is_array($requests) && collect($requests)
+            ->contains(fn ($requestRow) => ClinicalFormData::requestHasContent($requestRow))) {
+            return true;
+        }
+
+        $selectedTypes = $request->input('consultation_type');
+
+        if (is_array($selectedTypes) && $selectedTypes !== []) {
+            return true;
+        }
+
+        foreach ([
+            'echo' => 'echo_data',
+            'tmt' => 'tmt_data',
+            'doppler' => 'doppler_data',
+            'manual_draft' => 'manual_draft_data',
+            'stress_echo' => 'stress_echo_data',
+            'abpm' => 'abpm_data',
+        ] as $type => $field) {
+            if (ClinicalFormData::hasContent($type, $request->input($field))) {
                 return true;
             }
         }
@@ -1434,26 +1474,17 @@ class AppointmentController extends Controller
             'vitals_data.spo2' => 'nullable|numeric|min:40|max:100',
         ]);
 
-        // A study form that was left entirely blank is treated as "not part of
-        // this visit" — same rule the doctor's save dialog uses.
+        // A study form that was left entirely blank (or only holds its default
+        // values) is treated as "not part of this visit" — the same rule the
+        // history listing and PDF export use.
         $types = [];
-        if ($this->hasClinicalData($validated['echo_data'] ?? [])) {
-            $types[] = 'echo';
-        }
-        if ($this->hasClinicalData($validated['tmt_data'] ?? [])) {
-            $types[] = 'tmt';
-        }
-        if ($this->hasClinicalData($validated['doppler_data'] ?? [])) {
-            $types[] = 'doppler';
-        }
-        if ($this->hasClinicalData($validated['stress_echo_data'] ?? [])) {
-            $types[] = 'stress_echo';
-        }
-        if ($this->hasClinicalData($validated['abpm_data'] ?? [])) {
-            $types[] = 'abpm';
+        foreach (['echo', 'tmt', 'doppler', 'stress_echo', 'abpm'] as $type) {
+            if (ClinicalFormData::hasContent($type, $validated[$type.'_data'] ?? null)) {
+                $types[] = $type;
+            }
         }
 
-        $hasVitals = $this->hasClinicalData($validated['vitals_data'] ?? []);
+        $hasVitals = $this->hasVitalData($validated['vitals_data'] ?? []);
 
         if (empty($types) && ! $hasVitals) {
             throw ValidationException::withMessages([
@@ -1587,10 +1618,9 @@ class AppointmentController extends Controller
     }
 
     /**
-     * True when the posted study array holds at least one meaningful value, so
-     * a blank form does not create empty study rows.
+     * True when the posted vitals array holds at least one measurement.
      */
-    private function hasClinicalData(array $data): bool
+    private function hasVitalData(array $data): bool
     {
         foreach ($data as $value) {
             if (is_array($value)) {

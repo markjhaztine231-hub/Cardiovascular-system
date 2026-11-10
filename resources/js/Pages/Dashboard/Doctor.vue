@@ -2583,6 +2583,7 @@ const {
 } = useSidebar('doctor');
 
 import { savePendingConsultation, isOnline } from '@/utils/offlineSync';
+import { hasClinicalFormContent } from '@/utils/studyForms';
 import {
     validateConsultation,
     sanitizeText,
@@ -3982,29 +3983,9 @@ const removeRequest = (index: number) => {
     consultForm.requests.splice(index, 1);
 };
 
-/** Returns true if any meaningful (non-empty) value exists in a clinical data object. */
-const hasClinicalData = (data: Record<string, unknown>): boolean => {
-    return Object.entries(data).some(([key, v]) => {
-        if (key === 'file_no') {
-            return false; // auto-generated field, ignore
-        }
-
-        if (Array.isArray(v)) {
-            return (
-                v.length > 0 &&
-                v.some((item) =>
-                    typeof item === 'object' && item !== null
-                        ? Object.values(item as Record<string, unknown>).some(
-                              (x) => x !== '' && x !== null && x !== undefined,
-                          )
-                        : Boolean(item),
-                )
-            );
-        }
-
-        return v !== null && v !== undefined && v !== '';
-    });
-};
+/** Returns true when a study form contains user-entered content. */
+const hasClinicalData = (type: string, data: object): boolean =>
+    hasClinicalFormContent(type, data as unknown as Record<string, unknown>);
 
 /**
  * Single source of truth for the payload sent to /complete, shared by the
@@ -4150,54 +4131,42 @@ const saveConsultation = async () => {
 
     if (
         selectedTypes.includes('Type 1') &&
-        !hasClinicalData(
-            consultForm.echo_data as unknown as Record<string, unknown>,
-        )
+        !hasClinicalData('echo', consultForm.echo_data)
     ) {
         emptyTypes.push('Echo (Type 1)');
     }
 
     if (
         selectedTypes.includes('Type 2') &&
-        !hasClinicalData(
-            consultForm.tmt_data as unknown as Record<string, unknown>,
-        )
+        !hasClinicalData('tmt', consultForm.tmt_data)
     ) {
         emptyTypes.push('TMT (Type 2)');
     }
 
     if (
         selectedTypes.includes('Type 3') &&
-        !hasClinicalData(
-            consultForm.doppler_data as unknown as Record<string, unknown>,
-        )
+        !hasClinicalData('doppler', consultForm.doppler_data)
     ) {
         emptyTypes.push('Doppler (Type 3)');
     }
 
     if (
         selectedTypes.includes('Type 4') &&
-        !hasClinicalData(
-            consultForm.manual_draft_data as unknown as Record<string, unknown>,
-        )
+        !hasClinicalData('manual_draft', consultForm.manual_draft_data)
     ) {
         emptyTypes.push('Manual Draft (Type 4)');
     }
 
     if (
         selectedTypes.includes('Type 5') &&
-        !hasClinicalData(
-            consultForm.stress_echo_data as unknown as Record<string, unknown>,
-        )
+        !hasClinicalData('stress_echo', consultForm.stress_echo_data)
     ) {
         emptyTypes.push('Stress Echo (Type 5)');
     }
 
     if (
         selectedTypes.includes('Type 6') &&
-        !hasClinicalData(
-            consultForm.abpm_data as unknown as Record<string, unknown>,
-        )
+        !hasClinicalData('abpm', consultForm.abpm_data)
     ) {
         emptyTypes.push('Ambulatory BP (Type 6)');
     }
@@ -4271,51 +4240,42 @@ const saveConsultation = async () => {
                             'Type 6': 'Ambulatory BP',
                         };
                         const savedLabels = selectedTypes
-                            .filter(
-                                (t) =>
-                                    (t === 'Type 1' &&
-                                        hasClinicalData(
-                                            consultForm.echo_data as unknown as Record<
-                                                string,
-                                                unknown
-                                            >,
-                                        )) ||
-                                    (t === 'Type 2' &&
-                                        hasClinicalData(
-                                            consultForm.tmt_data as unknown as Record<
-                                                string,
-                                                unknown
-                                            >,
-                                        )) ||
-                                    (t === 'Type 3' &&
-                                        hasClinicalData(
-                                            consultForm.doppler_data as unknown as Record<
-                                                string,
-                                                unknown
-                                            >,
-                                        )) ||
-                                    (t === 'Type 4' &&
-                                        hasClinicalData(
-                                            consultForm.manual_draft_data as unknown as Record<
-                                                string,
-                                                unknown
-                                            >,
-                                        )) ||
-                                    (t === 'Type 5' &&
-                                        hasClinicalData(
-                                            consultForm.stress_echo_data as unknown as Record<
-                                                string,
-                                                unknown
-                                            >,
-                                        )) ||
-                                    (t === 'Type 6' &&
-                                        hasClinicalData(
-                                            consultForm.abpm_data as unknown as Record<
-                                                string,
-                                                unknown
-                                            >,
-                                        )),
-                            )
+                            .filter((t) => {
+                                switch (t) {
+                                    case 'Type 1':
+                                        return hasClinicalData(
+                                            'echo',
+                                            consultForm.echo_data,
+                                        );
+                                    case 'Type 2':
+                                        return hasClinicalData(
+                                            'tmt',
+                                            consultForm.tmt_data,
+                                        );
+                                    case 'Type 3':
+                                        return hasClinicalData(
+                                            'doppler',
+                                            consultForm.doppler_data,
+                                        );
+                                    case 'Type 4':
+                                        return hasClinicalData(
+                                            'manual_draft',
+                                            consultForm.manual_draft_data,
+                                        );
+                                    case 'Type 5':
+                                        return hasClinicalData(
+                                            'stress_echo',
+                                            consultForm.stress_echo_data,
+                                        );
+                                    case 'Type 6':
+                                        return hasClinicalData(
+                                            'abpm',
+                                            consultForm.abpm_data,
+                                        );
+                                    default:
+                                        return false;
+                                }
+                            })
                             .map((t) => typeLabels[t]);
 
                         const clinicalNote =
