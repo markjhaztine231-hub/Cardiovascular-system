@@ -61,7 +61,11 @@ class ClinicalRecordMapper
         // beneath the normalized column values so the detail table is full.
         $form = self::embeddedForm($echo->notes, $echo->valve_findings);
 
-        return array_merge($form, $legacy, self::patientContext($patient));
+        $result = array_merge($form, $legacy, self::patientContext($patient));
+        $result['findings'] = $echo->valve_findings;
+        $result['notes'] = self::humanNotes($echo->notes);
+
+        return $result;
     }
 
     /**
@@ -103,7 +107,12 @@ class ClinicalRecordMapper
         // resting_ecg, exercise_capacity, probability_cad, ...).
         $form = self::embeddedForm($tmt->notes);
 
-        return array_merge($form, $legacy, self::patientContext($patient));
+        $result = array_merge($form, $legacy, self::patientContext($patient));
+        // The recovered form JSON may carry a stale `conclusion` (e.g. an
+        // earlier notes blob). The curated column value must win.
+        $result['conclusion'] = self::humanNotes($tmt->notes);
+
+        return $result;
     }
 
     /**
@@ -128,7 +137,11 @@ class ClinicalRecordMapper
         // Recover the raw Doppler form JSON dumped into `notes`.
         $form = self::embeddedForm($doppler->notes, $doppler->valve_findings);
 
-        return array_merge($form, $legacy, self::patientContext($patient));
+        $result = array_merge($form, $legacy, self::patientContext($patient));
+        $result['conclusion'] = self::humanNotes($doppler->notes);
+        $result['findings'] = $doppler->valve_findings;
+
+        return $result;
     }
 
     /**
