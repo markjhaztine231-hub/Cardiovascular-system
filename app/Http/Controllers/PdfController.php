@@ -47,10 +47,11 @@ class PdfController extends Controller
         ]);
         $patient = $appointment->patient;
         $patientName = $patient?->user?->name ?? 'Patient';
-        $doctorName = $appointment->provider?->user?->name ?? 'Cardiologist';
-        // The reading cardiologist assigned to this visit, if any. Printed as
-        // "Read by" above the signature so the exported form shows who read it.
+        $attendingName = $appointment->provider?->user?->name ?? 'Cardiologist';
+        // Study reports are signed by the cardiologist who read the study. When
+        // no reader is assigned, the attending doctor signs instead.
         $readerName = $appointment->readerProvider?->user?->name;
+        $signingDoctorName = $readerName ?: $attendingName;
         $date = Carbon::parse($appointment->scheduled_date)->format('M d, Y');
         $slug = str_replace(' ', '_', $patientName);
 
@@ -96,8 +97,7 @@ class PdfController extends Controller
                 'data' => ClinicalRecordMapper::echo($encounter->echocardiogram, $patient),
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
-                'reader' => $readerName,
+                'doctor' => $signingDoctorName,
             ])
                 ->setPaper('letter')
                 ->download("Echo_{$slug}_{$date}.pdf"),
@@ -107,8 +107,7 @@ class PdfController extends Controller
                 'patient' => $patientName,
                 'date' => $date,
                 'sex' => $patient?->sex ?? '',
-                'doctor' => $doctorName,
-                'reader' => $readerName,
+                'doctor' => $signingDoctorName,
             ])
                 ->setPaper('letter')
                 ->download("TMT_{$slug}_{$date}.pdf"),
@@ -120,8 +119,7 @@ class PdfController extends Controller
                     : [],
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
-                'reader' => $readerName,
+                'doctor' => $signingDoctorName,
             ])
                 ->setPaper('letter')
                 ->download("Doppler_{$slug}_{$date}.pdf"),
@@ -130,7 +128,7 @@ class PdfController extends Controller
                 'prescriptions' => ClinicalRecordMapper::prescriptions($prescriptions),
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
+                'doctor' => $attendingName,
             ])
                 ->setPaper('a5')
                 ->download("Prescription_{$slug}_{$date}.pdf"),
@@ -147,7 +145,7 @@ class PdfController extends Controller
                     ->all(),
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
+                'doctor' => $attendingName,
             ])
                 ->setPaper('a5')
                 ->download("Clinical_Requests_{$slug}_{$date}.pdf"),
@@ -157,8 +155,7 @@ class PdfController extends Controller
                 'attachments' => $this->resolveDraftAttachments($encounter->manualDraft->attachments),
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
-                'reader' => $readerName,
+                'doctor' => $signingDoctorName,
             ])
                 ->setPaper('letter')
                 ->download("Manual_Draft_{$slug}_{$date}.pdf"),
@@ -167,8 +164,7 @@ class PdfController extends Controller
                 'data' => $encounter->stressEcho->payload ?? [],
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
-                'reader' => $readerName,
+                'doctor' => $signingDoctorName,
             ])
                 ->setPaper('letter')
                 ->download("Stress_Echo_{$slug}_{$date}.pdf"),
@@ -177,8 +173,7 @@ class PdfController extends Controller
                 'data' => $encounter->abpm->payload ?? [],
                 'patient' => $patientName,
                 'date' => $date,
-                'doctor' => $doctorName,
-                'reader' => $readerName,
+                'doctor' => $signingDoctorName,
             ])
                 ->setPaper('letter')
                 ->download("ABPM_{$slug}_{$date}.pdf"),

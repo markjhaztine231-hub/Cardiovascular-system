@@ -6,11 +6,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The procedure/imaging exports print the assigned reading cardiologist above
- * the signature as "Read by: <name>". The name is passed to the blade views by
- * PdfController, so render each view directly with a representative payload.
- * Prescription and Clinical Requests deliberately omit the line because they
- * are signed by the attending physician only.
+ * Study exports are signed by the cardiologist who read the study (the
+ * attending physician when no reader is assigned). The old "Read by" label is
+ * gone; the reader's name is now the signature line itself, followed by the
+ * doctor's credentials. Prescription and Clinical Requests stay attending-only
+ * documents. The views receive the chosen signer as $doctor from PdfController,
+ * so each view is rendered directly with a representative payload.
  */
 class PdfReadBySignatureTest extends TestCase
 {
@@ -18,16 +19,19 @@ class PdfReadBySignatureTest extends TestCase
 
     private const DOCTOR = 'Dr. Attending Cardiologist';
 
+    private const CREDENTIALS = 'MD, FPCP, FPCC';
+
     /**
      * @return array<string, array{0: string, 1: array<string, mixed>}>
      */
-    public static function readByFormProvider(): array
+    public static function studyFormProvider(): array
     {
         $base = [
             'patient' => 'Test Patient',
             'date' => 'Jan 01, 2026',
-            'doctor' => self::DOCTOR,
-            'reader' => self::READER,
+            'doctor' => self::READER,
+            // Kept in the payload to prove the views no longer print it.
+            'reader' => 'Stale Reader Value',
         ];
 
         return [
@@ -49,7 +53,7 @@ class PdfReadBySignatureTest extends TestCase
             'patient' => 'Test Patient',
             'date' => 'Jan 01, 2026',
             'doctor' => self::DOCTOR,
-            'reader' => self::READER,
+            'reader' => 'Stale Reader Value',
         ];
 
         return [
@@ -58,26 +62,26 @@ class PdfReadBySignatureTest extends TestCase
         ];
     }
 
-    #[DataProvider('readByFormProvider')]
-    public function test_form_prints_read_by_above_the_signature(string $view, array $data): void
+    #[DataProvider('studyFormProvider')]
+    public function test_study_form_is_signed_by_the_reading_doctor(string $view, array $data): void
     {
         $html = view($view, $data)->render();
 
-        $this->assertStringContainsString('Read by: '.self::READER, $html);
-        $this->assertStringContainsString(self::DOCTOR, $html);
+        $this->assertStringNotContainsString('Read by', $html);
+        $this->assertStringNotContainsString('Stale Reader Value', $html);
+        $this->assertStringContainsString(self::READER.', '.self::CREDENTIALS, $html);
         $this->assertStringContainsString('Cardiologist', $html);
     }
 
-    #[DataProvider('readByFormProvider')]
-    public function test_form_still_renders_when_no_reader_is_assigned(string $view, array $data): void
+    #[DataProvider('studyFormProvider')]
+    public function test_study_form_falls_back_to_the_attending_doctor_when_no_reader_is_assigned(string $view, array $data): void
     {
-        $data['reader'] = null;
+        $data['doctor'] = self::DOCTOR;
 
         $html = view($view, $data)->render();
 
-        // The label is always present; only the name is left blank.
-        $this->assertStringContainsString('Read by:', $html);
-        $this->assertStringNotContainsString(self::READER, $html);
+        $this->assertStringNotContainsString('Read by', $html);
+        $this->assertStringContainsString(self::DOCTOR.', '.self::CREDENTIALS, $html);
     }
 
     #[DataProvider('attendingOnlyFormProvider')]
@@ -85,8 +89,9 @@ class PdfReadBySignatureTest extends TestCase
     {
         $html = view($view, $data)->render();
 
-        $this->assertStringNotContainsString('Read by:', $html);
-        $this->assertStringContainsString(self::DOCTOR, $html);
+        $this->assertStringNotContainsString('Read by', $html);
+        $this->assertStringNotContainsString('Stale Reader Value', $html);
+        $this->assertStringContainsString(self::DOCTOR.', '.self::CREDENTIALS, $html);
         $this->assertStringContainsString('Cardiologist', $html);
     }
 }

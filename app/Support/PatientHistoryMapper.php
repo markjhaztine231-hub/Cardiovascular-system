@@ -17,8 +17,9 @@ class PatientHistoryMapper
     {
         return $patientRecord->encounters()
             ->with([
-                'appointment:id,patient_id,provider_id,scheduled_date,scheduled_time,service_type',
+                'appointment:id,patient_id,provider_id,reader_provider_id,scheduled_date,scheduled_time,service_type',
                 'appointment.provider.user:id,name',
+                'appointment.readerProvider.user:id,name',
                 'provider.user:id,name',
                 'soapNote',
                 'diagnoses',
@@ -126,6 +127,11 @@ class PatientHistoryMapper
                     'date' => $date,
                     'time' => $time,
                     'doctor' => $provider?->user?->name ?? 'Unknown',
+                    // Study reports are signed by the cardiologist assigned to
+                    // read them, falling back to the attending physician.
+                    'reading_doctor' => $appt?->readerProvider?->user?->name
+                        ?? $provider?->user?->name
+                        ?? 'Unknown',
                     'specialty' => $provider?->specialty,
                     'service' => $appt?->service_type ?? 'Consultation',
                     'symptoms' => $soap?->subjective,

@@ -490,7 +490,7 @@
                                         >
                                             <template v-if="med.is_freeform">
                                                 <p
-                                                    class="whitespace-pre-line text-sm font-bold text-[#146b8a]"
+                                                    class="text-sm font-bold whitespace-pre-line text-[#146b8a]"
                                                 >
                                                     {{
                                                         med.free_text ||
@@ -510,7 +510,9 @@
                                                     {{ med.medicine }}
                                                     <span
                                                         class="text-xs font-normal text-gray-500"
-                                                        >({{ med.dosage }})</span
+                                                        >({{
+                                                            med.dosage
+                                                        }})</span
                                                     >
                                                 </p>
                                                 <p
@@ -1769,8 +1771,7 @@
                                     <p
                                         class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
                                     >
-                                        Subjective (Symptoms / Reason for
-                                        Visit)
+                                        Subjective (Symptoms / Reason for Visit)
                                     </p>
                                     <div
                                         class="min-h-20 rounded-xl border border-gray-200 bg-gray-50 p-4"
@@ -1806,7 +1807,9 @@
                                 </div>
                             </div>
 
-                            <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <div
+                                class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2"
+                            >
                                 <div>
                                     <p
                                         class="mb-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
@@ -1885,11 +1888,9 @@
                                 >
                                     <template v-if="med.is_freeform">
                                         <p
-                                            class="whitespace-pre-line font-bold text-[#146b8a]"
+                                            class="font-bold whitespace-pre-line text-[#146b8a]"
                                         >
-                                            {{
-                                                med.free_text || med.medicine
-                                            }}
+                                            {{ med.free_text || med.medicine }}
                                         </p>
                                         <p
                                             class="mt-2 text-[10px] font-extrabold tracking-widest text-gray-400 uppercase"
@@ -1970,7 +1971,9 @@
                             </div>
                             <div class="space-y-3">
                                 <div
-                                    v-for="(req, idx) in selectedRecord.requests"
+                                    v-for="(
+                                        req, idx
+                                    ) in selectedRecord.requests"
                                     :key="req.id ?? idx"
                                     class="rounded-xl border border-gray-200 bg-gray-50 p-4"
                                 >
@@ -1993,7 +1996,7 @@
                                         >
                                     </div>
                                     <p
-                                        class="whitespace-pre-line text-sm text-gray-700"
+                                        class="text-sm whitespace-pre-line text-gray-700"
                                     >
                                         {{ req.body }}
                                     </p>
@@ -3201,6 +3204,7 @@ interface ConsultationRecord extends Appointment {
     time: string;
     service: string;
     doctor?: string;
+    reading_doctor?: string;
     symptoms?: string;
     vitals?: string;
     diagnosis?: string;
@@ -3891,7 +3895,7 @@ function doExport(
 ): void {
     const name = props.patient.name;
     const date = record.date;
-    const doctor = record.doctor ?? '';
+    const doctor = record.reading_doctor ?? record.doctor ?? '';
     const slug = name.replace(/\s+/g, '_');
 
     // PDF → always use server-side PDF (laravel-pdf)
@@ -3933,6 +3937,7 @@ function doExport(
                     record.echo_data as EchoData,
                     name,
                     date,
+                    doctor,
                 );
                 filename = `Doppler_${slug}_${date}`;
                 break;
@@ -3948,6 +3953,7 @@ function doExport(
                     name,
                     (record.echo_data as EchoData)?.sex ?? '',
                     date,
+                    doctor,
                 );
                 filename = `TMT_${slug}_${date}`;
                 break;

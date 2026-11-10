@@ -64,8 +64,7 @@ h3 { font-size: 9pt; margin: 8px 0 3px; text-transform: uppercase; }
   <tr>
     <td style="width:58%;border:none;"></td>
     <td style="width:42%;border:none;border-top:1px solid #000;text-align:center;padding-top:5px;">
-      <span style="font-size:7pt;">Read by: {{ $reader ?? '' }}</span><br>
-      <strong>{{ $doctor }}</strong><br><strong>Cardiologist</strong>
+      <strong>{{ $doctor }}, MD, FPCP, FPCC</strong><br><strong>Cardiologist</strong>
     </td>
   </tr>
 </table>

@@ -223,7 +223,7 @@ const signatureBlock = (doctorName?: string): string => `
   <tr>
     <td style="width:58%;border:none;"></td>
     <td style="width:42%;border:none;border-top:1px solid #000;text-align:center;padding-top:3px;">
-      ${doctorName ? `<b>${doctorName}</b><br>` : ''}<b>Cardiologist</b>
+      ${doctorName ? `<b>${doctorName}, MD, FPCP, FPCC</b><br>` : ''}<b>Cardiologist</b>
     </td>
   </tr>
 </table>`;
@@ -408,6 +408,7 @@ export const buildTmtDocument = (
     patientName: string,
     echoSex: string,
     date: string,
+    doctorName?: string,
 ): string => {
     const stagesHtml = (tmt.stages ?? [])
         .map((s) => {
@@ -494,7 +495,9 @@ export const buildTmtDocument = (
         <p style="margin-top:10px;"><b>CONCLUSION:</b> <u style="font-weight:bold;">${v(tmt.conclusion) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</u></p>
     </div>
     <table style="width:100%;font-size:11px;margin-top:40px;border:none;">
-        <tr><td style="width:60%;border:none;"></td><td style="width:40%;border-top:1px solid black;text-align:center;border-left:none;border-right:none;border-bottom:none;"><b>Cardiologist</b></td></tr>
+        <tr><td style="width:60%;border:none;"></td><td style="width:40%;border-top:1px solid black;text-align:center;border-left:none;border-right:none;border-bottom:none;">${
+            doctorName ? `<b>${doctorName}, MD, FPCP, FPCC</b><br>` : ''
+        }<b>Cardiologist</b></td></tr>
     </table>`;
 
     return page1 + page2;
@@ -512,6 +515,7 @@ export const buildDopplerDocument = (
     ec: EchoData,
     patientName: string,
     date: string,
+    doctorName?: string,
 ): string => {
     const page1 = `
     <h3 style="text-align:center;color:#a1282c;font-family:Arial,sans-serif;font-size:16px;">COLOR FLOW &amp; DOPPLER STUDY</h3>
@@ -546,11 +550,14 @@ export const buildDopplerDocument = (
     </table>
     <p style="margin-top:15px;"><b>CONCLUSION :</b> ${v(dop.conclusion)}</p>
     <table class="no-border" style="margin-top:40px;">
-        <tr><td style="width:60%;"></td><td style="width:40%;text-align:center;border-top:1px solid black;padding-top:4px;"><b>Cardiologist</b></td></tr>
+        <tr><td style="width:60%;"></td><td style="width:40%;text-align:center;border-top:1px solid black;padding-top:4px;">${
+            doctorName ? `<b>${doctorName}, MD, FPCP, FPCC</b><br>` : ''
+        }<b>Cardiologist</b></td></tr>
     </table>`;
 
     const page2 =
-        `<div class="page-break"></div>` + buildEchoHTML(ec, patientName, date);
+        `<div class="page-break"></div>` +
+        buildEchoHTML(ec, patientName, date, doctorName);
 
     return page1 + page2;
 };

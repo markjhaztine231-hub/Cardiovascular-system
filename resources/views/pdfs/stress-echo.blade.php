@@ -109,10 +109,6 @@
             text-decoration: underline;
             text-transform: uppercase;
         }
-        .read-by {
-            font-size: 11px;
-            margin-bottom: 4px;
-        }
         .doctor-title {
             font-size: 12px;
         }
@@ -183,8 +179,7 @@
     @endif
 
     <div class="signature-section">
-        <div class="read-by">Read by: {{ $reader ?? '' }}</div>
-        <div class="doctor-name">{{ $doctor }}</div>
+        <div class="doctor-name">{{ $doctor }}, MD, FPCP, FPCC</div>
         <div class="doctor-title">Cardiologist</div>
     </div>
 
