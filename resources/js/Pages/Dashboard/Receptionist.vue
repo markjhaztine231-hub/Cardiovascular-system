@@ -3114,6 +3114,65 @@ const studyTabs = [
 
 const studyForm = useForm(blankStudyForms());
 
+const STUDY_DRAFT_TTL = 30 * 60 * 1000;
+function studyDraftKey(): string | null {
+    return studyAppt.value ? `study_draft_${studyAppt.value.id}` : null;
+}
+function saveStudyDraft(): void {
+    const key = studyDraftKey();
+    if (!key) {
+        return;
+    }
+    try {
+        localStorage.setItem(
+            key,
+            JSON.stringify({ payload: studyForm.data(), savedAt: Date.now() }),
+        );
+    } catch {
+        /* storage full — silently ignore */
+    }
+}
+function clearStudyDraft(): void {
+    const key = studyDraftKey();
+    if (key) {
+        localStorage.removeItem(key);
+    }
+}
+function loadStudyDraft(): void {
+    const key = studyDraftKey();
+    if (!key) {
+        return;
+    }
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+            return;
+        }
+        const draft = JSON.parse(raw);
+        if (Date.now() - draft.savedAt > STUDY_DRAFT_TTL) {
+            localStorage.removeItem(key);
+            return;
+        }
+        Object.assign(studyForm, draft.payload ?? {});
+    } catch {
+        clearStudyDraft();
+    }
+}
+let studyDraftTimer: ReturnType<typeof setTimeout> | null = null;
+watch(
+    studyForm,
+    () => {
+        if (!studyFormOpen.value) {
+            return;
+        }
+        if (studyDraftTimer) {
+            clearTimeout(studyDraftTimer);
+        }
+        studyDraftTimer = setTimeout(saveStudyDraft, 2000);
+    },
+    { deep: true },
+);
+
 const studyScans = ref<any[]>([]);
 const openStudyScanText = ref<Set<number>>(new Set());
 
@@ -3289,6 +3348,10 @@ async function openStudyForm(appt: any): Promise<void> {
         studyForm.abpm_data = blank.abpm_data;
         studyForm.vitals_data = blank.vitals_data;
 
+        if (!studyLocked.value) {
+            loadStudyDraft();
+        }
+
         studyScans.value = Array.isArray(data.documents) ? data.documents : [];
     } catch (err: any) {
         showError(err?.message ?? 'Could not load saved study data.');
@@ -3299,6 +3362,9 @@ async function openStudyForm(appt: any): Promise<void> {
 }
 
 function closeStudyForm(): void {
+    if (!studySavedAt.value && studyAppt.value) {
+        saveStudyDraft();
+    }
     studyFormOpen.value = false;
     studyAppt.value = null;
     studyLocked.value = false;
@@ -3319,6 +3385,7 @@ function submitStudyForm(): void {
         onSuccess: () => {
             studySavedAt.value = true;
             studyLocked.value = false;
+            clearStudyDraft();
         },
         onError: (errors) => {
             showError(Object.values(errors).join('\n'));
