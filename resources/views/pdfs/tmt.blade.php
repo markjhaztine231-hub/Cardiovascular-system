@@ -29,13 +29,13 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
   <tr>
     <td style="width:50%;">
       <table class="no-border">
-        <tr><td style="border:none;">Date:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $date }}</td></tr>
-        <tr><td style="border:none;">Age:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $data['age'] ?? '' }}</td></tr>
-        <tr><td style="border:none;">Height:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $data['height'] ?? '' }}</td></tr>
-        <tr><td style="border:none;">Weight:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $data['weight'] ?? '' }}</td></tr>
-        <tr><td style="border:none;">Cell No:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $data['cell_no'] ?? '' }}</td></tr>
-        <tr><td style="border:none;">Birthday:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $data['birthday'] ?? '' }}</td></tr>
-        <tr><td style="border:none;">Medicines:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">&#10140; {{ $data['medicines'] ?? '' }}</td></tr>
+        <tr><td style="border:none;">Date:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $date }}</td></tr>
+        <tr><td style="border:none;">Age:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $data['age'] ?? '' }}</td></tr>
+        <tr><td style="border:none;">Height:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $data['height'] ?? '' }}</td></tr>
+        <tr><td style="border:none;">Weight:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $data['weight'] ?? '' }}</td></tr>
+        <tr><td style="border:none;">Cell No:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $data['cell_no'] ?? '' }}</td></tr>
+        <tr><td style="border:none;">Birthday:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $data['birthday'] ?? '' }}</td></tr>
+        <tr><td style="border:none;">Medicines:</td><td style="border-bottom:1px solid #000;border-top:none;border-left:none;border-right:none;">{{ $data['medicines'] ?? '' }}</td></tr>
       </table>
     </td>
     <td style="width:50%;">
@@ -60,7 +60,7 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 </table>
 <p><strong>TO WHOM IT MAY CONCERN:</strong></p>
 <p style="line-height:1.8;text-indent:30px;">
-  I, &#10140; <u><strong>{{ $patient }}</strong></u> of legal age and with residence and postal address at
+  I, <u><strong>{{ $patient }}</strong></u> of legal age and with residence and postal address at
   <u><strong>{{ $data['residence'] ?? '' }}</strong></u>, hereby consent to the performance of Treadmill Exercise Test on me by
   <u><strong>{{ $data['consent_to'] ?? 'the attending physician' }}</strong></u>.
 </p>
@@ -129,11 +129,6 @@ h3 { font-size: 9pt; margin: 8px 0 2px; text-transform: uppercase; }
 </table>
 <div style="margin-top:15px;font-size:9pt;">
   <p><strong>INTERPRETATION:</strong></p>
-  <p>A. Resting ECG: <u>{{ $data['resting_ecg'] ?? '' }}</u></p>
-  <p>B. Response to Exercise: <u>{{ $data['response_to_exercise'] ?? '' }}</u></p>
-  <p>C. Exercise Capacity: <u>{{ $data['exercise_capacity'] ?? '' }}</u></p>
-  <p>D. Arrhythmias: <u>{{ $data['arrhythmias'] ?? '' }}</u></p>
-  <p>E. Probability of CAD: <u>{{ $data['probability_cad'] ?? '' }}</u></p>
   <p style="margin-top:10px;"><strong>CONCLUSION:</strong> <u>{{ $data['conclusion'] ?? '' }}</u></p>
 </div>
 <table class="no-border" style="margin-top:40px;">

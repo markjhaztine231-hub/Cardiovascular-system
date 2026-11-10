@@ -425,7 +425,7 @@ export const buildTmtDocument = (
     const page1 = `
     <div style="text-align:center;font-family:Arial;">
       <h1 style="margin:0;font-size:24px;color:#333;">&#9825; CARDIOVASCULAR CARE CENTER</h1>
-      <p style="margin:0;font-size:10px;">Rm. 303 / 305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila<br>Tel. No: 8-353-7182</p>
+      <p style="margin:0;font-size:10px;color:#0000FF;">Rm. 303 / 305 Mirasol Building, 854 Apacible St., Taft Avenue, Manila<br>Tel. No: 8-353-7182</p>
     </div>
     <div style="border-bottom:2px solid #ccc;margin:10px 0;"></div>
     <h3 style="text-align:center;text-decoration:underline;font-size:14px;">INFORMED CONSENT FOR TREADMILL EXERCISE TEST</h3>
