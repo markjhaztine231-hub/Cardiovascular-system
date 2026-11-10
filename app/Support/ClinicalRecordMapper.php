@@ -266,9 +266,9 @@ class ClinicalRecordMapper
             return null;
         }
 
-        // The notes column may contain several "text | {json}" layers (a
-        // stale blob that leaked into the conclusion and was re-saved). Peel
-        // them off one at a time until only plain text remains.
+        // The notes column stores "human text | {form json}". Peel off any
+        // trailing JSON document (and any nested layers left by an earlier bad
+        // save) until only plain text remains.
         $human = trim($text);
         for ($i = 0; $i < 5; $i++) {
             if (preg_match('/^(.*?)\s*\|\s*\{/', $human, $m)) {
@@ -285,9 +285,9 @@ class ClinicalRecordMapper
             $human = $candidate;
         }
 
-        // Discard anything that still looks like an embedded JSON blob or a
-        // stray separator so it can never leak back into the conclusion.
-        if ($human === '' || str_contains($human, '{') || str_contains($human, '|')) {
+        // Discard only if a JSON blob is still embedded; a plain "|" that is
+        // part of the clinical text (e.g. "ST elevation | depression") is kept.
+        if ($human === '' || preg_match('/\{\s*&quot;|\{\s*"/', $human)) {
             return null;
         }
 
