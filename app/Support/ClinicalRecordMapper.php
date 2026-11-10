@@ -45,7 +45,11 @@ class ClinicalRecordMapper
             'aortic_root' => $echo->aortic_root_mm,
             'la_ap' => $echo->la_diameter_mm,
             'rv_ap' => $echo->rv_size,
-            'tricuspid_valve' => $echo->wall_motion,
+            'tricuspid_valve' => $echo->wall_motion !== null
+                ? (preg_match('/^tricuspid valve:\s*(.*)$/i', trim($echo->wall_motion), $m)
+                    ? trim($m[1])
+                    : trim($echo->wall_motion))
+                : null,
             // A boolean false is meaningful here, so only null is treated as
             // "not recorded" - otherwise an absent effusion and a negative
             // finding would be indistinguishable.
