@@ -99,6 +99,22 @@ class StudyDataReceptionTest extends TestCase
         ]);
     }
 
+    public function test_long_echo_findings_are_not_truncated(): void
+    {
+        $findings = str_repeat('A', 1200);
+
+        $payload = $this->studyPayload();
+        $payload['echo_data']['findings'] = $findings;
+
+        $this->actingAs($this->receptionist)
+            ->put("/appointments/{$this->appointment->id}/study-data", $payload)
+            ->assertRedirect();
+
+        $encounter = Encounter::where('appointment_id', $this->appointment->id)->firstOrFail();
+
+        $this->assertSame($findings, $encounter->echocardiogram->valve_findings);
+    }
+
     public function test_blank_study_form_does_not_create_an_empty_record(): void
     {
         $response = $this->actingAs($this->receptionist)

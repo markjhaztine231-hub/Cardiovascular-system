@@ -537,11 +537,24 @@
             </div>
 
             <!-- Findings -->
-            <div>
-                <label
-                    class="mb-2 block border-t border-gray-200 pt-4 text-xs font-black tracking-widest text-[#146b8a] uppercase"
-                    >Echocardiographic Findings</label
+            <div class="border-t border-gray-200 pt-4">
+                <div
+                    class="mb-2 flex flex-wrap items-center justify-between gap-2"
                 >
+                    <label
+                        class="block text-xs font-black tracking-widest text-[#146b8a] uppercase"
+                        >Echocardiographic Findings</label
+                    >
+                    <button
+                        v-if="!restricted"
+                        type="button"
+                        @click.prevent="applyFindingsTemplate"
+                        class="rounded border border-cyan-300 bg-cyan-50 px-3 py-1 text-[10px] font-bold tracking-wide text-cyan-800 uppercase transition-colors hover:bg-cyan-100"
+                        title="Insert the standard echocardiographic report. Every word stays editable."
+                    >
+                        Insert echo template
+                    </button>
+                </div>
                 <p
                     v-if="restricted"
                     class="mb-1 text-[10px] font-bold text-amber-600 uppercase"
@@ -549,19 +562,45 @@
                     Doctor only — the physician completes this section.
                 </p>
                 <textarea
+                    ref="findingsInput"
                     v-model="echoData.findings"
                     :disabled="restricted"
                     placeholder="Type findings here..."
-                    class="h-32 w-full resize-none rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none focus:border-[#0f8c8e] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+                    class="min-h-72 w-full resize-y rounded border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none focus:border-[#0f8c8e] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                 ></textarea>
+                <p v-if="!restricted" class="mt-1 text-[10px] text-gray-500">
+                    Tip: use the template, then type over the `_` blanks. All
+                    text remains editable.
+                </p>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from 'vue';
 import type { EchoData } from '@/types/appointment';
 import { buildDocument, buildEchoHTML } from '@/utils/docExport';
+
+/**
+ * Standard 2D echo report offered as a starting point. The underscores are
+ * fill-in blanks (the first one is selected automatically after insertion) and
+ * the whole text stays editable.
+ */
+const ECHO_FINDINGS_TEMPLATE = `The left ventricle _ with left ventricular mass index of _ gm/m2 and relative wall thickness of __ mm with adequate wall motion and contractility with overall ejection fraction of __% by Teichholz technique.
+The left atrium is normal in size with a left atrial volume index of __ ml/ m2.
+The right atrium and right ventricle are normal in size.
+The mitral, tricuspid, aortic and pulmonic valves appear normal without restriction in opening and closing.
+The aortic root diameter is normal in size.
+The interatrial and interventricular septa are intact.
+No intracardiac thrombus
+No significant pericardial abnormalities
+
+CONCLUSION:
+-____ left ventricular _ with adequate contractility with preserved systolic function
+-Normal atrial chamber sizes
+-Normal right ventricle size with adequate systolic function
+-Structurally normal valves`;
 
 const echoData = defineModel<EchoData>('echoData', { required: true });
 const props = defineProps({
@@ -574,6 +613,50 @@ const props = defineProps({
         default: false,
     },
 });
+
+const findingsInput = ref<HTMLTextAreaElement | null>(null);
+
+function applyFindingsTemplate(): void {
+    if (props.restricted) {
+        return;
+    }
+
+    const current = (echoData.value.findings ?? '').trim();
+
+    if (
+        current !== '' &&
+        current !== ECHO_FINDINGS_TEMPLATE.trim() &&
+        !window.confirm('Replace the current findings with the template?')
+    ) {
+        return;
+    }
+
+    echoData.value.findings = ECHO_FINDINGS_TEMPLATE;
+
+    nextTick(() => {
+        const textarea = findingsInput.value;
+
+        if (!textarea) {
+            return;
+        }
+
+        textarea.focus();
+
+        const start = ECHO_FINDINGS_TEMPLATE.indexOf('_');
+
+        if (start === -1) {
+            return;
+        }
+
+        let end = start;
+
+        while (ECHO_FINDINGS_TEMPLATE[end] === '_') {
+            end += 1;
+        }
+
+        textarea.setSelectionRange(start, end);
+    });
+}
 
 const exportToWord = () => {
     const date = new Date().toLocaleDateString();

@@ -1962,7 +1962,10 @@ class AppointmentController extends Controller
         }
 
         if (! empty($d['findings'])) {
-            $row['valve_findings'] = $this->sanitizeText((string) $d['findings'], 800);
+            // `valve_findings` is a TEXT column and the form now offers a full
+            // narrative + impression template, so the old 800-char cap would
+            // silently drop the conclusion.
+            $row['valve_findings'] = $this->sanitizeText((string) $d['findings'], 5000);
         }
         if (! empty($d['tricuspid_valve'])) {
             $row['wall_motion'] = $this->sanitizeText('Tricuspid valve: '.$d['tricuspid_valve'], 800);
