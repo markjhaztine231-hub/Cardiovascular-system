@@ -67,11 +67,13 @@ class AppointmentDoubleBookingTest extends TestCase
             'status' => 'Pending',
         ]);
 
-        $this->assertDatabaseHas('patients', [
-            'date_of_birth' => '1985-03-15',
-            'sex' => 'Female',
-            'contact_phone' => '09171234567',
-        ]);
+        $patient = Patient::where('date_of_birth', '1985-03-15')
+            ->where('sex', 'Female')
+            ->firstOrFail();
+
+        // Phone numbers are encrypted at rest, so they cannot be asserted
+        // through a raw database query.
+        $this->assertSame('09171234567', $patient->contact_phone);
     }
 
     public function test_walk_in_only_requires_name_doctor_service_and_slot_date(): void

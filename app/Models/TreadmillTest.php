@@ -27,6 +27,10 @@ class TreadmillTest extends Model
 
     protected $casts = [
         'performed_at' => 'datetime',
+        'notes' => 'encrypted',
+        'st_segment_changes' => 'encrypted',
+        'arrhythmias' => 'encrypted',
+        'symptoms_during_test' => 'encrypted',
     ];
 
     public function encounter(): BelongsTo

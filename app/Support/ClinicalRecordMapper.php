@@ -26,6 +26,22 @@ use Illuminate\Support\Collection;
 class ClinicalRecordMapper
 {
     /**
+     * Study columns stored with an encrypted cast. `getAttributes()` returns
+     * the raw ciphertext for these, so the payload builder has to read them
+     * through the model to get the plaintext the PDF/Vue panels expect.
+     *
+     * @var array<int, string>
+     */
+    private const ENCRYPTED_STUDY_COLUMNS = [
+        'notes',
+        'valve_findings',
+        'wall_motion',
+        'st_segment_changes',
+        'arrhythmias',
+        'symptoms_during_test',
+    ];
+
+    /**
      * Echocardiogram -> legacy echo keys, plus patient age/sex which the echo
      * table and PDF header both display.
      *
@@ -218,6 +234,15 @@ class ClinicalRecordMapper
         };
 
         $payload = array_merge($study->getAttributes(), $legacy);
+
+        // `getAttributes()` bypasses casts, so encrypted columns would leak
+        // ciphertext into the presentation payload (and make a blank form look
+        // filled in). Replace just those keys with their decrypted values.
+        foreach (self::ENCRYPTED_STUDY_COLUMNS as $column) {
+            if (array_key_exists($column, $payload)) {
+                $payload[$column] = $study->getAttribute($column);
+            }
+        }
 
         // Never leak the raw "text | {json}" blob as the study's notes; the
         // embedded form data has already been recovered into the legacy keys.

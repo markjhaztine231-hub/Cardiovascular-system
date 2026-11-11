@@ -18,6 +18,10 @@ class ClinicalRequest extends Model
         'created_by',
     ];
 
+    protected $casts = [
+        'body' => 'encrypted',
+    ];
+
     public function encounter(): BelongsTo
     {
         return $this->belongsTo(Encounter::class);

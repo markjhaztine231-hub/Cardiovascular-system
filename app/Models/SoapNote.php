@@ -16,6 +16,14 @@ class SoapNote extends Model
         'ai_summary',
     ];
 
+    protected $casts = [
+        'subjective' => 'encrypted',
+        'objective' => 'encrypted',
+        'assessment' => 'encrypted',
+        'plan' => 'encrypted',
+        'ai_summary' => 'encrypted',
+    ];
+
     public function encounter(): BelongsTo
     {
         return $this->belongsTo(Encounter::class);

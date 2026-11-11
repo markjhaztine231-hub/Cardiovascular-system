@@ -29,6 +29,14 @@ class Patient extends Model
 
     protected $casts = [
         'date_of_birth' => 'date',
+        // Free-text PHI. Searchable identifiers (MRN, DOB, sex, blood type)
+        // stay in plaintext so they remain indexed and filterable in SQL.
+        'address' => 'encrypted',
+        'allergies' => 'encrypted',
+        'contact_phone' => 'encrypted',
+        'emergency_contact_name' => 'encrypted',
+        'emergency_contact_phone' => 'encrypted',
+        'insurance_id' => 'encrypted',
     ];
 
     public function getAgeAttribute(): ?int

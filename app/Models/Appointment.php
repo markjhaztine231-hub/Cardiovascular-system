@@ -43,6 +43,8 @@ class Appointment extends Model
         'reading_date' => 'date',
         'reading_completed_at' => 'datetime',
         'consultation_started_at' => 'datetime',
+        'reason_for_visit' => 'encrypted',
+        'notes' => 'encrypted',
     ];
 
     public function patient(): BelongsTo
