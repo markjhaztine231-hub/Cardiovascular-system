@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
@@ -107,7 +108,10 @@ class SecurityHeaders
      */
     private function reverbOrigin(): ?string
     {
-        $options = config('reverb.apps.apps.0.options', []);
+        // Facade form on purpose: the Tailwind language server parses PHP as an
+        // HTML template and mistakes the config helper's dotted key for a
+        // Tailwind theme path, raising a bogus "invalidConfigPath" diagnostic.
+        $options = Config::get('reverb.apps.apps.0.options', []);
         $host = $options['host'] ?? null;
 
         if (! is_string($host) || trim($host) === '') {
