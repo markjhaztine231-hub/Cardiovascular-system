@@ -90,6 +90,7 @@ class DoctorController extends Controller
             'provider.user:id,name',
         ])
             ->where('reader_provider_id', $providerId)
+            ->whereIn('service_type', Appointment::READING_SERVICE_TYPES)
             ->where('reading_status', 'pending')
             ->whereNotIn('status', ['Cancelled', 'No-Show'])
             ->orderByRaw('COALESCE(reading_date, scheduled_date) ASC')

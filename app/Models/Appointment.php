@@ -10,6 +10,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
+    /**
+     * Service types that produce a result another doctor can read. Plain
+     * consultations are completed by the attending doctor alone.
+     */
+    public const READING_SERVICE_TYPES = ['Procedure', 'Consultation and Procedure'];
+
     protected $fillable = [
         'patient_id',
         'provider_id',
@@ -60,7 +66,7 @@ class Appointment extends Model
      */
     public function supportsReadingAssignment(): bool
     {
-        return in_array($this->service_type, ['Procedure', 'Consultation and Procedure'], true);
+        return in_array($this->service_type, self::READING_SERVICE_TYPES, true);
     }
 
     public function encounter(): HasOne

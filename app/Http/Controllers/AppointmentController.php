@@ -830,6 +830,24 @@ class AppointmentController extends Controller
             'abpm_data.conclusion' => 'nullable|string|max:5000',
         ]);
 
+        // Only procedure-bearing visits produce a result for another doctor to
+        // read. Reject the reader up front so an ineligible save cannot write
+        // encounter data before failing.
+        if (! empty($validated['reader_provider_id']) && ! $appointment->supportsReadingAssignment()) {
+            throw ValidationException::withMessages([
+                'reader_provider_id' => 'Only procedure appointments can be assigned to a reading doctor.',
+            ]);
+        }
+
+        // A reading is reviewed against the attending doctor's completed
+        // record. Saving a reading on a visit still in progress would close
+        // that consultation early, so only a completed visit can be read.
+        if ($isReadingDoctor && $appointment->status !== 'Completed') {
+            throw ValidationException::withMessages([
+                'error' => 'This consultation is still in progress. Save the reading once the visit is completed.',
+            ]);
+        }
+
         // Sanitize text fields to prevent XSS. The assessment is optional:
         // a visit can legitimately be only for clearance or a doctor-requested
         // review. Placeholders are nulled, but meaningful non-diagnostic notes
@@ -1198,12 +1216,6 @@ class AppointmentController extends Controller
                 'encounter_id' => $encounter->id,
                 'payload' => $validated['abpm_data'],
                 'performed_at' => now(),
-            ]);
-        }
-
-        if (! empty($validated['reader_provider_id']) && ! $appointment->supportsReadingAssignment()) {
-            throw ValidationException::withMessages([
-                'reader_provider_id' => 'Only procedure appointments can be assigned to a reading doctor.',
             ]);
         }
 

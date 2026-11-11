@@ -541,4 +541,129 @@ class ReadingDoctorWorkflowTest extends TestCase
             'reading_status' => null,
         ]);
     }
+
+    public function test_plain_consultation_cannot_be_assigned_a_reading_doctor(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Consultation');
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.reading', $appointment), [
+                'reader_provider_id' => $readerProvider->id,
+                'reading_date' => now()->format('Y-m-d'),
+            ])
+            ->assertSessionHasErrors('reader_provider_id');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'reader_provider_id' => null,
+            'reading_status' => null,
+        ]);
+    }
+
+    public function test_plain_consultation_cannot_receive_a_reader_when_completed(): void
+    {
+        $receptionist = User::factory()->receptionist()->create();
+        [, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Consultation');
+
+        $this->actingAs($receptionist)
+            ->put(route('appointments.status', $appointment), [
+                'status' => 'Completed',
+                'reader_provider_id' => $readerProvider->id,
+                'reading_date' => now()->format('Y-m-d'),
+            ])
+            ->assertSessionHasErrors('reader_provider_id');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'status' => 'In Progress',
+            'reader_provider_id' => null,
+        ]);
+    }
+
+    public function test_attending_doctor_cannot_attach_a_reader_to_a_plain_consultation(): void
+    {
+        [$attendingUser, $attendingProvider] = $this->makeDoctor();
+        [, $readerProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Consultation');
+
+        $this->actingAs($attendingUser)
+            ->post(route('appointments.complete', $appointment), [
+                'symptoms' => 'Routine review',
+                'reader_provider_id' => $readerProvider->id,
+                'reading_date' => now()->format('Y-m-d'),
+            ])
+            ->assertSessionHasErrors('reader_provider_id');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'status' => 'In Progress',
+            'reader_provider_id' => null,
+        ]);
+
+        // The reader must be rejected before the encounter is written.
+        $this->assertDatabaseMissing('encounters', [
+            'appointment_id' => $appointment->id,
+        ]);
+    }
+
+    public function test_reading_queue_ignores_a_legacy_reader_on_a_plain_consultation(): void
+    {
+        [$readerUser, $readerProvider] = $this->makeDoctor();
+        [, $attendingProvider] = $this->makeDoctor();
+
+        $consultation = $this->makeAppointment($attendingProvider, 'Completed', 'Consultation');
+        $consultation->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $procedure = $this->makeAppointment($attendingProvider, 'Completed', 'Procedure');
+        $procedure->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($readerUser)
+            ->get(route('doctor.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('readingQueue', 1)
+                ->where('readingQueue.0.id', $procedure->id)
+            );
+    }
+
+    public function test_reading_doctor_cannot_save_a_reading_before_the_visit_is_completed(): void
+    {
+        [$readerUser, $readerProvider] = $this->makeDoctor();
+        [, $attendingProvider] = $this->makeDoctor();
+
+        $appointment = $this->makeAppointment($attendingProvider, 'In Progress', 'Procedure');
+        $appointment->update([
+            'reader_provider_id' => $readerProvider->id,
+            'reading_status' => 'pending',
+            'reading_date' => now()->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($readerUser)
+            ->post(route('appointments.complete', $appointment), [
+                'symptoms' => 'Premature reading',
+            ])
+            ->assertSessionHasErrors('error');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'status' => 'In Progress',
+            'reading_status' => 'pending',
+        ]);
+    }
 }
