@@ -409,13 +409,13 @@ class MonthlyReportService
 
             $prescriptions = $rxIds->isNotEmpty()
                 ? Prescription::whereIn('encounter_id', $rxIds)
-                    ->get(['id', 'encounter_id', 'medication_name', 'frequency', 'start_date', 'is_freeform', 'free_text'])
+                    ->get(['id', 'encounter_id', 'medication_name', 'frequency', 'start_date', 'created_at', 'is_freeform', 'free_text'])
                 : collect();
 
             $medLogRows = $prescriptions->isNotEmpty()
                 ? MedicationLog::whereIn('prescription_id', $prescriptions->pluck('id'))
                     ->whereBetween('log_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
-                    ->get(['prescription_id', 'log_date', 'status', 'adherence_flag'])
+                    ->get(['prescription_id', 'log_date', 'scheduled_time', 'status', 'adherence_flag'])
                 : collect();
 
             $totalTaken = 0;
@@ -424,6 +424,7 @@ class MonthlyReportService
             $totalMissed = 0;
             $totalExpected = 0;
             $byMedicine = [];
+            $triZone = app(MedicationTriZoneService::class);
 
             foreach ($prescriptions as $rx) {
                 // Free-text rows have no structured frequency; counting them
@@ -445,13 +446,31 @@ class MonthlyReportService
                 $startDate = Carbon::parse($rx->start_date ?? $monthStart);
                 $treatDays = max(0, min($startDate->copy()->diffInDays($monthEnd) + 1, $daysInMonth));
                 $expected = (int) round($treatDays * $dailyDoses);
+
+                // On the day a prescription was written and started, slots that
+                // closed before the prescription existed are not expected doses.
+                $inMonth = $startDate->copy()->startOfDay()->betweenIncluded(
+                    $monthStart->copy()->startOfDay(),
+                    $monthEnd->copy()->endOfDay(),
+                );
+                if ($inMonth) {
+                    $firstDayExpected = $triZone->expectedDosesOn($rx, $startDate);
+                    $expected = max(0, $expected - max(0, $dailyDoses - $firstDayExpected));
+                }
+
                 $totalExpected += $expected;
 
                 $byMed = $medLogRows->where('prescription_id', $rx->id);
                 $taken = $byMed->where('status', 'TAKEN');
                 $onTime = $taken->where('adherence_flag', 'ON_TIME')->count();
                 $late = $taken->where('adherence_flag', 'LATE')->count();
-                $missed = $byMed->where('status', 'MISSED')->count();
+                $missed = $byMed->where('status', 'MISSED')
+                    ->filter(fn ($log) => ! $triZone->isPreActivationMissed(
+                        $rx,
+                        Carbon::parse($log->log_date),
+                        $log->scheduled_time,
+                    ))
+                    ->count();
 
                 $totalTaken += $taken->count();
                 $totalOnTime += $onTime;

@@ -333,7 +333,8 @@ class MedicationController extends Controller
                     continue;
                 }
 
-                $expected = $this->triZone()->dailyDoseCount($p->frequency);
+                $slots = $this->triZone()->slotsFor($p, $day->copy(), $today);
+                $expected = count($slots);
                 if ($expected === 0) {
                     continue;
                 }
@@ -515,6 +516,10 @@ class MedicationController extends Controller
 
                 // Keep missed/expired slots visible as locked doses, then read
                 // the ground-truth rows (the sweep just created MISSED entries).
+                // Slots that closed before the prescription was written are not
+                // part of today's expectation (see slotsFor()).
+                $slots = $this->triZone()->slotsFor($p, $date, $now);
+                $expected = count($slots);
                 $this->triZone()->syncMissedSlots($p, $date, $now);
 
                 $records = MedicationLog::where('prescription_id', $p->id)
@@ -525,7 +530,7 @@ class MedicationController extends Controller
                 $cooldown = $this->triZone()->cooldown($p->id, $now);
 
                 $doses = [];
-                foreach ($this->triZone()->slotsFor($p, $date, $now) as $slot) {
+                foreach ($slots as $slot) {
                     $record = $records->get($slot['time']);
                     $status = $record?->status ?? null;
 
@@ -572,7 +577,7 @@ class MedicationController extends Controller
                     'as_needed' => false,
                     'expected_doses' => $expected,
                     'taken_doses' => $takenToday,
-                    'all_taken' => $takenToday >= $expected,
+                    'all_taken' => $expected > 0 && $takenToday >= $expected,
                     'prescribed_at' => ($encounter->appointment?->scheduled_date
                         ?? $encounter->started_at?->toDateString()),
                     'doses' => $doses,
@@ -598,7 +603,7 @@ class MedicationController extends Controller
         $logs = MedicationLog::whereHas('prescription', function ($q) use ($patientRecord) {
             $q->whereHas('encounter', fn ($e) => $e->where('patient_id', $patientRecord->id));
         })->with(
-            'prescription:id,medication_name,encounter_id',
+            'prescription:id,medication_name,encounter_id,frequency,start_date,created_at',
             'prescription.encounter:id,appointment_id',
             'prescription.encounter.appointment:id,scheduled_date'
         )
@@ -607,17 +612,35 @@ class MedicationController extends Controller
             ->limit(100)
             ->get()
             ->map(function ($log) {
+                $prescription = $log->prescription;
+
+                // Hide start-day sweep artefacts: a slot that closed before the
+                // prescription was written was never a real missed dose.
+                if (
+                    $log->status === MedicationTriZoneService::STATUS_MISSED
+                    && $prescription
+                    && $this->triZone()->isPreActivationMissed(
+                        $prescription,
+                        $log->log_date->copy(),
+                        $log->scheduled_time,
+                    )
+                ) {
+                    return null;
+                }
+
                 return [
                     'id' => $log->id,
-                    'medicine' => $log->prescription?->medication_name ?? 'Unknown',
+                    'medicine' => $prescription?->medication_name ?? 'Unknown',
                     'log_date' => $log->log_date->format('M d, Y'),
                     'taken_at' => $log->taken_at?->format('h:i A') ?? '—',
                     'scheduled_time' => $log->scheduled_time,
                     'status' => $log->status,
                     'adherence_flag' => $log->adherence_flag,
-                    'appointment_date' => $log->prescription?->encounter?->appointment?->scheduled_date?->format('M d, Y') ?? '—',
+                    'appointment_date' => $prescription?->encounter?->appointment?->scheduled_date?->format('M d, Y') ?? '—',
                 ];
-            });
+            })
+            ->filter()
+            ->values();
 
         return response()->json($logs);
     }
@@ -696,22 +719,39 @@ class MedicationController extends Controller
                 $logs = $allLogs->where('prescription_id', $p->id)
                     ->filter(fn ($log) => $log->log_date->betweenIncluded($windowStart, $courseEnd));
                 $takenLogs = $logs->where('status', MedicationTriZoneService::STATUS_TAKEN);
-                $missedLogs = $logs->where('status', MedicationTriZoneService::STATUS_MISSED);
+                $missedLogs = $logs->where('status', MedicationTriZoneService::STATUS_MISSED)
+                    ->filter(fn ($log) => ! $this->triZone()->isPreActivationMissed(
+                        $p,
+                        $log->log_date->copy(),
+                        $log->scheduled_time,
+                    ));
                 $totalTaken = $takenLogs->count();
 
-                $totalExpected = $totalDays * $expectedDaily;
-                $adherenceRate = $totalExpected > 0 ? round(($totalTaken / $totalExpected) * 100) : 0;
-
+                $totalExpected = 0;
+                $totalMissed = 0;
                 $dailyData = [];
                 for ($d = 0; $d < $totalDays; $d++) {
-                    $date = $windowStart->copy()->addDays($d)->format('Y-m-d');
+                    $day = $windowStart->copy()->addDays($d);
+                    $date = $day->format('Y-m-d');
+                    $daySlots = $this->triZone()->slotsFor($p, $day->copy(), $today);
+                    $slotTimes = array_column($daySlots, 'time');
+                    $dayTaken = $takenLogs->filter(fn ($l) => $l->log_date->format('Y-m-d') === $date);
+                    $dayMissed = $missedLogs->filter(
+                        fn ($l) => $l->log_date->format('Y-m-d') === $date
+                            && ($l->scheduled_time === null || in_array($l->scheduled_time, $slotTimes, true))
+                    );
+
+                    $totalExpected += count($daySlots);
+                    $totalMissed += $dayMissed->count();
                     $dailyData[] = [
                         'date' => $date,
-                        'taken' => $takenLogs->filter(fn ($l) => $l->log_date->format('Y-m-d') === $date)->count(),
-                        'missed' => $missedLogs->filter(fn ($l) => $l->log_date->format('Y-m-d') === $date)->count(),
-                        'expected' => $expectedDaily,
+                        'taken' => $dayTaken->count(),
+                        'missed' => $dayMissed->count(),
+                        'expected' => count($daySlots),
                     ];
                 }
+
+                $adherenceRate = $totalExpected > 0 ? round(($totalTaken / $totalExpected) * 100) : 0;
 
                 $medications[] = [
                     'prescription_id' => $p->id,
@@ -722,7 +762,7 @@ class MedicationController extends Controller
                     'adherence_rate' => $adherenceRate,
                     'total_expected' => $totalExpected,
                     'total_taken' => $totalTaken,
-                    'total_missed' => $missedLogs->count(),
+                    'total_missed' => $totalMissed,
                     'daily' => $dailyData,
                 ];
             }

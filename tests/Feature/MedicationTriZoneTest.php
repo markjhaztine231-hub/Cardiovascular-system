@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\Encounter;
+use App\Models\MedicationLog;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Provider;
@@ -111,6 +112,10 @@ class MedicationTriZoneTest extends TestCase
         Carbon::setTestNow('2026-09-21 13:30:00');
         [$appointment, $prescription, $user] = $this->makeFixture();
 
+        // The course must already have been running before today's 08:00 window
+        // closed; a prescription written at 13:30 has no 08:00 dose to miss.
+        $prescription->update(['start_date' => Carbon::yesterday()]);
+
         $response = $this->postDose($user, $appointment, '08:00');
 
         $response->assertStatus(422)
@@ -155,7 +160,7 @@ class MedicationTriZoneTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_today_meds_report_locked_missed_slots_and_zone_state()
+    public function test_today_meds_ignores_slots_that_closed_before_the_prescription_was_written()
     {
         Carbon::setTestNow('2026-09-21 13:30:00');
         [$appointment, $prescription, $user] = $this->makeFixture();
@@ -164,21 +169,80 @@ class MedicationTriZoneTest extends TestCase
 
         $response->assertOk();
         $med = $response->json()[0];
-        $this->assertSame(3, $med['expected_doses']);
+
+        // 00:00 and 08:00 closed before 13:30, so only the 16:00 dose counts.
+        $this->assertSame(1, $med['expected_doses']);
+        $this->assertSame(0, $med['taken_doses']);
+        $this->assertFalse($med['all_taken']);
 
         $doses = collect($med['doses'])->keyBy('scheduled_time');
-
-        $this->assertSame('MISSED', $doses['00:00']['status']);
-        $this->assertFalse($doses['00:00']['can_take']);
-        $this->assertSame('SAFETY_LOCKOUT', $doses['00:00']['blocked_by']);
-
-        $this->assertSame('MISSED', $doses['08:00']['status']);
-        $this->assertFalse($doses['08:00']['can_take']);
-        $this->assertSame('SAFETY_LOCKOUT', $doses['08:00']['blocked_by']);
+        $this->assertNull($doses->get('00:00'));
+        $this->assertNull($doses->get('08:00'));
 
         $this->assertFalse($doses['16:00']['can_take']);
         $this->assertSame('WINDOW_NOT_OPEN', $doses['16:00']['blocked_by']);
         $this->assertSame('PENDING', $doses['16:00']['status']);
+
+        // No phantom MISSED rows may be swept for slots the patient never had.
+        $this->assertDatabaseMissing('medication_logs', [
+            'prescription_id' => $prescription->id,
+            'log_date' => '2026-09-21',
+            'status' => 'MISSED',
+        ]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_adherence_first_day_only_counts_slots_after_the_prescription_was_written()
+    {
+        Carbon::setTestNow('2026-09-21 13:30:00');
+        [$appointment, , $user] = $this->makeFixture();
+
+        $response = $this->actingAs($user)
+            ->getJson('/medications/'.$appointment->id.'/adherence');
+
+        $response->assertOk();
+
+        $today = collect($response->json('daily'))->last();
+        $this->assertSame('2026-09-21', $today['date']);
+        $this->assertSame(1, $today['medications'][0]['expected']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_history_hides_pre_activation_missed_rows_and_stays_a_list()
+    {
+        Carbon::setTestNow('2026-09-21 13:30:00');
+        [$appointment, $prescription, $user] = $this->makeFixture();
+
+        // Legacy sweep artefact: the 08:00 window closed before this
+        // prescription (written 13:30 today) ever existed.
+        MedicationLog::create([
+            'prescription_id' => $prescription->id,
+            'log_date' => '2026-09-21',
+            'scheduled_time' => '08:00',
+            'status' => 'MISSED',
+            'adherence_flag' => 'EXPIRED_WINDOW',
+        ]);
+
+        // A genuine dose from the day before, which must stay visible.
+        MedicationLog::create([
+            'prescription_id' => $prescription->id,
+            'log_date' => '2026-09-20',
+            'scheduled_time' => '08:00',
+            'status' => 'TAKEN',
+            'adherence_flag' => 'ON_TIME',
+            'taken_at' => '2026-09-20 08:10:00',
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/patient/medications/history');
+
+        $response->assertOk();
+        $rows = $response->json();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame([0], array_keys($rows), 'Filtered history must still encode as a JSON list.');
+        $this->assertSame('Metoprolol', $rows[0]['medicine']);
 
         Carbon::setTestNow();
     }

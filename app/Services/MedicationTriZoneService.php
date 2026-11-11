@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MedicationLog;
 use App\Models\Prescription;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 /**
  * Implements the Pharmacokinetic Tri-Zone adherence model ("50% Halfway Rule"):
@@ -121,18 +122,36 @@ class MedicationTriZoneService
     /**
      * The daily dose slots for a prescription, each classified against `$now`.
      *
+     * On the day a prescription was written and started (the normal flow, where
+     * `start_date` is the same calendar day as `created_at`), any slot whose
+     * intake window had already closed before the prescription existed is
+     * discarded. Without this a prescription entered at 15:00 would instantly
+     * show the 08:00 dose as MISSED and lock the patient out of their very
+     * first dose. Pre-dated or back-dated courses are unaffected because their
+     * `start_date` differs from the creation day.
+     *
      * @return array<int, array{time: string, scheduled_at: Carbon, zone: string}>
      */
-    public function slotsFor(Prescription $prescription, Carbon $date, Carbon $now): array
+    public function slotsFor(Prescription $prescription, CarbonInterface $date, CarbonInterface $now): array
     {
         $count = $this->dailyDoseCount($prescription->frequency);
         if ($count === 0) {
             return [];
         }
 
+        $date = Carbon::instance($date);
+        $now = Carbon::instance($now);
+        $activation = $this->activationMoment($prescription, $date);
+
         $slots = [];
         foreach ($this->scheduledTimes($prescription->frequency) as $time) {
             $scheduledAt = $date->copy()->setTimeFromTimeString($time);
+
+            // The patient never had the medication while this window was open.
+            if ($activation && $this->zone($activation, $scheduledAt, $count) === 'RED') {
+                continue;
+            }
+
             $slots[] = [
                 'time' => $time,
                 'scheduled_at' => $scheduledAt,
@@ -144,11 +163,69 @@ class MedicationTriZoneService
     }
 
     /**
+     * The moment a prescription became actionable on `$date`, or null when the
+     * full-day schedule applies. Only the calendar day on which a prescription
+     * was both written and started is time-gated.
+     */
+    private function activationMoment(Prescription $prescription, CarbonInterface $date): ?Carbon
+    {
+        $createdAt = $prescription->created_at;
+
+        if (! $createdAt) {
+            return null;
+        }
+
+        $startDay = $prescription->start_date?->copy()->startOfDay()
+            ?? $createdAt->copy()->startOfDay();
+
+        // Back-dated / pre-created courses use an explicit clinical start date,
+        // so the creation clock must not shrink their first day.
+        if (! $startDay->isSameDay($createdAt)) {
+            return null;
+        }
+
+        return $date->isSameDay($startDay) ? Carbon::instance($createdAt) : null;
+    }
+
+    /**
+     * Number of expected doses for a prescription on a given day, excluding
+     * slots that were already closed when the prescription was written.
+     */
+    public function expectedDosesOn(Prescription $prescription, CarbonInterface $date): int
+    {
+        return count($this->slotsFor($prescription, $date->copy(), $date->copy()->endOfDay()));
+    }
+
+    /**
+     * Whether a MISSED row is an artefact of a start-day sweep: the slot had
+     * already closed before the prescription was written, so the patient never
+     * had an opportunity to take it. Legacy rows created before the start-day
+     * filter existed must not be counted against adherence.
+     */
+    public function isPreActivationMissed(Prescription $prescription, CarbonInterface $date, ?string $scheduledTime): bool
+    {
+        if ($scheduledTime === null) {
+            return false;
+        }
+
+        $activation = $this->activationMoment($prescription, $date);
+        $count = $this->dailyDoseCount($prescription->frequency);
+
+        if (! $activation || $count === 0) {
+            return false;
+        }
+
+        $slotAt = Carbon::instance($date)->startOfDay()->setTimeFromTimeString($scheduledTime);
+
+        return $this->zone($activation, $slotAt, $count) === 'RED';
+    }
+
+    /**
      * For a prescription and calendar day, writes MISSED / EXPIRED_WINDOW rows
      * for any scheduled slot whose actionable window has already closed without
      * being recorded. Idempotent (relies on the per-dose unique constraint).
      */
-    public function syncMissedSlots(Prescription $prescription, Carbon $date, Carbon $now): void
+    public function syncMissedSlots(Prescription $prescription, CarbonInterface $date, CarbonInterface $now): void
     {
         $count = $this->dailyDoseCount($prescription->frequency);
         if ($count === 0) {

@@ -950,7 +950,9 @@
                                     :class="
                                         med.all_taken
                                             ? 'border-emerald-200 bg-emerald-50'
-                                            : 'border-amber-200 bg-amber-50'
+                                            : med.expected_doses === 0
+                                              ? 'border-gray-200 bg-gray-50'
+                                              : 'border-amber-200 bg-amber-50'
                                     "
                                 >
                                     <div
@@ -970,6 +972,9 @@
                                                 {{ med.dosage }} &middot;
                                                 {{ med.frequency }}
                                                 <span
+                                                    v-if="
+                                                        med.expected_doses > 0
+                                                    "
                                                     class="ml-2 font-semibold"
                                                     :class="
                                                         med.all_taken
@@ -981,6 +986,12 @@
                                                         med.expected_doses
                                                     }}
                                                     taken today
+                                                </span>
+                                                <span
+                                                    v-else
+                                                    class="ml-2 font-semibold text-gray-400"
+                                                >
+                                                    No doses due today
                                                 </span>
                                             </p>
                                             <p
@@ -1000,6 +1011,15 @@
                                                     &middot;
                                                 </span>
                                                 {{ med.instructions }}
+                                            </p>
+                                            <p
+                                                v-if="med.expected_doses === 0"
+                                                class="mt-1 text-[11px] font-semibold text-sky-700"
+                                            >
+                                                This prescription started after
+                                                today's dose time, so it is not
+                                                a missed dose. Follow the
+                                                schedule from the next dose.
                                             </p>
                                         </div>
                                         <div
@@ -1325,112 +1345,103 @@
                                 </p>
                             </div>
 
+                            <!-- Chart.js trend, styled after the admin dashboard -->
+                            <div class="relative h-64 w-full">
+                                <canvas ref="adherenceCanvas"></canvas>
+                            </div>
+
                             <div
-                                v-for="(med, idx) in adherenceData"
-                                :key="idx"
-                                class="mb-5 last:mb-0"
+                                class="mt-3 flex flex-wrap items-center justify-end gap-4 text-[11px] font-semibold text-slate-500"
+                            >
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span
+                                        class="h-2.5 w-2.5 rounded-sm bg-indigo-200"
+                                    ></span>
+                                    Expected doses
+                                </span>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span
+                                        class="h-2.5 w-2.5 rounded-sm bg-indigo-600"
+                                    ></span>
+                                    Taken doses
+                                </span>
+                            </div>
+
+                            <!-- Per-medication summary. Tap a day to correct it. -->
+                            <div
+                                class="mt-5 space-y-3 border-t border-gray-100 pt-4"
                             >
                                 <div
-                                    class="mb-1.5 flex items-center justify-between"
+                                    v-for="(med, idx) in adherenceData"
+                                    :key="idx"
+                                    class="rounded-xl border border-gray-100 bg-slate-50/60 p-3"
                                 >
-                                    <span
-                                        class="text-sm font-bold text-gray-700 capitalize"
-                                        >{{ med.medicine }}</span
+                                    <div
+                                        class="flex items-center justify-between gap-3"
                                     >
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[10px] text-gray-400">
-                                            {{
-                                                med.last7Days.filter(
-                                                    (d) =>
-                                                        d.expected > 0 &&
-                                                        d.pct < 80,
-                                                ).length
-                                            }}
-                                            days below target
-                                        </span>
+                                        <div class="min-w-0">
+                                            <p
+                                                class="truncate text-sm font-bold text-gray-800 capitalize"
+                                            >
+                                                {{ med.medicine }}
+                                            </p>
+                                            <p
+                                                class="text-[10px] font-medium text-gray-400"
+                                            >
+                                                {{ daysBelowTarget(med) }}
+                                                day{{
+                                                    daysBelowTarget(med) === 1
+                                                        ? ''
+                                                        : 's'
+                                                }}
+                                                below target &middot; tap a day
+                                                to correct it
+                                            </p>
+                                        </div>
                                         <span
-                                            class="text-xs font-semibold"
+                                            class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-extrabold"
                                             :class="
-                                                med.average >= 80
-                                                    ? 'text-emerald-600'
-                                                    : med.average >= 50
-                                                      ? 'text-amber-600'
-                                                      : 'text-red-600'
+                                                adherenceBadgeClass(med.average)
                                             "
                                         >
                                             {{ med.average }}%
                                         </span>
                                     </div>
-                                </div>
-                                <div class="flex h-16 items-end gap-1">
-                                    <div
-                                        v-for="(day, di) in med.last7Days"
-                                        :key="di"
-                                        class="flex h-full flex-1 cursor-pointer flex-col items-center justify-end"
-                                        @click="
-                                            day.expected > 0
-                                                ? toggleDayDose(day)
-                                                : undefined
-                                        "
-                                    >
-                                        <div class="relative w-full">
-                                            <div
-                                                class="w-full rounded-t transition-all"
-                                                :style="{
-                                                    height:
-                                                        (day.expected > 0
-                                                            ? day.pct
-                                                            : 0) + '%',
-                                                }"
-                                                :class="
-                                                    day.expected === 0
-                                                        ? 'bg-slate-200'
-                                                        : day.pct >= 80
-                                                          ? 'bg-emerald-500'
-                                                          : day.pct >= 50
-                                                            ? 'bg-amber-400'
-                                                            : 'bg-red-400'
-                                                "
-                                                :title="
-                                                    day.expected === 0
-                                                        ? `${day.date}: no doses scheduled`
-                                                        : `${day.date}: ${day.taken}/${day.expected} doses (${day.pct}%)`
-                                                "
-                                            ></div>
-                                            <div
-                                                v-if="
-                                                    day.expected > 0 &&
-                                                    day.taken === 0
-                                                "
-                                                class="absolute inset-0 flex items-start justify-center pt-0.5"
-                                            >
-                                                <span
-                                                    class="text-[10px] font-bold text-red-600 opacity-70"
-                                                    >✕</span
-                                                >
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="mt-1 text-[9px] text-gray-400"
-                                            >{{ day.label }}</span
-                                        >
-                                        <span
-                                            class="text-[8px] font-medium"
-                                            :class="
-                                                day.expected === 0
-                                                    ? 'text-slate-400'
-                                                    : day.pct >= 80
-                                                      ? 'text-emerald-600'
-                                                      : day.pct >= 50
-                                                        ? 'text-amber-600'
-                                                        : 'text-red-400'
+
+                                    <div class="mt-2 flex flex-wrap gap-1.5">
+                                        <button
+                                            v-for="(day, di) in med.last7Days"
+                                            :key="di"
+                                            type="button"
+                                            :disabled="
+                                                day.expected === 0 ||
+                                                !!doseToggling[
+                                                    `${day.appointmentId}-${day.prescriptionIndex}-${day.date}`
+                                                ]
                                             "
-                                            >{{
+                                            class="flex min-w-[2.7rem] flex-col items-center rounded-lg border px-1.5 py-1 text-[10px] font-bold transition disabled:cursor-default"
+                                            :class="dayChipClass(day)"
+                                            :title="
+                                                day.expected === 0
+                                                    ? `${day.date}: no doses scheduled`
+                                                    : `${day.date}: ${day.taken}/${day.expected} doses (${day.pct}%)`
+                                            "
+                                            @click="
+                                                day.expected > 0
+                                                    ? toggleDayDose(day)
+                                                    : undefined
+                                            "
+                                        >
+                                            <span
+                                                class="tracking-wide uppercase opacity-70"
+                                                >{{ day.label }}</span
+                                            >
+                                            <span>{{
                                                 day.expected === 0
                                                     ? '—'
                                                     : `${day.taken}/${day.expected}`
-                                            }}</span
-                                        >
+                                            }}</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1744,7 +1755,8 @@
 
 <script setup lang="ts">
 import { useForm, Link, router } from '@inertiajs/vue3';
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { Chart, registerables } from 'chart.js';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import LogoutButton from '@/components/LogoutButton.vue';
 import Toast from '@/components/Toast.vue';
 import { useModalA11y } from '@/composables/useModalA11y';
@@ -1757,6 +1769,8 @@ import {
     checkMedicationInteractions,
     validatePrescription,
 } from '@/utils/validation';
+
+Chart.register(...registerables);
 
 // Type definitions
 interface Prescription {
@@ -2050,6 +2064,174 @@ const adherenceTrend = computed(() => {
         direction: delta >= 8 ? 'up' : delta <= -8 ? 'down' : 'steady',
     };
 });
+
+// ── 7-day adherence chart (Chart.js, mirrors the admin dashboard style) ──
+const adherenceCanvas = ref<HTMLCanvasElement | null>(null);
+let adherenceChart: Chart | null = null;
+
+const adherenceChartDays = computed(() => {
+    const first = adherenceData.value[0];
+
+    if (!first) {
+        return [];
+    }
+
+    return first.last7Days.map((day) => {
+        let taken = 0;
+        let expected = 0;
+
+        for (const med of adherenceData.value) {
+            const match = med.last7Days.find((d) => d.date === day.date);
+
+            if (match) {
+                taken += match.taken;
+                expected += match.expected;
+            }
+        }
+
+        const date = new Date(`${day.date}T00:00:00`);
+
+        return {
+            date: day.date,
+            label: date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                day: 'numeric',
+            }),
+            taken,
+            expected,
+        };
+    });
+});
+
+function renderAdherenceChart(): void {
+    const days = adherenceChartDays.value;
+
+    if (!adherenceCanvas.value || days.length === 0) {
+        adherenceChart?.destroy();
+        adherenceChart = null;
+
+        return;
+    }
+
+    adherenceChart?.destroy();
+
+    const context = adherenceCanvas.value.getContext('2d');
+
+    if (!context) {
+        return;
+    }
+
+    adherenceChart = new Chart(context, {
+        type: 'bar',
+        data: {
+            labels: days.map((day) => day.label),
+            datasets: [
+                {
+                    label: 'Expected',
+                    data: days.map((day) => day.expected),
+                    backgroundColor: '#c7d2fe',
+                    hoverBackgroundColor: '#a5b4fc',
+                    borderRadius: 7,
+                    borderSkipped: false,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7,
+                },
+                {
+                    label: 'Taken',
+                    data: days.map((day) => day.taken),
+                    backgroundColor: '#4f46e5',
+                    hoverBackgroundColor: '#4338ca',
+                    borderRadius: 7,
+                    borderSkipped: false,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.7,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    titleFont: { size: 11, weight: 'bold' },
+                    bodyFont: { size: 11 },
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    callbacks: {
+                        label: (item: any) =>
+                            `${item.dataset.label}: ${item.parsed.y} dose${item.parsed.y === 1 ? '' : 's'}`,
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { size: 11, weight: 600 },
+                    },
+                },
+                y: {
+                    beginAtZero: true,
+                    border: { display: false },
+                    grid: { color: 'rgba(148, 163, 184, 0.18)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { size: 10 },
+                        precision: 0,
+                        stepSize: 1,
+                    },
+                },
+            },
+        },
+    });
+}
+
+const daysBelowTarget = (med: AdherenceMed): number =>
+    med.last7Days.filter((day) => day.expected > 0 && day.pct < 80).length;
+
+const adherenceBadgeClass = (average: number): string => {
+    if (average >= 80) {
+        return 'bg-emerald-100 text-emerald-700';
+    }
+
+    return average >= 50
+        ? 'bg-amber-100 text-amber-700'
+        : 'bg-red-100 text-red-700';
+};
+
+const dayChipClass = (day: AdherenceDay): string => {
+    if (day.expected === 0) {
+        return 'border-slate-200 bg-white text-slate-400';
+    }
+
+    if (day.pct >= 80) {
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    }
+
+    return day.pct >= 50
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : 'border-red-200 bg-red-50 text-red-700';
+};
+
+watch(adherenceData, () => nextTick(renderAdherenceChart), { deep: true });
+watch(activeTab, () => nextTick(renderAdherenceChart));
+
+onUnmounted(() => {
+    adherenceChart?.destroy();
+    adherenceChart = null;
+});
+
 const medHistory = ref<MedHistoryEntry[]>([]);
 const medHistoryLoading = ref(false);
 
@@ -2596,9 +2778,7 @@ function buildNotifications(): Notification[] {
         const docName =
             props.nextAppointment.doctor?.name?.replace('Dr. ', '') ||
             'your doctor';
-        const apptTime = appointmentSlotLabel(
-            props.nextAppointment.time,
-        );
+        const apptTime = appointmentSlotLabel(props.nextAppointment.time);
 
         if (apptDate === todayStr) {
             list.push({
