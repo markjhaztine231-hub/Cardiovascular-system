@@ -29,8 +29,6 @@ class Prescription extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'is_freeform' => 'boolean',
-        'instructions' => 'encrypted',
-        'free_text' => 'encrypted',
     ];
 
     public function encounter(): BelongsTo

@@ -34,8 +34,7 @@ class Document extends Model
     ];
 
     protected $casts = [
-        'ocr_text' => 'encrypted',
-        'ocr_raw' => 'encrypted:array',
+        'ocr_raw' => 'array',
         'ocr_confidence' => 'float',
     ];
 

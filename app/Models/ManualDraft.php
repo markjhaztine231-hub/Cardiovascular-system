@@ -18,8 +18,6 @@ class ManualDraft extends Model
     ];
 
     protected $casts = [
-        'draft' => 'encrypted',
-        'conclusion' => 'encrypted',
         'attachments' => 'array',
         'performed_at' => 'datetime',
     ];

@@ -84,11 +84,8 @@ class StudyDataReceptionTest extends TestCase
         $this->assertDatabaseHas('echocardiograms', [
             'encounter_id' => $encounter->id,
             'lvef_percent' => 55.0,
+            'valve_findings' => 'Normal study',
         ]);
-
-        // `valve_findings` is encrypted at rest, so assert through the cast
-        // rather than on the raw ciphertext in the database.
-        $this->assertSame('Normal study', $encounter->echocardiogram->valve_findings);
 
         $this->assertDatabaseHas('treadmill_tests', [
             'encounter_id' => $encounter->id,

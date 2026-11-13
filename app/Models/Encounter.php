@@ -23,7 +23,6 @@ class Encounter extends Model
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
-        'chief_complaint' => 'encrypted',
     ];
 
     public function appointment(): BelongsTo

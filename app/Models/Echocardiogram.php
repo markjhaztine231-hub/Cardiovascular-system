@@ -30,9 +30,6 @@ class Echocardiogram extends Model
     protected $casts = [
         'pericardial_effusion' => 'boolean',
         'performed_at' => 'datetime',
-        'notes' => 'encrypted',
-        'valve_findings' => 'encrypted',
-        'wall_motion' => 'encrypted',
     ];
 
     public function encounter(): BelongsTo

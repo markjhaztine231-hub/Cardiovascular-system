@@ -26,8 +26,6 @@ class DopplerStudy extends Model
 
     protected $casts = [
         'performed_at' => 'datetime',
-        'notes' => 'encrypted',
-        'valve_findings' => 'encrypted',
     ];
 
     public function encounter(): BelongsTo
