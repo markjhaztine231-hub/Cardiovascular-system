@@ -7,6 +7,8 @@ use App\Models\Encounter;
 use App\Models\MonthlyReport;
 use App\Models\User;
 use App\Services\MonthlyReportService;
+use App\Services\Rag\GuidelineRepository;
+use App\Services\Rag\GuidelineRetriever;
 use Carbon\Carbon;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
@@ -20,6 +22,11 @@ use Inertia\Response;
 
 class AiController extends Controller
 {
+    public function __construct(
+        private readonly GuidelineRepository $guidelines,
+        private readonly GuidelineRetriever $retriever,
+    ) {}
+
     // ==========================================
     // 1. PATIENT ABSTRACT (WITH PUBMED & PHA GUIDELINES RAG)
     // ==========================================
@@ -50,9 +57,11 @@ class AiController extends Controller
         $pubmedLiterature = $this->fetchPubMedLiterature($searchQuery);
 
         // --- 1B. RAG RETRIEVAL: Philippine Heart Association Guidelines ---
-        // Proper chunked retrieval — only the top-3 sections relevant to this
-        // patient's diagnosis are injected, not the entire PDF.
-        $phaContext = $this->retrieveRelevantGuidelines($searchQuery, 3);
+        // Semantic (pgvector) retrieval when it is enabled and indexed;
+        // otherwise fall back to local term-frequency scoring. Only the top-3
+        // guideline sections are injected, never the entire PDF.
+        $phaContext = $this->retriever->retrieve($searchQuery, 3)
+            ?? $this->retrieveRelevantGuidelines($searchQuery, 3);
 
         // --- 1C. GENERATION: Inject ALL knowledge into the Prompt ---
         // NOTE: Real patient name is NEVER sent to the AI. Pseudonym is used instead.
@@ -387,123 +396,15 @@ class AiController extends Controller
     }
 
     // ==========================================
-    // 6. HELPERS: PHILHEART GUIDELINES — PROPER CHUNKED RAG
+    // 6. HELPERS: PHILHEART GUIDELINES — KEYWORD FALLBACK
     // ==========================================
 
     /**
-     * Downloads and parses the PHA CAD 2014 PDF via LlamaParse.
-     * Returns the raw markdown string, or an error message.
-     * Called only by getPhaGuidelineChunks() — not directly.
-     */
-    private function downloadAndParsePhaGuidelines(): string
-    {
-        try {
-            $apiKey = config('services.llama.api_key');
-            if (! $apiKey) {
-                return 'Guidelines unavailable: Missing LlamaCloud API Key.';
-            }
-
-            $pdfUrl = 'https://www.philheart.org/images/guidelines/cad2014.pdf';
-            $pdfContent = Http::timeout(60)->get($pdfUrl)->body();
-            if (empty($pdfContent)) {
-                return 'Guidelines unavailable: Could not download PDF.';
-            }
-
-            $tempPath = storage_path('app/temp_cad2014.pdf');
-            file_put_contents($tempPath, $pdfContent);
-
-            $upload = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                ->attach('file', file_get_contents($tempPath), 'cad2014.pdf')
-                ->post('https://api.cloud.llamaindex.ai/api/parsing/upload');
-
-            @unlink($tempPath);
-
-            if (! $upload->successful()) {
-                return 'Guidelines unavailable: LlamaParse upload failed.';
-            }
-
-            $jobId = $upload->json('id');
-            $attempts = 0;
-
-            while ($attempts < 30) {
-                sleep(2);
-                $status = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                    ->get("https://api.cloud.llamaindex.ai/api/parsing/job/{$jobId}");
-
-                if ($status->json('status') === 'SUCCESS') {
-                    return Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                        ->get("https://api.cloud.llamaindex.ai/api/parsing/job/{$jobId}/result/markdown")
-                        ->json('markdown') ?? 'Guidelines unavailable: Empty parse result.';
-                }
-
-                if ($status->json('status') === 'ERROR') {
-                    return 'Guidelines unavailable: LlamaParse error.';
-                }
-                $attempts++;
-            }
-
-            return 'Guidelines unavailable: Parsing timed out.';
-        } catch (\Exception $e) {
-            Log::error('PhilHeart Guidelines Error: '.$e->getMessage());
-
-            return 'Guidelines unavailable.';
-        }
-    }
-
-    /**
-     * Returns the PHA guidelines as an array of section chunks.
-     * Cached for 30 days — medical guidelines don't change daily.
-     * Each chunk is capped at 1 200 chars to prevent token bloat.
+     * Keyword fallback: scores every guideline chunk against the query using
+     * term-frequency (TF) matching, then returns the top-N chunks.
      *
-     * This is the RAG Index step.
-     *
-     * @return string[] Array of guideline section strings.
-     */
-    private function getPhaGuidelineChunks(): array
-    {
-        return Cache::remember('philheart_cad_2014_chunks_v2', now()->addDays(30), function () {
-            $raw = $this->downloadAndParsePhaGuidelines();
-            if (str_starts_with($raw, 'Guidelines unavailable')) {
-                return [];
-            }
-
-            return $this->chunkMarkdown($raw, 1200);
-        });
-    }
-
-    /**
-     * Splits a markdown document into sections by level-2 headers (## …).
-     * Sections shorter than 80 chars (e.g. empty placeholders) are discarded.
-     * Each retained section is capped at $maxLen characters.
-     *
-     * @param  int  $maxLen  Maximum characters per chunk.
-     * @return string[]
-     */
-    private function chunkMarkdown(string $markdown, int $maxLen = 1200): array
-    {
-        $sections = preg_split('/^##\s/m', $markdown);
-        $chunks = [];
-
-        foreach ($sections as $section) {
-            $trimmed = trim($section);
-            if (strlen($trimmed) < 80) {
-                continue;
-            }
-            $chunks[] = strlen($trimmed) > $maxLen
-                ? substr($trimmed, 0, $maxLen).'…'
-                : $trimmed;
-        }
-
-        return $chunks;
-    }
-
-    /**
-     * RAG Retrieval step: scores every guideline chunk against the query
-     * using term-frequency (TF) matching, then returns the top-N chunks.
-     *
-     * No external embedding service required — pure PHP TF scoring is
-     * sufficient for a domain-specific medical document where section
-     * headers use precise clinical terminology.
+     * Used when the pgvector index is disabled, empty, or unreachable. No
+     * external service is called.
      *
      * @param  string  $query  Clinical query (e.g. patient diagnosis).
      * @param  int  $topN  Number of chunks to return.
@@ -511,8 +412,14 @@ class AiController extends Controller
      */
     private function retrieveRelevantGuidelines(string $query, int $topN = 3): string
     {
-        $chunks = $this->getPhaGuidelineChunks();
-        if (empty($chunks)) {
+        $sections = array_map(
+            fn (array $chunk) => $chunk['title'] !== null
+                ? '## '.$chunk['title']."\n".$chunk['content']
+                : $chunk['content'],
+            $this->guidelines->chunks(),
+        );
+
+        if ($sections === []) {
             return 'PHA guideline sections are currently unavailable.';
         }
 
@@ -524,22 +431,22 @@ class AiController extends Controller
 
         if (empty($terms)) {
             // No meaningful terms — fall back to the first $topN sections
-            return implode("\n\n---\n\n", array_slice($chunks, 0, $topN));
+            return implode("\n\n---\n\n", array_slice($sections, 0, $topN));
         }
 
         // Score each chunk by how many query terms it contains
-        $scored = array_map(function (string $chunk) use ($terms) {
-            $lower = strtolower($chunk);
+        $scored = array_map(function (string $section) use ($terms) {
+            $lower = strtolower($section);
             $score = array_sum(array_map(fn ($t) => substr_count($lower, $t), $terms));
 
-            return ['score' => $score, 'chunk' => $chunk];
-        }, $chunks);
+            return ['score' => $score, 'section' => $section];
+        }, $sections);
 
         usort($scored, fn ($a, $b) => $b['score'] - $a['score']);
 
         $top = array_slice($scored, 0, $topN);
 
-        return implode("\n\n---\n\n", array_column($top, 'chunk'));
+        return implode("\n\n---\n\n", array_column($top, 'section'));
     }
 
     // ==========================================
